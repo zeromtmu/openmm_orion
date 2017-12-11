@@ -1,8 +1,8 @@
 import traceback
-
 import OpenMMCubes.simtools as simtools
 import OpenMMCubes.utils as utils
 from floe.api import ParallelOEMolComputeCube, parameter
+from openeye import oechem
 
 
 class OpenMMminimizeCube(ParallelOEMolComputeCube):
@@ -42,12 +42,21 @@ class OpenMMminimizeCube(ParallelOEMolComputeCube):
         default='',
         help_text="""Mask selection to apply restraints. Possible keywords are:
                   ligand, protein, water, ions, ca_protein, cofactors. 
-                  Operational tokens are: and, not, noh""")
+                  The selection can be refined by using logical tokens: 
+                  not, noh, and, or, diff, around""")
 
     restraintWt = parameter.DecimalParameter(
         'restraintWt',
         default=5.0,
         help_text="Restraint weight for xyz atom restraints in kcal/(mol A^2)")
+
+    freeze = parameter.StringParameter(
+        'freeze',
+        default='',
+        help_text="""Mask selection to freeze atoms along the MD 
+                  simulation. Possible keywords are: ligand, protein, water, 
+                  ions, ca_protein, cofactors. The selection can be refined by
+                  using logical tokens: not, noh, and, or, diff, around""")
 
     temperature = parameter.DecimalParameter(
         'temperature',
@@ -81,6 +90,11 @@ class OpenMMminimizeCube(ParallelOEMolComputeCube):
         default='min',
         help_text='Filename suffix for output simulation files')
 
+    center = parameter.BooleanParameter(
+        'center',
+        default=False,
+        description='Center the system to the OpenMM unit cell')
+
     verbose = parameter.BooleanParameter(
         'verbose',
         default=True,
@@ -92,8 +106,14 @@ class OpenMMminimizeCube(ParallelOEMolComputeCube):
         choices=['Auto', 'Reference', 'CPU', 'CUDA', 'OpenCL'],
         help_text='Select which platform to use to run the simulation')
 
+    cuda_opencl_precision = parameter.StringParameter(
+        'cuda_opencl_precision',
+        default='single',
+        choices=['single', 'mixed', 'double'],
+        help_text='Select the CUDA or OpenCL precision')
+
     def begin(self):
-        self.opt = vars( self.args)
+        self.opt = vars(self.args)
         self.opt['Logger'] = self.log
         self.opt['SimType'] = 'min'
 
@@ -105,6 +125,19 @@ class OpenMMminimizeCube(ParallelOEMolComputeCube):
             # is necessary to avoid filename collisions due to
             # the parallel cube processes
             opt = dict(self.opt)
+
+            # Update cube simulation parameters with the eventually molecule SD tags
+            new_args = {dp.GetTag(): dp.GetValue() for dp in oechem.OEGetSDDataPairs(mol) if dp.GetTag() in
+                        ["temperature"]}
+            if new_args:
+                for k in new_args:
+                    try:
+                        new_args[k] = float(new_args[k])
+                    except:
+                        pass
+                self.log.info("Updating parameters for molecule: {}\n{}".format(mol.GetTitle(), new_args))
+                opt.update(new_args)
+
             if utils.PackageOEMol.checkTags(mol, ['Structure']):
                 gd = utils.PackageOEMol.unpack(mol)
                 opt['outfname'] = '{}-{}'.format(gd['IDTag'], self.opt['outfname'])
@@ -168,14 +201,23 @@ class OpenMMnvtCube(ParallelOEMolComputeCube):
     restraints = parameter.StringParameter(
         'restraints',
         default='',
-        help_text=""""Mask selection to apply restraints. Possible keywords are:
+        help_text=""""Mask selection to apply restraints. Possible keywords are: 
                   ligand, protein, water, ions, ca_protein, cofactors. 
-                  Operational tokens are: and, not, noh""")
+                  The selection can be refined by using logical tokens: 
+                  not, noh, and, or, diff, around""")
 
     restraintWt = parameter.DecimalParameter(
         'restraintWt',
         default=2.0,
         help_text="Restraint weight for xyz atom restraints in kcal/(mol A^2)")
+
+    freeze = parameter.StringParameter(
+        'freeze',
+        default='',
+        help_text="""Mask selection to freeze atoms along the MD 
+                  simulation. Possible keywords are: ligand, protein, water, 
+                  ions, ca_protein, cofactors. The selection can be refined by
+                  using logical tokens: not, noh, and, or, diff, around""")
 
     nonbondedMethod = parameter.StringParameter(
         'nonbondedMethod',
@@ -222,14 +264,14 @@ class OpenMMnvtCube(ParallelOEMolComputeCube):
         default='nvt',
         help_text='Filename suffix for output simulation files')
 
-    tarxz = parameter.BooleanParameter(
-        'tarxz',
+    tar = parameter.BooleanParameter(
+        'tar',
         default=False,
         description='Create a tar.xz file of the attached data')
 
     center = parameter.BooleanParameter(
         'center',
-        default=True,
+        default=False,
         description='Center the system to the OpenMM unit cell')
 
     verbose = parameter.BooleanParameter(
@@ -262,6 +304,19 @@ class OpenMMnvtCube(ParallelOEMolComputeCube):
             # is necessary to avoid filename collisions due to
             # the parallel cube processes
             opt = dict(self.opt)
+
+            # Update cube simulation parameters with the eventually molecule SD tags
+            new_args = {dp.GetTag(): dp.GetValue() for dp in oechem.OEGetSDDataPairs(mol) if dp.GetTag() in
+                        ["temperature"]}
+            if new_args:
+                for k in new_args:
+                    try:
+                        new_args[k] = float(new_args[k])
+                    except:
+                        pass
+                self.log.info("Updating parameters for molecule: {}\n{}".format(mol.GetTitle(), new_args))
+                opt.update(new_args)
+
             if utils.PackageOEMol.checkTags(mol, ['Structure']):
                 gd = utils.PackageOEMol.unpack(mol)
                 opt['outfname'] = '{}-{}'.format(gd['IDTag'], self.opt['outfname'])
@@ -271,6 +326,7 @@ class OpenMMnvtCube(ParallelOEMolComputeCube):
             opt['molecule'] = mol
 
             self.log.info('START NVT SIMULATION: %s' % gd['IDTag'])
+
             simtools.simulation(mdData, **opt)
                 
             packedmol = mdData.packMDData(mol)
@@ -331,14 +387,23 @@ class OpenMMnptCube(ParallelOEMolComputeCube):
     restraints = parameter.StringParameter(
         'restraints',
         default='',
-        help_text=""""Mask selection to apply restraints. Possible keywords are:
+        help_text=""""Mask selection to apply restraints. Possible keywords are: 
                   ligand, protein, water, ions, ca_protein, cofactors. 
-                  Operational tokens are: and, not, noh""")
+                  The selection can be refined by using logical tokens: 
+                  not, noh, and, or, diff, around""")
 
     restraintWt = parameter.DecimalParameter(
         'restraintWt',
         default=2.0,
         help_text="Restraint weight for xyz atom restraints in kcal/(mol ang^2)")
+
+    freeze = parameter.StringParameter(
+        'freeze',
+        default='',
+        help_text="""Mask selection to freeze atoms along the MD simulation. 
+                  Possible keywords are: ligand, protein, water, ions, ca_protein, 
+                  cofactors. The selection can be refined by using logical tokens: 
+                  not, noh, and, or, diff, around""")
 
     nonbondedMethod = parameter.StringParameter(
         'nonbondedMethod',
@@ -385,14 +450,14 @@ class OpenMMnptCube(ParallelOEMolComputeCube):
         default='npt',
         help_text='Filename suffix for output simulation files. Formatted: <title>-<outfname>')
 
-    tarxz = parameter.BooleanParameter(
-        'tarxz',
+    tar = parameter.BooleanParameter(
+        'tar',
         default=False,
         description='Create a tar.xz file of the attached data')
 
     center = parameter.BooleanParameter(
         'center',
-        default=True,
+        default=False,
         description='Center the system to the OpenMM unit cell')
 
     verbose = parameter.BooleanParameter(
@@ -425,6 +490,21 @@ class OpenMMnptCube(ParallelOEMolComputeCube):
             # is necessary to avoid filename collisions due to
             # the parallel cube processes
             opt = dict(self.opt)
+
+            # Update cube simulation parameters with the eventually molecule SD tags
+            new_args = {dp.GetTag(): dp.GetValue() for dp in oechem.OEGetSDDataPairs(mol) if dp.GetTag() in
+                        ["temperature", "pressure"]}
+
+            if new_args:
+                for k in new_args:
+                    try:
+                        new_args[k] = float(new_args[k])
+                    except:
+                        pass
+                self.log.info("Updating parameters for molecule: {}\n{}".format(mol.GetTitle(), new_args))
+
+                opt.update(new_args)
+
             if utils.PackageOEMol.checkTags(mol, ['Structure']):
                 gd = utils.PackageOEMol.unpack(mol)
                 opt['outfname'] = '{}-{}'.format(gd['IDTag'], self.opt['outfname'])

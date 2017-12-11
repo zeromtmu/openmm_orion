@@ -5,13 +5,13 @@ from OpenMMCubes.cubes import OpenMMnptCube
 job = WorkFloe("NPT Run")
 
 job.description = """
-NPT simulation of an OpenMM-ready solvated complex
+NPT simulation of an OpenMM-ready System
 
-Ex: python floes/openmm_MDnpt.py --complex complex.oeb --picosec 10
+Ex: python floes/openmm_MDnpt.py --system complex.oeb --picosec 10
 
 Parameters:
 -----------
-complex (file): OEB file of the prepared protein:ligand complex
+complex (file): OEB file of the prepared system
 
 Optional:
 --------
@@ -27,9 +27,9 @@ ofs: Outputs the constant temperature and pressure system
 job.classification = [['NPT']]
 job.tags = [tag for lists in job.classification for tag in lists]
 
-ifs = OEMolIStreamCube("complex", title="Complex Reader")
-ifs.promote_parameter("data_in", promoted_name="complex", title='Complex Input File',
-                      description="protein:ligand complex input file")
+ifs = OEMolIStreamCube("SystemReader", title="System Reader")
+ifs.promote_parameter("data_in", promoted_name="system", title='System Input File',
+                      description="System input file")
 
 npt = OpenMMnptCube('npt')
 npt.promote_parameter('time', promoted_name='picosec', default=10.0,
@@ -42,7 +42,7 @@ npt.promote_parameter('pressure', promoted_name='pressure', default=1.0,
 # Restraints
 npt.promote_parameter('restraints', promoted_name='restraints', default="ca_protein or (noh ligand)",
                       description='Select mask to apply restraints')
-npt.promote_parameter('restraintWt', promoted_name='restraintWt', default=2.0, description='Restraint weight')
+npt.promote_parameter('restraintWt', promoted_name='restraintWt', default=5.0, description='Restraint weight')
 
 # Trajectory and logging info frequency intervals
 npt.promote_parameter('trajectory_interval', promoted_name='trajectory_interval', default=100,
@@ -51,6 +51,9 @@ npt.promote_parameter('reporter_interval', promoted_name='reporter_interval', de
                       description='Reporter saving interval')
 npt.promote_parameter('outfname', promoted_name='suffix', default='npt',
                       description='Equilibration suffix name')
+
+npt.promote_parameter('tar', promoted_name='tar', default=True)
+
 
 ofs = OEMolOStreamCube('ofs', title='OFS-Success')
 ofs.set_parameters(backend='s3')

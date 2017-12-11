@@ -1,9 +1,9 @@
 from __future__ import unicode_literals
-from floe.api import WorkFloe, OEMolIStreamCube, OEMolOStreamCube
+from floe.api import WorkFloe, OEMolOStreamCube
 from OpenMMCubes.cubes import OpenMMminimizeCube, OpenMMnvtCube, OpenMMnptCube
-from ComplexPrepCubes.cubes import ProteinReader, Splitter, SolvationCube, \
-    ComplexPrep, ForceFieldPrep
-
+from ComplexPrepCubes.cubes import HydrationCube, ComplexPrep, ForceFieldPrep
+from ComplexPrepCubes.port import ProteinReader
+from LigPrepCubes.ports import LigandReader
 from LigPrepCubes.cubes import LigChargeCube
 
 job = WorkFloe('Preparation MD')
@@ -29,8 +29,8 @@ ofs: Outputs a ready system to MD production run
 job.classification = [['Complex Setup', 'FrosstMD']]
 job.tags = [tag for lists in job.classification for tag in lists]
 
-# Ligand reading cube setting
-iligs = OEMolIStreamCube("Ligands", title="Ligand Reader")
+# Ligand setting
+iligs = LigandReader("LigandReader", title="Ligand Reader")
 iligs.promote_parameter("data_in", promoted_name="ligands", title="Ligand Input File", description="Ligand file name")
 
 
@@ -46,16 +46,11 @@ iprot.promote_parameter("data_in", promoted_name="protein", title='Protein Input
 iprot.promote_parameter("protein_prefix", promoted_name="protein_prefix",
                         default='PRT', description="Protein prefix")
 
-# The spitter cube will be used to pre-process the read in protein system
-splitter = Splitter("Splitter")
-
-# The solvation cube is used to solvate the system and define the ionic strength of the solution
-solvate = SolvationCube("Solvation")
-solvate.promote_parameter('solvent_padding', promoted_name='solvent_padding', default=10)
-solvate.promote_parameter('salt_concentration', promoted_name='salt_conc', default=100)
-
 # Complex cube used to assemble the ligands and the solvated protein
 complx = ComplexPrep("Complex")
+
+# The solvation cube is used to solvate the system and define the ionic strength of the solution
+solvate = HydrationCube("Hydration")
 
 # Force Field Application
 ff = ForceFieldPrep("ForceField")
@@ -66,7 +61,6 @@ ff.promote_parameter('other_forcefield', promoted_name='other_ff', default='GAFF
 
 # Minimization
 minComplex = OpenMMminimizeCube('minComplex', title='Minimize')
-minComplex.promote_parameter('steps', promoted_name='min_steps', default=30000)
 minComplex.promote_parameter('restraints', promoted_name='m_restraints', default="noh (ligand or protein)",
                              description='Select mask to apply restarints')
 minComplex.promote_parameter('restraintWt', promoted_name='m_restraintWt', default=5.0,
@@ -142,15 +136,14 @@ fail = OEMolOStreamCube('fail', title='OFS-Failure')
 fail.set_parameters(backend='s3')
 fail.set_parameters(data_out='fail.oeb.gz')
 
-job.add_cubes(iprot, splitter, solvate, iligs, chargelig, complx, ff,
+job.add_cubes(iprot, iligs, chargelig, complx, solvate, ff,
               minComplex, warmup, equil1, equil2, equil3, ofs, fail)
 
-iprot.success.connect(splitter.intake)
-splitter.success.connect(solvate.intake)
-solvate.success.connect(complx.system_port)
+iprot.success.connect(complx.system_port)
 iligs.success.connect(chargelig.intake)
 chargelig.success.connect(complx.intake)
-complx.success.connect(ff.intake)
+complx.success.connect(solvate.intake)
+solvate.success.connect(ff.intake)
 ff.success.connect(minComplex.intake)
 minComplex.success.connect(warmup.intake)
 warmup.success.connect(equil1.intake)

@@ -5,13 +5,13 @@ from OpenMMCubes.cubes import OpenMMnvtCube
 job = WorkFloe("NVT Run")
 
 job.description = """
-NVT simulation of an OpenMM-ready solvated complex
+NVT simulation of an OpenMM-ready System
 
-Ex: python floes/openmm_MDnvt.py --complex complex.oeb --ofs-data_out nvt.oeb --picosec 10.0
+Ex: python floes/openmm_MDnvt.py --system complex.oeb --ofs-data_out nvt.oeb --picosec 10.0
 
 Parameters:
 -----------
-complex (file): OEB file of the prepared protein:ligand complex
+complex (file): OEB file of the prepared system
 
 Optional:
 --------
@@ -26,9 +26,9 @@ ofs: Outputs the constant temperature and volume system
 job.classification = [['NVT']]
 job.tags = [tag for lists in job.classification for tag in lists]
 
-ifs = OEMolIStreamCube("complex", title="Complex Reader")
-ifs.promote_parameter("data_in", promoted_name="complex", title='Complex Input File',
-                      description="protein:ligand complex input file")
+ifs = OEMolIStreamCube("SystemReader", title="System Reader")
+ifs.promote_parameter("data_in", promoted_name="system", title='System Input File',
+                      description="System input file")
 
 nvt = OpenMMnvtCube('nvt')
 nvt.promote_parameter('time', promoted_name='picosec', default=10.0)
@@ -36,7 +36,8 @@ nvt.promote_parameter('temperature', promoted_name='temperature', default=300.0,
                       description='Selected temperature in K')
 # Restraints
 nvt.promote_parameter('restraints', promoted_name='restraints', default='noh (ligand or protein)')
-nvt.promote_parameter('restraintWt', promoted_name='restraintWt', default=2.0)
+nvt.promote_parameter('restraintWt', promoted_name='restraintWt', default=5.0, description='Restraint weight')
+
 # Trajectory and logging info frequency intervals
 nvt.promote_parameter('trajectory_interval', promoted_name='trajectory_interval', default=100,
                       description='Trajectory saving interval')
@@ -45,6 +46,7 @@ nvt.promote_parameter('reporter_interval', promoted_name='reporter_interval', de
 
 nvt.promote_parameter('outfname', promoted_name='suffix', default='nvt',
                       description='Equilibration suffix name')
+nvt.promote_parameter('tar', promoted_name='tar', default=True)
 
 ofs = OEMolOStreamCube('ofs', title='OFS-Success')
 ofs.set_parameters(backend='s3')
