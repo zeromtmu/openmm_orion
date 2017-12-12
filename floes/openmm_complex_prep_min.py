@@ -63,7 +63,7 @@ ff = ForceFieldPrep("ForceField")
 
 # Minimization
 minComplex = OpenMMminimizeCube('minComplex')
-minComplex.promote_parameter('steps', promoted_name='steps', default=20000)
+minComplex.promote_parameter('steps', promoted_name='steps', default=0)
 minComplex.promote_parameter('center', promoted_name='center', default=True)
 
 ofs = OEMolOStreamCube('ofs', title='OFS-Success')

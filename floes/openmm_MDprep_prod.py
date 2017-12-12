@@ -79,7 +79,7 @@ minComplex.promote_parameter('restraints', promoted_name='m_restraints', default
                              description='Select mask to apply restarints')
 minComplex.promote_parameter('restraintWt', promoted_name='m_restraintWt', default=5.0,
                              description='Restraint weight')
-minComplex.promote_parameter('steps', promoted_name='steps', default=20000)
+minComplex.promote_parameter('steps', promoted_name='steps', default=0)
 minComplex.promote_parameter('center', promoted_name='center', default=True)
 
 # Output the minimized systems
