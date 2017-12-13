@@ -5,7 +5,10 @@ from simtk import openmm, unit
 from floe.test import CubeTestRunner
 from openeye import oechem
 
-
+#---------------------------
+# TO DO RE-WRITE YANK Tests
+# CURRENTLY NOT WORKING
+#---------------------------
 class YankHydrationCubeTester(unittest.TestCase):
     """
     Test the Yank hydration free energy calculation cube
