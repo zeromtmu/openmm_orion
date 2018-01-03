@@ -6,7 +6,7 @@ from floe.test import CubeTestRunner
 from openeye import oechem
 
 #---------------------------
-# TO DO RE-WRITE YANK Tests
+# TODO RE-WRITE YANK Tests
 # CURRENTLY NOT WORKING
 #---------------------------
 class YankHydrationCubeTester(unittest.TestCase):

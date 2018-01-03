@@ -710,12 +710,12 @@ class ForceFieldPrep(ParallelOEMolComputeCube):
         "item_count": {"default": 1}  # 1 molecule at a time
     }
 
-    protein_forcefield = parameter.DataSetInputParameter(
+    protein_forcefield = parameter.StringParameter(
         'protein_forcefield',
         default='amber99sbildn.xml',
         help_text='Force field parameters for protein')
 
-    solvent_forcefield = parameter.DataSetInputParameter(
+    solvent_forcefield = parameter.StringParameter(
         'solvent_forcefield',
         default='tip3p.xml',
         help_text='Force field parameters for solvent')
@@ -888,12 +888,12 @@ class ForceFieldDataSetCube(ParallelMixin, OERecordComputeCube):
         "item_count": {"default": 1}  # 1 molecule at a time
     }
 
-    protein_forcefield = parameter.DataSetInputParameter(
+    protein_forcefield = parameter.StringParameter(
         'protein_forcefield',
         default='amber99sbildn.xml',
         help_text='Force field parameters for protein')
 
-    solvent_forcefield = parameter.DataSetInputParameter(
+    solvent_forcefield = parameter.StringParameter(
         'solvent_forcefield',
         default='tip3p.xml',
         help_text='Force field parameters for solvent')
