@@ -111,9 +111,38 @@ def simulation(mdData, **opt):
             if idx in freeze_atom_set:
                 system.setParticleMass(idx, 0.0)
 
+    # Platform Selection
     if opt['platform'] == 'Auto':
-        simulation = app.Simulation(topology, system, integrator)
-    else:
+        # simulation = app.Simulation(topology, system, integrator)
+        # Select the platform
+        for plt_name in ['CUDA', 'OpenCL', 'CPU', 'Reference']:
+            try:
+                platform = openmm.Platform_getPlatformByName(plt_name)
+                break
+            except:
+                if plt_name == 'Reference':
+                    oechem.OEThrow.Fatal('It was not possible to select any OpenMM Platform')
+                else:
+                    pass
+        if platform.getName() in ['CUDA', 'OpenCL']:
+            for precision in ['mixed', 'single', 'double']:
+                try:
+                    # Set platform precision for CUDA or OpenCL
+                    properties = {'Precision': precision}
+
+                    simulation = app.Simulation(topology, system, integrator,
+                                                platform=platform,
+                                                platformProperties=properties)
+                    break
+                except:
+                    if precision == 'double':
+                        oechem.OEThrow.Fatal('It was not possible to select any Precision '
+                                             'for the selected Platform: {}'.format(platform.getName()))
+                    else:
+                        pass
+        else:  # CPU or Reference
+            simulation = app.Simulation(topology, system, integrator, platform=platform)
+    else:  # Not Auto Platform selection
         try:
             platform = openmm.Platform.getPlatformByName(opt['platform'])
         except Exception as e:
@@ -130,7 +159,7 @@ def simulation(mdData, **opt):
             except Exception:
                 oechem.OEThrow.Fatal('It was not possible to set the {} precision for the {} platform'
                                      .format(opt['cuda_opencl_precision'], opt['platform']))
-        else:
+        else:  # CPU or Reference Platform
             simulation = app.Simulation(topology, system, integrator, platform=platform)
 
     # Set starting positions and velocities
