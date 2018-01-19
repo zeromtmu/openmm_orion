@@ -1,9 +1,9 @@
 from __future__ import unicode_literals
-from floe.api import WorkFloe, OEMolOStreamCube
-from ComplexPrepCubes.cubes import HydrationCube, ComplexPrep, ForceFieldPrep
-from ComplexPrepCubes.port import ProteinReader
-from LigPrepCubes.ports import LigandReader
-from LigPrepCubes.cubes import LigChargeCube
+from floe.api import WorkFloe
+
+from cuberecord import DataSetWriterCube
+from LigPrepCubes.ports import LigandSetReaderCube
+from LigPrepCubes.cubes import LigandSetChargeCube
 
 job = WorkFloe("ComplexPrep")
 
@@ -28,42 +28,23 @@ job.classification = [['Simulation']]
 job.tags = [tag for lists in job.classification for tag in lists]
 
 # Ligand setting
-iligs = LigandReader("Ligand Reader", title="Ligand Reader")
+iligs = LigandSetReaderCube("Ligand Reader", title="Ligand Reader")
 iligs.promote_parameter("data_in", promoted_name="ligands", title="Ligand Input File", description="Ligand file name")
 
-chargelig = LigChargeCube("LigCharge")
+chargelig = LigandSetChargeCube("LigCharge")
 chargelig.promote_parameter('max_conformers', promoted_name='max_conformers',
                             description="Set the max number of conformers per ligand", default=800)
 
-# Protein Setting
-iprot = ProteinReader("ProteinReader")
-iprot.promote_parameter("data_in", promoted_name="protein", title="Protein Input File", description="Protein file name")
-iprot.promote_parameter("protein_prefix", promoted_name="protein_prefix", default='PRT',
-                        description="Protein Prefix")
+ofs = DataSetWriterCube('ofs', title='OFS-Success')
 
-# Complex Setting
-complx = ComplexPrep("Complex")
-ff = ForceFieldPrep("ForceField")
-
-# solvate the system
-solvate = HydrationCube("Hydration")
-
-ofs = OEMolOStreamCube('ofs', title='OFS-Success')
-ofs.set_parameters(backend='s3')
-
-fail = OEMolOStreamCube('fail', title='OFS-Failure')
-fail.set_parameters(backend='s3')
+fail = DataSetWriterCube('fail', title='OFS-Failure')
 fail.set_parameters(data_out='fail.oeb.gz')
 
-job.add_cubes(iprot, iligs, chargelig, complx,  solvate, ff, ofs, fail)
+job.add_cubes(iligs, chargelig,  ofs, fail)
 
-iprot.success.connect(complx.system_port)
 iligs.success.connect(chargelig.intake)
-chargelig.success.connect(complx.intake)
-complx.success.connect(solvate.intake)
-solvate.success.connect(ff.intake)
-ff.success.connect(ofs.intake)
-ff.failure.connect(fail.intake)
+chargelig.success.connect(ofs.intake)
+chargelig.failure.connect(fail.intake)
 
 if __name__ == "__main__":
     job.run()

@@ -1,10 +1,13 @@
 from __future__ import unicode_literals
-from floe.api import OutputPort, InputPort, Port
-from floe.constants import BYTES
-from floe.api import (parameter, MoleculeOutputPort, SourceCube)
+from floe.api import OutputPort, InputPort, Port, parameter
+from floe.constants import BYTES, ADVANCED
 from floe.api.orion import StreamingDataset, config_from_env
-
 from openeye import oechem
+
+from cuberecord import OERecordComputeCubeBase, OEField
+from cuberecord.ports import RecordOutputPort
+from cuberecord.oldrecordutil import oe_mol_to_data_record
+from datarecord import OEReadDataRecord, Types
 
 try:
     import cPickle as pickle
@@ -68,107 +71,121 @@ class CustomMoleculeOutputPort(OutputPort, MoleculePortSerializer):
     pass
 
 
-class LigandReader(SourceCube):
-    title = "LigandReader Cube"
-    version = "0.0.0"
-    classification = [["Ligand Reader Cube", "OEChem", "Reader Cube"]]
-    tags = ['OEChem']
+class LigandSetReaderCube(OERecordComputeCubeBase):
+    success = RecordOutputPort('success')
+    title = "Record Reader (New Data Model)"
     description = """
-    Ligand Reader Cube 
-    Input:
-    -------
-    oechem.OEMCMol or - Streamed-in of Ligands
-    The input file can be an .oeb, .oeb.gz, .pdb or a .mol2 file
+    Reads a data set from Orion
 
-    Output:
-    -------
-    oechem.OEMCMol - Emits the Ligands
+    This Reader cube is for the new data model
     """
+    classification = [["Input/Output"]]
+    tags = ["OpenEye", "OEDataRecord", "Reader", "Input/Output", "Input", "I/O"]
 
-    success = MoleculeOutputPort("success")
+    data_in = parameter.DataSetInputParameter('data_in',
+                                              required=True,
+                                              title='Dataset to read from',
+                                              description='The dataset to read from')
 
-    data_in = parameter.DataSetInputParameter(
-        "data_in",
-        help_text="Ligand to read in",
-        required=True,
-        description="The Ligand to read in")
+    limit = parameter.IntegerParameter('limit',
+                                       required=False,
+                                       description='Maximum number of records to read with this cube',
+                                       level=ADVANCED)
 
-    limit = parameter.IntegerParameter(
-        "limit",
-        required=False)
+    chunk_size = parameter.IntegerParameter('chunk_size',
+                                            required=False,
+                                            default=1000,
+                                            min_value=1,
+                                            max_value=100000,
+                                            description='Number of datarecords to retrieve from the server '
+                                                        'for each request',
+                                            level=ADVANCED)
 
-    download_format = parameter.StringParameter(
-        "download_format",
-        choices=[".oeb.gz", ".oeb", ".pdb", ".mol2", ".smi"],
-        required=False,
-        default=".oeb.gz")
+    log_timer = parameter.BooleanParameter('log_timer',
+                                           title="Enable timing log", default=False,
+                                           description="Log timing of the reader to the log")
 
-    prefix = parameter.StringParameter(
-        'prefix',
-        default='',
-        help_text='An SD tag used as prefix string')
+    # Enable molecule unique identifier generation
+    IDTag = parameter.BooleanParameter('IDTag',
+                                       default=True,
+                                       required=False,
+                                       help_text='If True/Checked ligands are enumerated by sequentially integers.'
+                                                 'A data record column is added to the data record with tag: IDTag')
 
-    suffix = parameter.StringParameter(
-        'suffix',
-        default='',
-        help_text='An SD tag used as suffix string')
-
-    type = parameter.StringParameter(
-        'type',
-        default='LIG',
-        required=True,
-        help_text='The ligand reside name')
-
-    IDTag = parameter.BooleanParameter(
-        'IDTag',
-        default=True,
-        required=False,
-        help_text='If True/Checked ligands are enumerated by sequentially integers.'
-                  'A SD tag containing part of the ligand name and an integer is used '
-                  'to create a unique IDTag which is attached to the ligand')
+    # Molecule Type
+    type_lig = parameter.StringParameter('type_lig',
+                                         default='LIG',
+                                         required=True,
+                                         help_text='The ligand residue name. A data record column is added to'
+                                                   ' the data record with tag: type_lig')
 
     def begin(self):
-        self.opt = vars(self.args)
+        if self.args.log_timer:
+            stopwatch = oechem.OEStopwatch()
+        else:
+            stopwatch = None
 
-    def __iter__(self):
-        max_idx = self.args.limit
-        if max_idx is not None:
-            max_idx = int(max_idx)
+        limit = self.args.limit
+        if limit is not None:
+            limit = int(limit)
+
+        chunk_size = self.args.chunk_size
+        if chunk_size is not None:
+            chunk_size = int(chunk_size)
+
         count = 0
         self.config = config_from_env()
         in_orion = self.config is not None
-        if not in_orion:
-            with oechem.oemolistream(str(self.args.data_in)) as ifs:
-                for mol in ifs.GetOEMols():
-                    mol.SetData(oechem.OEGetTag('prefix'), self.opt['prefix'])
-                    mol.SetData(oechem.OEGetTag('suffix'), self.opt['suffix'])
-
-                    for at in mol.GetAtoms():
-                        residue = oechem.OEAtomGetResidue(at)
-                        residue.SetName(self.opt['type'])
-                        oechem.OEAtomSetResidue(at, residue)
-
-                    if self.opt['IDTag']:
-                        mol.SetData(oechem.OEGetTag('IDTag'), 'l' + mol.GetTitle()[0:12] + '_' + str(count))
-                    yield mol
-                    count += 1
-                    if max_idx is not None and count == max_idx:
-                        break
-        else:
+        if in_orion:
+            # Read from Orion's database
             stream = StreamingDataset(self.args.data_in,
-                                      input_format=self.args.download_format)
-            for mol in stream:
-                mol.SetData(oechem.OEGetTag('prefix'), self.opt['prefix'])
-                mol.SetData(oechem.OEGetTag('suffix'), self.opt['suffix'])
-
-                for at in mol.GetAtoms():
-                    residue = oechem.OEAtomGetResidue(at)
-                    residue.SetName(self.opt['type'])
-                    oechem.OEAtomSetResidue(at, residue)
-
-                if self.opt['IDTag']:
-                    mol.SetData(oechem.OEGetTag('IDTag'), 'l' + mol.GetTitle()[0:12] + '_'+str(count))
-                yield mol
+                                      input_format='.oeb',
+                                      block_size=chunk_size)
+            for record in stream:
+                self.success.emit(record)
                 count += 1
-                if max_idx is not None and count == max_idx:
+                if limit is not None and count >= limit:
                     break
+        else:
+            # Read locally
+            if self.args.data_in.endswith(".oedb"):
+                # Input file is an OEDataRecord binary
+                ifs = oechem.oeifstream(str(self.args.data_in))
+                while True:
+                    try:
+                        record = OEReadDataRecord(ifs, fmt='oeb')
+                        if record is None:
+                            break
+                        count += 1
+                        if limit is not None and count > limit:
+                            break
+                        self.success.emit(record)
+                    except:
+                        ifs.close()
+            else:
+                # Input is molecules
+                with oechem.oemolistream(str(self.args.data_in)) as imstr:
+                    for mol in imstr.GetOEMols():
+
+                        for at in mol.GetAtoms():
+                            residue = oechem.OEAtomGetResidue(at)
+                            residue.SetName(self.args.type_lig)
+                            oechem.OEAtomSetResidue(at, residue)
+
+                        record = oe_mol_to_data_record(mol)
+
+                        if self.args.IDTag:
+                            name = 'l' + mol.GetTitle()[0:12] + '_' + str(count)
+                            field_id = OEField("ID", Types.String)
+                            record.set_value(field_id, name)
+
+                        if record is None:
+                            break
+                        count += 1
+                        if limit is not None and count > limit:
+                            break
+                        self.success.emit(record)
+        if stopwatch is not None:
+            self.log.info("Read {} molecules in {} seconds. ({} mol/sec)".format(count,
+                                                                                 stopwatch.Elapsed(),
+                                                                                 count/stopwatch.Elapsed()))
