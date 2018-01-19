@@ -1,8 +1,7 @@
 # OE Stack
 openeye-toolkits
-openeye-floe==0.3.69b
-OpenEye-datarecord==0.4.8.7
-OpenEye-cuberecord==0.2.28
+
+openeye-floe==0.2.181
 
 # Dev Stack
 invoke

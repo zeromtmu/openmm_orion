@@ -3,6 +3,9 @@ import numpy as np
 from simtk import unit
 import yaml
 from yank.analyze import get_analyzer
+from openeye import oechem
+import tarfile
+from floe.api.orion import in_orion, stream_file, upload_file
 
 
 def analyze_directory(source_directory):
@@ -54,3 +57,36 @@ def analyze_directory(source_directory):
     dDeltaH = dDeltaH * kT / unit.kilocalories_per_mole
 
     return DeltaF, dDeltaF, DeltaH, dDeltaH
+
+
+def download(molecule, path):
+    file_id = oechem.OEGetSDData(molecule, 'file_id')
+
+    if in_orion():
+        tar_file = os.path.basename(path) + '.tar.gz'
+        with open(tar_file, mode='w') as archive:
+            for chunk in stream_file(file_id):
+                archive.write(chunk)
+    else:
+        tar_file = file_id
+
+    tar = tarfile.open(tar_file)
+    tar.extractall(path=path)
+    tar.close()
+
+    return
+
+
+def upload(molecule, path):
+    file_id = os.path.basename(path) + '.tar.gz'
+
+    with tarfile.open(file_id, mode='w:gz') as archive:
+        archive.add(path, arcname='.', recursive=True)
+
+    if in_orion():
+        file_json = upload_file(file_id, file_id, tags="YANK_TMP")
+        file_id = file_json["id"]
+
+    oechem.OESetSDData(molecule, 'file_id', file_id)
+
+    return

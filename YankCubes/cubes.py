@@ -76,6 +76,16 @@ class YankSolvationFECube(ParallelOEMolComputeCube):
         default=False,
         help_text="Print verbose YANK logging output")
 
+    rerun = parameter.BooleanParameter(
+        'rerun',
+        default=False,
+        help_text="Start Yank Restart procedure")
+
+    analyze = parameter.BooleanParameter(
+        'analyze',
+        default=False,
+        help_text="Start Yank Analysis on the collected results")
+
     def begin(self):
         self.opt = vars(self.args)
         self.opt['Logger'] = self.log
@@ -89,7 +99,10 @@ class YankSolvationFECube(ParallelOEMolComputeCube):
             opt = dict(self.opt)
 
             # Split the complex in components
-            protein, solute, water, excipients = oeommutils.split(solvated_system, ligand_res_name='LIG')
+            if not opt['rerun']:
+                protein, solute, water, excipients = oeommutils.split(solvated_system, ligand_res_name='LIG')
+            else:
+                solute = solvated_system
 
             # Update cube simulation parameters with the eventually molecule SD tags
             new_args = {dp.GetTag(): dp.GetValue() for dp in oechem.OEGetSDDataPairs(solute) if dp.GetTag() in
@@ -105,56 +118,62 @@ class YankSolvationFECube(ParallelOEMolComputeCube):
                 opt.update(new_args)
 
             # Extract the MD data
-            mdData = data_utils.MDData(solvated_system)
-            solvated_structure = mdData.structure
+            if not opt['rerun']:
+                mdData = data_utils.MDData(solvated_system)
+                solvated_structure = mdData.structure
 
-            # Extract the ligand parmed structure
-            solute_structure = solvated_structure.split()[0][0]
-            solute_structure.box = None
+                # Extract the ligand parmed structure
+                solute_structure = solvated_structure.split()[0][0]
+                solute_structure.box = None
 
-            # Set the ligand title
-            solute.SetTitle(solvated_system.GetTitle())
+                # Set the ligand title
+                solute.SetTitle(solvated_system.GetTitle())
 
-            # Create the solvated and vacuum system
-            solvated_omm_sys = solvated_structure.createSystem(nonbondedMethod=app.PME,
-                                                               nonbondedCutoff=opt['nonbondedCutoff'] * unit.angstroms,
+                # Create the solvated and vacuum system
+                solvated_omm_sys = solvated_structure.createSystem(nonbondedMethod=app.PME,
+                                                                   nonbondedCutoff=opt['nonbondedCutoff'] * unit.angstroms,
+                                                                   constraints=app.HBonds,
+                                                                   removeCMMotion=False)
+
+                solute_omm_sys = solute_structure.createSystem(nonbondedMethod=app.NoCutoff,
                                                                constraints=app.HBonds,
                                                                removeCMMotion=False)
 
-            solute_omm_sys = solute_structure.createSystem(nonbondedMethod=app.NoCutoff,
-                                                           constraints=app.HBonds,
-                                                           removeCMMotion=False)
-
-            # This is a note from:
-            # https://github.com/MobleyLab/SMIRNOFF_paper_code/blob/e5012c8fdc4570ca0ec750f7ab81dd7102e813b9/scripts/create_input_files.py#L114
-            # Fix switching function.
-            for force in solvated_omm_sys.getForces():
-                if isinstance(force, openmm.NonbondedForce):
-                    force.setUseSwitchingFunction(True)
-                    force.setSwitchingDistance((opt['nonbondedCutoff'] - 1.0) * unit.angstrom)
+                # This is a note from:
+                # https://github.com/MobleyLab/SMIRNOFF_paper_code/blob/e5012c8fdc4570ca0ec750f7ab81dd7102e813b9/scripts/create_input_files.py#L114
+                # Fix switching function.
+                for force in solvated_omm_sys.getForces():
+                    if isinstance(force, openmm.NonbondedForce):
+                        force.setUseSwitchingFunction(True)
+                        force.setSwitchingDistance((opt['nonbondedCutoff'] - 1.0) * unit.angstrom)
 
             # Write out all the required files and set-run the Yank experiment
             with TemporaryDirectory() as output_directory:
 
                 opt['Logger'].info("Output Directory {}".format(output_directory))
 
+                if opt['rerun']:
+                    yankutils.download(solute, output_directory)
+
                 solvated_structure_fn = os.path.join(output_directory, "solvated.pdb")
-                solvated_structure.save(solvated_structure_fn, overwrite=True)
-
                 solute_structure_fn = os.path.join(output_directory, "solute.pdb")
-                solute_structure.save(solute_structure_fn, overwrite=True)
 
-                solvated_omm_sys_serialized = XmlSerializer.serialize(solvated_omm_sys)
                 solvated_omm_sys_serialized_fn = os.path.join(output_directory, "solvated.xml")
-                solvated_f = open(solvated_omm_sys_serialized_fn, 'w')
-                solvated_f.write(solvated_omm_sys_serialized)
-                solvated_f.close()
-
-                solute_omm_sys_serialized = XmlSerializer.serialize(solute_omm_sys)
                 solute_omm_sys_serialized_fn = os.path.join(output_directory, "solute.xml")
-                solute_f = open(solute_omm_sys_serialized_fn, 'w')
-                solute_f.write(solute_omm_sys_serialized)
-                solute_f.close()
+
+                if not opt['rerun']:
+                    solvated_structure.save(solvated_structure_fn, overwrite=True)
+                    solute_structure.save(solute_structure_fn, overwrite=True)
+
+                    solvated_omm_sys_serialized = XmlSerializer.serialize(solvated_omm_sys)
+                    solvated_f = open(solvated_omm_sys_serialized_fn, 'w')
+                    solvated_f.write(solvated_omm_sys_serialized)
+                    solvated_f.close()
+
+                    solute_omm_sys_serialized = XmlSerializer.serialize(solute_omm_sys)
+                    solute_f = open(solute_omm_sys_serialized_fn, 'w')
+                    solute_f.write(solute_omm_sys_serialized)
+                    solute_f.close()
 
                 # Build the Yank Experiment
                 yaml_builder = ExperimentBuilder(yank_solvation_template.format(
@@ -166,6 +185,8 @@ class YankSolvationFECube(ParallelOEMolComputeCube):
                                                  number_iterations=opt['iterations'],
                                                  temperature=opt['temperature'],
                                                  pressure=opt['pressure'],
+                                                 resume_sim='yes' if opt['rerun'] else 'no',
+                                                 resume_setup='yes' if opt['rerun'] else 'no',
                                                  solvated_pdb_fn=solvated_structure_fn,
                                                  solvated_xml_fn=solvated_omm_sys_serialized_fn,
                                                  solute_pdb_fn=solute_structure_fn,
@@ -174,14 +195,19 @@ class YankSolvationFECube(ParallelOEMolComputeCube):
                 # Run Yank
                 yaml_builder.run_experiments()
 
-                exp_dir = os.path.join(output_directory, "experiments")
+                # Upload file
+                yankutils.upload(solute, output_directory)
 
-                # Calculate solvation free energy, solvation Enthalpy and their errors
-                DeltaG_solvation, dDeltaG_solvation, DeltaH, dDeltaH = yankutils.analyze_directory(exp_dir)
+                if opt['analyze']:
 
-                # # Add result to the original molecule in kcal/mol
-                oechem.OESetSDData(solute, 'DG_yank_solv', str(DeltaG_solvation))
-                oechem.OESetSDData(solute, 'dG_yank_solv', str(dDeltaG_solvation))
+                    exp_dir = os.path.join(output_directory, "experiments")
+
+                    # Calculate solvation free energy, solvation Enthalpy and their errors
+                    DeltaG_solvation, dDeltaG_solvation, DeltaH, dDeltaH = yankutils.analyze_directory(exp_dir)
+
+                    # # Add result to the original molecule in kcal/mol
+                    oechem.OESetSDData(solute, 'DG_yank_solv', str(DeltaG_solvation))
+                    oechem.OESetSDData(solute, 'dG_yank_solv', str(dDeltaG_solvation))
 
             # Emit the ligand
             self.success.emit(solute)

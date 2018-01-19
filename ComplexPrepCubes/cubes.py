@@ -1,7 +1,7 @@
 from ComplexPrepCubes import utils
 from OpenMMCubes import utils as pack_utils
 from floe.api import (OEMolComputeCube, ParallelOEMolComputeCube,
-                      parameter, MoleculeInputPort, ParallelMixin)
+                      parameter, MoleculeInputPort)
 from openeye import oechem
 import traceback
 from simtk import unit
@@ -9,12 +9,6 @@ from simtk.openmm import app
 from oeommtools import utils as oeommutils
 from oeommtools.packmol import oesolvate
 import parmed
-
-from cuberecord import RecordInputPort
-
-from datarecord import (Columns, Column, OEDataRecord)
-from cuberecord import OERecordComputeCube
-from cuberecord.constants import DEFAULT_MOL_NAME
 
 
 class HydrationCube(ParallelOEMolComputeCube):
@@ -36,6 +30,8 @@ class HydrationCube(ParallelOEMolComputeCube):
 
     # Override defaults for some parameters
     parameter_overrides = {
+        "memory_mb": {"default": 2000},
+        "spot_policy": {"default": "Allowed"},
         "prefetch_count": {"default": 1},  # 1 molecule at a time
         "item_timeout": {"default": 3600},  # Default 1 hour limit (units are seconds)
         "item_count": {"default": 1}  # 1 molecule at a time
@@ -80,90 +76,6 @@ class HydrationCube(ParallelOEMolComputeCube):
         return
 
 
-class HydrationDataSetCube(ParallelMixin, OERecordComputeCube):
-    title = "Hydration Cube"
-    version = "0.0.0"
-    classification = [["Complex Preparation", "OEChem", "Complex preparation"]]
-    tags = ['OEChem', 'OpenMM', 'PDBFixer']
-    description = """
-    This cube solvate the molecular system
-
-    Input:
-    -------
-    oechem.OEDataRecord - Streamed-in of the molecular system
-
-    Output:
-    -------
-    oechem.OEDataRecord - Emits the solvated system
-    """
-
-    # Override defaults for some parameters
-    parameter_overrides = {
-        "prefetch_count": {"default": 1},  # 1 molecule at a time
-        "item_timeout": {"default": 3600},  # Default 1 hour limit (units are seconds)
-        "item_count": {"default": 1}  # 1 molecule at a time
-    }
-
-    solvent_padding = parameter.DecimalParameter(
-        'solvent_padding',
-        default=10.0,
-        help_text="Padding around protein for solvent box (angstroms)")
-
-    salt_concentration = parameter.DecimalParameter(
-        'salt_concentration',
-        default=50.0,
-        help_text="Salt concentration (millimolar)")
-
-    ref_structure = parameter.BooleanParameter(
-        'ref_structure',
-        default=True,
-        help_text="If Checked/True the molecule before solvation is attached to the solvated one")
-
-    def begin(self):
-        self.opt = vars(self.args)
-        self.opt['Logger'] = self.log
-
-    def process(self, record, port):
-        try:
-            opt = self.opt
-            column_system = Column(DEFAULT_MOL_NAME, Columns.Types.Chem.Mol)
-            column_system_id = Column("ID", Columns.Types.String)
-
-            if not column_system.has_data(record):
-                self.log.warn("Missing molecule '{}' column".format(column_system.get_name()))
-                self.failure.emit(record)
-                return
-
-            system = column_system.get_value(record)
-
-            if not column_system_id.has_data(record):
-                self.log.warn("Missing molecule '{}' column".format(column_system_id.get_name()))
-                system_id = system.GetTitle()
-            else:
-                system_id = column_system_id.get_value(record)
-
-            # Solvate the system. Note that the solvated system is translated to the
-            # OpenMM cube cell
-            sol_system = utils.hydrate(system, opt)
-            sol_system.SetTitle(system_id)
-
-            column_system.set_value(record, sol_system)
-            column_system_id.set_value(record, system_id)
-
-            if opt['ref_structure']:
-                ref_column = Column("Reference Molecule", Columns.Types.Chem.Mol)
-                ref_column.set_value(record, system)
-
-            self.success.emit(record)
-
-        except:
-            self.log.error(traceback.format_exc())
-            # Return failed record
-            self.failure.emit(record)
-
-        return
-
-
 class SolvationCube(ParallelOEMolComputeCube):
     title = "Solvation Cube Packmol"
     version = "0.0.0"
@@ -183,6 +95,8 @@ class SolvationCube(ParallelOEMolComputeCube):
 
     # Override defaults for some parameters
     parameter_overrides = {
+        "memory_mb": {"default": 2000},
+        "spot_policy": {"default": "Allowed"},
         "prefetch_count": {"default": 1},  # 1 molecule at a time
         "item_timeout": {"default": 3600},  # Default 1 hour limit (units are seconds)
         "item_count": {"default": 1}  # 1 molecule at a time
@@ -279,153 +193,6 @@ class SolvationCube(ParallelOEMolComputeCube):
             solute.SetData('error', str(e))
             # Return failed mol
             self.failure.emit(solute)
-
-        return
-
-
-class SolvationDataSetCube(ParallelMixin, OERecordComputeCube):
-    title = "Solvation Cube Packmol"
-    version = "0.0.0"
-    classification = [["Preparation", "OEChem"]]
-    tags = ['OEChem', 'PackMol']
-    description = """
-    This cube solvate a molecular system
-
-    Input:
-    -------
-    oechem.OEDataRecord - Streamed-in of the molecular system
-
-    Output:
-    -------
-    oechem.OEDataRecord - Emits the solvated system
-    """
-
-    # Override defaults for some parameters
-    parameter_overrides = {
-        "prefetch_count": {"default": 1},  # 1 molecule at a time
-        "item_timeout": {"default": 3600},  # Default 1 hour limit (units are seconds)
-        "item_count": {"default": 1}  # 1 molecule at a time
-    }
-
-    density = parameter.DecimalParameter(
-        'density',
-        default=1.0,
-        help_text="Solution density in g/ml")
-
-    padding_distance = parameter.DecimalParameter(
-        'padding_distance',
-        default=10.0,
-        help_text="The padding distance between the solute and the box edge in A")
-
-    distance_between_atoms = parameter.DecimalParameter(
-        'distance_between_atoms',
-        default=2.0,
-        help_text="The minimum distance between atoms in A")
-
-    solvents = parameter.StringParameter(
-        'solvents',
-        required=True,
-        default='[H]O[H]',
-        help_text='Select solvents. The solvents are specified as comma separated smiles strings'
-                  'e.g. [H]O[H], C(Cl)(Cl)Cl, CS(=O)C')
-
-    molar_fractions = parameter.StringParameter(
-        'molar_fractions',
-        default='1.0',
-        help_text="Molar fractions of each solvent components. The molar fractions are specified"
-                  "as comma separated molar fractions strings e.g. 0.5,0.2,0.3")
-
-    geometry = parameter.StringParameter(
-        'geometry',
-        default='box',
-        choices=['box', 'sphere'],
-        help_text="Geometry selection: box or sphere. Sphere cannot be used as periodic system "
-                  "along with MD simulation")
-
-    close_solvent = parameter.BooleanParameter(
-        'close_solvent',
-        default=False,
-        help_text="If Checked/True solvent molecules will be placed very close to the solute")
-
-    salt = parameter.StringParameter(
-        'salt',
-        default='[Na+], [Cl-]',
-        help_text='Salt type. The salt is specified as list of smiles strings. '
-                  'Each smiles string is the salt component dissociated in the '
-                  'solution e.g. Na+, Cl-')
-
-    salt_concentration = parameter.DecimalParameter(
-        'salt_concentration',
-        default=0.0,
-        help_text="Salt concentration in millimolar")
-
-    neutralize_solute = parameter.BooleanParameter(
-        'neutralize_solute',
-        default=True,
-        help_text='Neutralize the solute by adding Na+ and Cl- counter-ions based on'
-                  'the solute formal charge')
-
-    ref_structure = parameter.BooleanParameter(
-        'ref_structure',
-        default=True,
-        help_text="If Checked/True the molecule before solvation is attached to the solvated one")
-
-    def begin(self):
-        self.opt = vars(self.args)
-        self.opt['Logger'] = self.log
-
-    def process(self, record, port):
-
-        try:
-            opt = self.opt
-            column_solute = Column(DEFAULT_MOL_NAME, Columns.Types.Chem.Mol)
-            column_solute_id = Column("ID", Columns.Types.String)
-
-            if not column_solute.has_data(record):
-                self.log.warn("Missing molecule '{}' column".format(column_solute.get_name()))
-                self.failure.emit(record)
-                return
-
-            solute = column_solute.get_value(record)
-
-            if not column_solute_id.has_data(record):
-                self.log.warn("Missing molecule '{}' column".format(column_solute_id.get_name()))
-                solute_id = solute.GetTitle()
-            else:
-                solute_id = column_solute_id.get_value(record)
-
-            # Update cube simulation parameters with the eventually molecule SD tags
-            new_args = {dp.GetTag(): dp.GetValue() for dp in oechem.OEGetSDDataPairs(solute) if dp.GetTag() in
-                            ["solvents", "molar_fractions", "density"]}
-            if new_args:
-                for k in new_args:
-                    if k == 'molar_fractions':
-                        continue
-                    try:
-                        new_args[k] = float(new_args[k])
-                    except:
-                        pass
-                self.log.info("Updating parameters for molecule: {}\n{}".format(solute_id, new_args))
-                opt.update(new_args)
-
-            # Solvate the system
-            sol_system = oesolvate(solute, **opt)
-            self.log.info("Solvated System atom number: {}".format(sol_system.NumAtoms()))
-            sol_system.SetTitle(solute_id)
-
-            column_solute.set_value(record, sol_system)
-            column_solute_id.set_value(record, solute_id)
-
-            if opt['ref_structure']:
-                ref_column = Column("Reference Molecule", Columns.Types.Chem.Mol)
-                ref_column.set_value(record, solute)
-
-            self.success.emit(record)
-
-        except:
-            self.log.error(traceback.format_exc())
-            # Return failed record
-            self.failure.emit(record)
 
         return
 
@@ -539,153 +306,6 @@ class ComplexPrep(OEMolComputeCube):
         return
 
 
-class ComplexDataSetPrepCube(OERecordComputeCube):
-    title = "Complex Preparation Cube"
-    version = "0.0.0"
-    classification = [["Complex Preparation", "OEChem", "Complex preparation"]]
-    tags = ['OEChem']
-    description = """
-        This cube assembles the complex made of the protein and the 
-        ligands. If a ligand presents multiple conformers, then each conformer 
-        is bonded to the protein to form the solvated complex. For example if a 
-        ligand has 3 conformers then 3 complexes are generated.
-
-        Input:
-        -------
-        oechem.OEDataRecord - Streamed-in of the protein and ligands
-
-        Output:
-        -------
-        oechem.OEDataRecord - Emits the complex molecules
-        """
-
-    remove_explicit_solvent = parameter.BooleanParameter(
-        'remove_explicit_solvent',
-        default=False,
-        description='If True/Checked removes water and ion molecules from the system')
-
-    protein_port = RecordInputPort("protein_port")
-
-    def begin(self):
-        self.opt = vars(self.args)
-        self.opt['Logger'] = self.log
-        self.wait_on('protein_port')
-        self.count = 0
-        self.protein = False
-
-    def process(self, record, port):
-        try:
-            # protein
-            if port == 'protein_port':
-
-                column_mol = Column(DEFAULT_MOL_NAME, Columns.Types.Chem.Mol)
-                column_mol_id = Column("ID", Columns.Types.String)
-
-                if not column_mol.has_data(record):
-                    self.log.warn("Missing Protein '{}' column".format(column_mol.get_name()))
-                    self.failure.emit(record)
-                    return
-
-                mol = column_mol.get_value(record)
-
-                if not column_mol_id.has_data(record):
-                    self.log.warn("Missing Protein '{}' column".format(column_mol_id.get_name()))
-                    self.protein_id = 'p' + mol.GetTitle()+'_'+str(self.count)
-                else:
-                    self.protein_id = column_mol_id.get_value(record)
-
-                # Remove from solution water and ions
-                if self.opt['remove_explicit_solvent']:
-                    mol = oeommutils.strip_water_ions(mol)
-
-                self.protein = mol
-                self.check_protein = True
-                return
-
-            # ligands
-            if self.check_protein:
-
-                column_mol = Column(DEFAULT_MOL_NAME, Columns.Types.Chem.Mol)
-                column_mol_id = Column("ID", Columns.Types.String)
-
-                if not column_mol.has_data(record):
-                    self.log.warn("Missing Ligand '{}' column".format(column_mol.get_name()))
-                    self.failure.emit(record)
-                    return
-
-                mol = column_mol.get_value(record)
-
-                if not column_mol_id.has_data(record):
-                    self.log.warn("Missing Ligand '{}' column".format(column_mol_id.get_name()))
-                    lig_id = self.protein_id + '_l' + mol.GetTitle()[0:12] + '_' + str(self.count)
-                else:
-                    column_mol_id = column_mol_id.get_value(record)
-                    lig_id = self.protein_id + '_' + column_mol_id
-
-                num_conf = 0
-
-                for conf in mol.GetConfs():
-                    conf_mol = oechem.OEMol(conf)
-                    complx = self.protein.CreateCopy()
-                    oechem.OEAddMols(complx, conf_mol)
-
-                    # Split the complex in components
-                    protein, ligand, water, excipients = oeommutils.split(complx)
-
-                    # If the protein does not contain any atom emit a failure
-                    if not protein.NumAtoms():  # Error: protein molecule is empty
-                        oechem.OEThrow.Error("The protein molecule does not contains atoms")
-
-                    # If the ligand does not contain any atom emit a failure
-                    if not ligand.NumAtoms():  # Error: ligand molecule is empty
-                        oechem.OEThrow.Error("The Ligand molecule does not contains atoms")
-
-                    # Check if the ligand is inside the binding site. Cutoff distance 3A
-                    if not oeommutils.check_shell(ligand, protein, 3):
-                        oechem.OEThrow.Error("The ligand is probably outside the protein binding site")
-
-                    # Removing possible clashes between the ligand and water or excipients
-                    if water.NumAtoms():
-                        water_del = oeommutils.delete_shell(ligand, water, 1.5, in_out='in')
-
-                    if excipients.NumAtoms():
-                        excipient_del = oeommutils.delete_shell(ligand, excipients, 1.5, in_out='in')
-
-                    # Reassemble the complex
-                    new_complex = protein.CreateCopy()
-                    oechem.OEAddMols(new_complex, ligand)
-                    if excipients.NumAtoms():
-                        oechem.OEAddMols(new_complex, excipient_del)
-                    if water.NumAtoms():
-                        oechem.OEAddMols(new_complex, water_del)
-
-                    complex_id_c = lig_id
-
-                    if mol.GetMaxConfIdx() > 1:
-                        complex_id_c = complex_id_c + '_c' + str(num_conf)
-
-                    new_complex.SetTitle(complex_id_c)
-
-                    # New Data Record Settings
-                    new_complex_col = Column(DEFAULT_MOL_NAME, Columns.Types.Chem.Mol)
-                    new_record_complex = OEDataRecord()
-                    new_complex_col.set_value(new_record_complex, new_complex)
-
-                    column_complex_id = Column("ID", Columns.Types.String)
-                    column_complex_id.set_value(new_record_complex, complex_id_c)
-
-                    num_conf += 1
-                    self.success.emit(new_record_complex)
-                self.count += 1
-
-        except:
-            self.log.error(traceback.format_exc())
-            # Return failed record
-            self.failure.emit(record)
-
-        return
-
-
 class ForceFieldPrep(ParallelOEMolComputeCube):
     title = "Force Field Preparation Cube"
     version = "0.0.0"
@@ -705,6 +325,8 @@ class ForceFieldPrep(ParallelOEMolComputeCube):
 
     # Override defaults for some parameters
     parameter_overrides = {
+        "memory_mb": {"default": 2000},
+        "spot_policy": {"default": "Allowed"},
         "prefetch_count": {"default": 1},  # 1 molecule at a time
         "item_timeout": {"default": 3600},  # Default 1 hour limit (units are seconds)
         "item_count": {"default": 1}  # 1 molecule at a time
@@ -860,205 +482,5 @@ class ForceFieldPrep(ParallelOEMolComputeCube):
             mol.SetData('error', str(e))
             # Return failed mol
             self.failure.emit(mol)
-
-        return
-
-
-class ForceFieldDataSetCube(ParallelMixin, OERecordComputeCube):
-    title = "Force Field Application Cube"
-    version = "0.0.0"
-    classification = [["Force Field Application", "OEChem"]]
-    tags = ['OEChem', 'OEBio', 'OpenMM']
-    description = """
-    The system is parametrized by using the selected force fields
-
-    Input:
-    -------
-    oechem.OEDataRecord - Streamed-in of the system to parametrize
-
-    Output:
-    -------
-    oechem.OEDataRecord - Emits the force field parametrized system
-    """
-
-    # Override defaults for some parameters
-    parameter_overrides = {
-        "prefetch_count": {"default": 1},  # 1 molecule at a time
-        "item_timeout": {"default": 3600},  # Default 1 hour limit (units are seconds)
-        "item_count": {"default": 1}  # 1 molecule at a time
-    }
-
-    protein_forcefield = parameter.StringParameter(
-        'protein_forcefield',
-        default='amber99sbildn.xml',
-        help_text='Force field parameters for protein')
-
-    solvent_forcefield = parameter.StringParameter(
-        'solvent_forcefield',
-        default='tip3p.xml',
-        help_text='Force field parameters for solvent')
-
-    ligand_forcefield = parameter.StringParameter(
-        'ligand_forcefield',
-        required=True,
-        default='GAFF2',
-        choices=['GAFF', 'GAFF2', 'SMIRNOFF'],
-        help_text='Force field to parametrize the ligand')
-
-    ligand_res_name = parameter.StringParameter(
-        'ligand_res_name',
-        required=True,
-        default='LIG',
-        help_text='Ligand residue name')
-
-    other_forcefield = parameter.StringParameter(
-        'other_forcefield',
-        required=True,
-        default='GAFF2',
-        choices=['GAFF', 'GAFF2', 'SMIRNOFF'],
-        help_text='Force field used to parametrize other molecules not recognized by the protein force field')
-
-    def begin(self):
-        self.opt = vars(self.args)
-        self.opt['Logger'] = self.log
-
-    def process(self, record, port):
-        try:
-            opt = self.opt
-            column_system = Column(DEFAULT_MOL_NAME, Columns.Types.Chem.Mol)
-            column_system_id = Column("ID", Columns.Types.String)
-
-            if not column_system.has_data(record):
-                self.log.warn("Missing molecule '{}' column".format(column_system.get_name()))
-                self.failure.emit(record)
-                return
-
-            system = column_system.get_value(record)
-
-            if not column_system_id.has_data(record):
-                self.log.warn("Missing molecule '{}' column".format(column_system_id.get_name()))
-                system_id = system.GetTitle()
-            else:
-                system_id = column_system_id.get_value(record)
-
-            # Split the complex in components in order to apply the FF
-            protein, ligand, water, excipients = oeommutils.split(system, ligand_res_name=opt['ligand_res_name'])
-
-            self.log.info("\nComplex name: {}\nProtein atom numbers = {}\nLigand atom numbers = {}\n"
-                          "Water atom numbers = {}\nExcipients atom numbers = {}".format(system_id,
-                                                                                         protein.NumAtoms(),
-                                                                                         ligand.NumAtoms(),
-                                                                                         water.NumAtoms(),
-                                                                                         excipients.NumAtoms()))
-
-            # Unique prefix name used to output parametrization files
-            opt['prefix_name'] = system_id
-
-            oe_mol_list = []
-            par_mol_list = []
-
-            # Apply FF to the Protein
-            if protein.NumAtoms():
-                oe_mol_list.append(protein)
-                protein_structure = utils.applyffProtein(protein, opt)
-                par_mol_list.append(protein_structure)
-
-            # Apply FF to the ligand
-            if ligand.NumAtoms():
-                oe_mol_list.append(ligand)
-                ligand_structure = utils.applyffLigand(ligand, opt)
-                par_mol_list.append(ligand_structure)
-
-            # Apply FF to water molecules
-            if water.NumAtoms():
-                oe_mol_list.append(water)
-                water_structure = utils.applyffWater(water, opt)
-                par_mol_list.append(water_structure)
-
-            # Apply FF to the excipients
-            if excipients.NumAtoms():
-                excipient_structure = utils.applyffExcipients(excipients, opt)
-                par_mol_list.append(excipient_structure)
-
-                # The excipient order is set equal to the order in related
-                # parmed structure to avoid possible atom index mismatching
-                excipients = oeommutils.openmmTop_to_oemol(excipient_structure.topology,
-                                                           excipient_structure.positions,
-                                                           verbose=False)
-                oechem.OEPerceiveBondOrders(excipients)
-                oe_mol_list.append(excipients)
-
-            # Build the overall Parmed structure
-            system_structure = parmed.Structure()
-
-            for struc in par_mol_list:
-                system_structure = system_structure + struc
-
-            system_reassembled = oe_mol_list[0].CreateCopy()
-            num_atom_system = system_reassembled.NumAtoms()
-
-            for idx in range(1, len(oe_mol_list)):
-                oechem.OEAddMols(system_reassembled, oe_mol_list[idx])
-                num_atom_system += oe_mol_list[idx].NumAtoms()
-
-            if not num_atom_system == system_structure.topology.getNumAtoms():
-                oechem.OEThrow.Error("Parmed and OE topologies mismatch atom number "
-                                     "error for system: {}".format(system_id))
-
-            system_reassembled.SetTitle(system_id)
-
-            # Set Parmed structure box_vectors
-            is_periodic = True
-            try:
-                vec_data = pack_utils.PackageOEMol.getData(system_reassembled, tag='box_vectors')
-                vec = pack_utils.PackageOEMol.decodePyObj(vec_data)
-                system_structure.box_vectors = vec
-            except:
-                is_periodic = False
-                self.log.warn("System {} has been parametrize without periodic box vectors "
-                              "for vacuum simulation".format(system_id))
-
-            # Attach the Parmed structure to the complex
-            packed_system = pack_utils.PackageOEMol.pack(system_reassembled, system_structure)
-
-            # Attach the reference positions to the complex
-            ref_positions = system_structure.positions
-            packedpos = pack_utils.PackageOEMol.encodePyObj(ref_positions)
-            packed_system.SetData(oechem.OEGetTag('OEMDDataRefPositions'), packedpos)
-
-            # Set atom serial numbers, Ligand name and HETATM flag
-            # oechem.OEPerceiveResidues(packed_complex, oechem.OEPreserveResInfo_SerialNumber)
-            for at in packed_system.GetAtoms():
-                thisRes = oechem.OEAtomGetResidue(at)
-                thisRes.SetSerialNumber(at.GetIdx())
-                if thisRes.GetName() == 'UNL':
-                    # thisRes.SetName("LIG")
-                    thisRes.SetHetAtom(True)
-                oechem.OEAtomSetResidue(at, thisRes)
-
-            if packed_system.GetMaxAtomIdx() != system_structure.topology.getNumAtoms():
-                raise ValueError("OEMol system {} and generated Parmed structure "
-                                 "mismatch atom numbers".format(system_id))
-
-            # Check if it is possible to create the OpenMM System
-            if is_periodic:
-                system_structure.createSystem(nonbondedMethod=app.CutoffPeriodic,
-                                              nonbondedCutoff=10.0 * unit.angstroms,
-                                              constraints=app.HBonds,
-                                              removeCMMotion=False)
-            else:
-                system_structure.createSystem(nonbondedMethod=app.NoCutoff,
-                                              constraints=app.HBonds,
-                                              removeCMMotion=False)
-
-            column_system.set_value(record, packed_system)
-            column_system_id.set_value(record, system_id)
-
-            self.success.emit(record)
-
-        except:
-            self.log.error(traceback.format_exc())
-            # Return failed record
-            self.failure.emit(record)
 
         return

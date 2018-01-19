@@ -10,6 +10,9 @@ options:
   temperature: {temperature:f}*kelvin
   pressure: {pressure:f}*atmosphere
   anisotropic_dispersion_cutoff: auto
+  resume_simulation: {resume_sim}
+  resume_setup: {resume_sim}
+  checkpoint_interval: 1
 
 systems:
   solvation-system:
