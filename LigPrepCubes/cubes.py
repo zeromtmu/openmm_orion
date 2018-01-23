@@ -5,6 +5,7 @@ from floe.api import ParallelMixin, parameter
 from cuberecord import OERecordComputeCube, OEField
 from datarecord import Types
 from oeommtools import utils as oeommutils
+from cuberecord.constants import DEFAULT_MOL_NAME
 
 
 class LigandSetChargeCube(ParallelMixin, OERecordComputeCube):
@@ -49,14 +50,14 @@ class LigandSetChargeCube(ParallelMixin, OERecordComputeCube):
 
     def process(self, record, port):
         try:
-            field = OEField("Molecule", Types.Chem.Mol)
+            field_mol = OEField(DEFAULT_MOL_NAME, Types.Chem.Mol)
 
-            if not record.has_value(field):
-                self.log.warn("Missing '{}' column".format(field.get_name()))
+            if not record.has_value(field_mol):
+                self.log.warn("Missing '{}' field".format(field_mol.get_name()))
                 self.failure.emit(record)
                 return
 
-            ligand = record.get_value(field)
+            ligand = record.get_value(field_mol)
 
             # Ligand sanitation
             ligand = oeommutils.sanitizeOEMolecule(ligand)
@@ -74,11 +75,11 @@ class LigandSetChargeCube(ParallelMixin, OERecordComputeCube):
                     at.SetPartialCharge(map_charges[at.GetIdx()])
                 self.log.info("ELF10 charge method applied to the ligand: {}".format(ligand.GetTitle()))
 
-            record.set_value(field, ligand)
+            record.set_value(field_mol, ligand)
             self.success.emit(record)
 
         except:
             self.log.error(traceback.format_exc())
-            self.log.warn("Failed to assign ELF10 charges")
+            self.log.warn("Failed to assign ELF10 charges on molecule {}".format(ligand.GetTitle()))
             # Return failed record
             self.failure.emit(record)

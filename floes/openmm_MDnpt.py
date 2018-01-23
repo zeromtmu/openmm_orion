@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
-from floe.api import WorkFloe, OEMolIStreamCube, OEMolOStreamCube
-from OpenMMCubes.cubes import OpenMMnptCube
+from floe.api import WorkFloe
+from OpenMMCubes.cubes import OpenMMnptSetCube
+from cuberecord import DataSetReaderCube, DataSetWriterCube
 
 job = WorkFloe("NPT Run")
 
@@ -27,11 +28,11 @@ ofs: Outputs the constant temperature and pressure system
 job.classification = [['NPT']]
 job.tags = [tag for lists in job.classification for tag in lists]
 
-ifs = OEMolIStreamCube("SystemReader", title="System Reader")
+ifs = DataSetReaderCube("SystemReader", title="System Reader")
 ifs.promote_parameter("data_in", promoted_name="system", title='System Input File',
                       description="System input file")
 
-npt = OpenMMnptCube('npt')
+npt = OpenMMnptSetCube('npt')
 npt.promote_parameter('time', promoted_name='picosec', default=10.0,
                       description='Length of MD run in picoseconds')
 npt.promote_parameter('temperature', promoted_name='temperature', default=300.0,
@@ -55,10 +56,9 @@ npt.promote_parameter('outfname', promoted_name='suffix', default='npt',
 npt.promote_parameter('tar', promoted_name='tar', default=True)
 
 
-ofs = OEMolOStreamCube('ofs', title='OFS-Success')
-ofs.set_parameters(backend='s3')
-fail = OEMolOStreamCube('fail', title='OFS-Failure')
-fail.set_parameters(backend='s3')
+ofs = DataSetWriterCube('ofs', title='OFS-Success')
+
+fail = DataSetWriterCube('fail', title='OFS-Failure')
 fail.set_parameters(data_out='fail.oeb.gz')
 
 job.add_cubes(ifs, npt, ofs, fail)

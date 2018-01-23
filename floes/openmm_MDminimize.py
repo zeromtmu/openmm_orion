@@ -1,6 +1,7 @@
 from __future__ import unicode_literals
-from floe.api import WorkFloe, OEMolIStreamCube, OEMolOStreamCube
-from OpenMMCubes.cubes import OpenMMminimizeCube
+from floe.api import WorkFloe
+from OpenMMCubes.cubes import OpenMMminimizeSetCube
+from cuberecord import DataSetReaderCube, DataSetWriterCube
 
 job = WorkFloe("MDminimize")
 
@@ -25,17 +26,16 @@ ofs: Outputs the minimized system
 job.classification = [['Simulation']]
 job.tags = [tag for lists in job.classification for tag in lists]
 
-ifs = OEMolIStreamCube("SystemReader", title="System Reader")
+ifs = DataSetReaderCube("SystemReader", title="System Reader")
 ifs.promote_parameter("data_in", promoted_name="system", title='System Input File',
                       description="System input file")
 
-min = OpenMMminimizeCube('Minimize')
+min = OpenMMminimizeSetCube('Minimize')
 min.promote_parameter('steps', promoted_name='steps')
 
-ofs = OEMolOStreamCube('ofs', title='OFS-Success')
-ofs.set_parameters(backend='s3')
-fail = OEMolOStreamCube('fail', title='OFS-Failure')
-fail.set_parameters(backend='s3')
+ofs = DataSetWriterCube('ofs', title='OFS-Success')
+
+fail = DataSetWriterCube('fail', title='OFS-Failure')
 fail.set_parameters(data_out='fail.oeb.gz')
 
 job.add_cubes(ifs, min, ofs, fail)

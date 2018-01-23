@@ -1,11 +1,12 @@
 from __future__ import unicode_literals
-from floe.api import WorkFloe, OEMolOStreamCube
-from OpenMMCubes.cubes import OpenMMminimizeCube, OpenMMnvtCube, OpenMMnptCube
-from ComplexPrepCubes.cubes import HydrationCube, ComplexPrep, ForceFieldPrep, SolvationCube
-from ComplexPrepCubes.port import ProteinReader
-from LigPrepCubes.ports import LigandReader
-from LigPrepCubes.cubes import LigChargeCube
+from floe.api import WorkFloe
 
+from cuberecord import DataSetWriterCube
+from OpenMMCubes.cubes import OpenMMminimizeSetCube, OpenMMnvtSetCube, OpenMMnptSetCube
+from ComplexPrepCubes.cubes import HydrationSetCube, ComplexSetPrepCube, ForceFieldSetCube, SolvationSetCube
+from ComplexPrepCubes.port import ProteinSetReaderCube
+from LigPrepCubes.ports import LigandSetReaderCube
+from LigPrepCubes.cubes import LigandSetChargeCube
 
 job = WorkFloe('Merk Frosst MD Protocol')
 
@@ -31,29 +32,29 @@ job.classification = [['Complex Setup', 'FrosstMD']]
 job.tags = [tag for lists in job.classification for tag in lists]
 
 # Ligand setting
-iligs = LigandReader("LigandReader", title="Ligand Reader")
+iligs = LigandSetReaderCube("LigandReader", title="Ligand Reader")
 iligs.promote_parameter("data_in", promoted_name="ligands", title="Ligand Input File", description="Ligand file name")
 
 
-chargelig = LigChargeCube("LigCharge")
+chargelig = LigandSetChargeCube("LigCharge")
 chargelig.promote_parameter('max_conformers', promoted_name='max_conformers',
                             description="Set the max number of conformers per ligand", default=800)
 
 # Protein Reading cube. The protein prefix parameter is used to select a name for the
 # output system files
-iprot = ProteinReader("ProteinReader")
+iprot = ProteinSetReaderCube("ProteinReader")
 iprot.promote_parameter("data_in", promoted_name="protein", title='Protein Input File',
                         description="Protein file name")
 iprot.promote_parameter("protein_prefix", promoted_name="protein_prefix",
                         default='prot', description="Protein prefix")
 
 # Complex cube used to assemble the ligands and the solvated protein
-complx = ComplexPrep("Complex")
+complx = ComplexSetPrepCube("Complex")
 
 # The solvation cube is used to solvate the system and define the ionic strength of the solution
 # solvate = HydrationCube("Hydration")
 
-solvate = SolvationCube("Hydration")
+solvate = SolvationSetCube("Hydration")
 solvate.promote_parameter('density', promoted_name='density', default=1.03,
                           description="Solution density in g/ml")
 solvate.promote_parameter('close_solvent', promoted_name='close_solvent', default=True,
@@ -62,19 +63,18 @@ solvate.promote_parameter('salt_concentration', promoted_name='salt_concentratio
                           description='Salt concentration (Na+, Cl-) in millimolar')
 
 # Force Field Application
-ff = ForceFieldPrep("ForceField")
+ff = ForceFieldSetCube("ForceField")
 ff.promote_parameter('protein_forcefield', promoted_name='protein_ff', default='amber99sbildn.xml')
 ff.promote_parameter('solvent_forcefield', promoted_name='solvent_ff', default='tip3p.xml')
 ff.promote_parameter('ligand_forcefield', promoted_name='ligand_ff', default='GAFF2')
 ff.promote_parameter('other_forcefield', promoted_name='other_ff', default='GAFF2')
 
 # Output the prepared systems
-complex_prep_ofs = OEMolOStreamCube('complex_prep_ofs', title='ComplexSetUpOut')
-complex_prep_ofs.set_parameters(backend='s3')
+complex_prep_ofs = DataSetWriterCube('complex_prep_ofs', title='ComplexSetUpOut')
 complex_prep_ofs.set_parameters(data_out=iprot.promoted_parameters['protein_prefix']['default']+'_SetUp.oeb.gz')
 
 # Minimization
-minComplex = OpenMMminimizeCube('minComplex', title='Minimize')
+minComplex = OpenMMminimizeSetCube('minComplex', title='Minimize')
 minComplex.promote_parameter('restraints', promoted_name='m_restraints', default="noh (ligand or protein)",
                              description='Select mask to apply restarints')
 minComplex.promote_parameter('restraintWt', promoted_name='m_restraintWt', default=5.0,
@@ -83,12 +83,11 @@ minComplex.promote_parameter('steps', promoted_name='steps', default=1000)
 minComplex.promote_parameter('center', promoted_name='center', default=True)
 
 # Output the minimized systems
-minimization_ofs = OEMolOStreamCube('minimization_ofs', title='MinimizationOut')
-minimization_ofs.set_parameters(backend='s3')
+minimization_ofs = DataSetWriterCube('minimization_ofs', title='MinimizationOut')
 minimization_ofs.set_parameters(data_out=iprot.promoted_parameters['protein_prefix']['default']+'_Minimization.oeb.gz')
 
 # NVT simulation. Here the assembled system is warmed up to the final selected temperature
-warmup = OpenMMnvtCube('warmup', title='warmup')
+warmup = OpenMMnvtSetCube('warmup', title='warmup')
 warmup.promote_parameter('time', promoted_name='warm_psec', default=10.0,
                          description='Length of MD run in picoseconds')
 warmup.promote_parameter('restraints', promoted_name='w_restraints', default="noh (ligand or protein)",
@@ -107,7 +106,7 @@ warmup.promote_parameter('outfname', promoted_name='w_outfname', default='warmup
 # is applied in the first stage while a relatively small one is applied in the latter
 
 # NPT Equilibration stage 1
-equil1 = OpenMMnptCube('equil1', title='equil1')
+equil1 = OpenMMnptSetCube('equil1', title='equil1')
 equil1.promote_parameter('time', promoted_name='eq1_psec', default=10.0,
                          description='Length of MD run in picoseconds')
 equil1.promote_parameter('restraints', promoted_name='eq1_restraints', default="noh (ligand or protein)",
@@ -121,7 +120,7 @@ equil1.promote_parameter('outfname', promoted_name='eq1_outfname', default='equi
                          description='Equilibration suffix name')
 
 # NPT Equilibration stage 2
-equil2 = OpenMMnptCube('equil2', title='equil2')
+equil2 = OpenMMnptSetCube('equil2', title='equil2')
 equil2.promote_parameter('time', promoted_name='eq2_psec', default=20.0,
                          description='Length of MD run in picoseconds')
 equil2.promote_parameter('restraints', promoted_name='eq2_restraints', default="noh (ligand or protein)",
@@ -136,7 +135,7 @@ equil2.promote_parameter('outfname', promoted_name='eq2_outfname', default='equi
                          description='Equilibration suffix name')
 
 # NPT Equilibration stage 3
-equil3 = OpenMMnptCube('equil3', title='equil3')
+equil3 = OpenMMnptSetCube('equil3', title='equil3')
 equil3.promote_parameter('time', promoted_name='eq3_psec', default=60.0,
                          description='Length of MD run in picoseconds')
 equil3.promote_parameter('restraints', promoted_name='eq3_restraints', default="ca_protein or (noh ligand)",
@@ -151,11 +150,10 @@ equil3.promote_parameter('outfname', promoted_name='eq3_outfname', default='equi
                          description='Equilibration suffix name')
 
 # Output the equilibrated systems
-equilibration_ofs = OEMolOStreamCube("equilibration_ofs", title='EquilibrationOut')
-equilibration_ofs.set_parameters(backend='s3')
+equilibration_ofs = DataSetWriterCube("equilibration_ofs", title='EquilibrationOut')
 equilibration_ofs.set_parameters(data_out=iprot.promoted_parameters['protein_prefix']['default']+'_Equilibration.oeb.gz')
 
-prod = OpenMMnptCube("Production")
+prod = OpenMMnptSetCube("Production")
 prod.promote_parameter('time', promoted_name='prod_psec', default=2000.0,
                        description='Length of MD run in picoseconds')
 
@@ -166,17 +164,16 @@ prod.promote_parameter('reporter_interval', promoted_name='prod_reporter_interva
 prod.promote_parameter('outfname', promoted_name='prod_outfname', default='prod',
                        description='Equilibration suffix name')
 
-ofs = OEMolOStreamCube('ofs', title='OFS-Success')
-ofs.set_parameters(backend='s3')
+ofs = DataSetWriterCube('ofs', title='OFS-Success')
 
-fail = OEMolOStreamCube('fail', title='OFS-Failure')
-fail.set_parameters(backend='s3')
+
+fail = DataSetWriterCube('fail', title='OFS-Failure')
 fail.set_parameters(data_out='fail.oeb.gz')
 
 job.add_cubes(iprot, iligs, chargelig, complx, solvate, ff, complex_prep_ofs,
               minComplex, minimization_ofs, warmup, equil1, equil2, equil3, equilibration_ofs, prod, ofs, fail)
 
-iprot.success.connect(complx.system_port)
+iprot.success.connect(complx.protein_port_port)
 iligs.success.connect(chargelig.intake)
 chargelig.success.connect(complx.intake)
 complx.success.connect(solvate.intake)

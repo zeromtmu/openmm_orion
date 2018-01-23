@@ -5,6 +5,9 @@ from cuberecord import DataSetWriterCube
 from LigPrepCubes.ports import LigandSetReaderCube
 from LigPrepCubes.cubes import LigandSetChargeCube
 
+from ComplexPrepCubes.port import ProteinSetReaderCube
+from ComplexPrepCubes.cubes import ComplexSetPrepCube, HydrationSetCube, SolvationSetCube, ForceFieldSetCube
+
 job = WorkFloe("ComplexPrep")
 
 job.description = """
@@ -35,16 +38,32 @@ chargelig = LigandSetChargeCube("LigCharge")
 chargelig.promote_parameter('max_conformers', promoted_name='max_conformers',
                             description="Set the max number of conformers per ligand", default=800)
 
+iprot = ProteinSetReaderCube("Protein Reader", title="Protein Reader")
+iprot.promote_parameter("data_in", promoted_name="protein", title="Protein Input File", description="Protein file name")
+iprot.promote_parameter("protein_prefix", promoted_name="protein_prefix", default='PRT',
+                        description="Protein Prefix")
+
+complx = ComplexSetPrepCube("Complex")
+
+solvate = HydrationSetCube("Hydration")
+
+ff = ForceFieldSetCube("ForceField")
+
 ofs = DataSetWriterCube('ofs', title='OFS-Success')
 
 fail = DataSetWriterCube('fail', title='OFS-Failure')
 fail.set_parameters(data_out='fail.oeb.gz')
 
-job.add_cubes(iligs, chargelig,  ofs, fail)
+job.add_cubes(iligs, chargelig, iprot, complx, solvate, ff, ofs, fail)
 
 iligs.success.connect(chargelig.intake)
-chargelig.success.connect(ofs.intake)
-chargelig.failure.connect(fail.intake)
+chargelig.success.connect(complx.intake)
+iprot.success.connect(complx.protein_port)
+complx.success.connect(solvate.intake)
+solvate.success.connect(ff.intake)
+ff.success.connect(ofs.intake)
+ff.failure.connect(fail.intake)
+
 
 if __name__ == "__main__":
     job.run()

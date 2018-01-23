@@ -5,7 +5,7 @@ from floe.api.orion import StreamingDataset, config_from_env
 from openeye import oechem
 
 from cuberecord import OERecordComputeCubeBase, OEField
-from cuberecord.ports import RecordOutputPort
+from cuberecord.ports import DataRecordOutputPort
 from cuberecord.oldrecordutil import oe_mol_to_data_record
 from datarecord import OEReadDataRecord, Types
 
@@ -72,7 +72,7 @@ class CustomMoleculeOutputPort(OutputPort, MoleculePortSerializer):
 
 
 class LigandSetReaderCube(OERecordComputeCubeBase):
-    success = RecordOutputPort('success')
+    success = DataRecordOutputPort('success')
     title = "Record Reader (New Data Model)"
     description = """
     Reads a data set from Orion
