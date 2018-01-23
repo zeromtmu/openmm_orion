@@ -1,10 +1,11 @@
 from __future__ import unicode_literals
-from floe.api import WorkFloe, OEMolOStreamCube
-from ComplexPrepCubes.cubes import SolvationCube, ForceFieldPrep
-from LigPrepCubes.cubes import LigChargeCube
-from LigPrepCubes.ports import LigandReader
+from floe.api import WorkFloe
+from cuberecord import DataSetWriterCube
+from ComplexPrepCubes.cubes import SolvationSetCube, ForceFieldSetCube
+from LigPrepCubes.cubes import LigandSetChargeCube
+from LigPrepCubes.ports import LigandSetReaderCube
 from YankCubes.cubes import YankSolvationFECube
-from OpenMMCubes.cubes import OpenMMminimizeCube, OpenMMnvtCube, OpenMMnptCube
+from OpenMMCubes.cubes import OpenMMminimizeSetCube, OpenMMnvtSetCube, OpenMMnptSetCube
 
 job = WorkFloe("SolvationFreeEnergy")
 
@@ -34,18 +35,18 @@ job.classification = [['Solvation Free Energy']]
 job.tags = [tag for lists in job.classification for tag in lists]
 
 # Ligand setting
-iligs = LigandReader("Ligands", title="Ligand Reader")
+iligs = LigandSetReaderCube("Ligands", title="Ligand Reader")
 iligs.promote_parameter("data_in", promoted_name="ligands", title="Ligand Input File", description="Ligand file name")
 job.add_cube(iligs)
 cube_list.append(iligs)
 
-chargelig = LigChargeCube("LigCharge")
+chargelig = LigandSetChargeCube("LigCharge")
 chargelig.promote_parameter('max_conformers', promoted_name='max_conformers',
                             description="Set the max number of conformers per ligand", default=800)
 job.add_cube(chargelig)
 cube_list.append(chargelig)
 
-solvate = SolvationCube("Solvation")
+solvate = SolvationSetCube("Solvation")
 solvate.promote_parameter("density", promoted_name="density", title="Solution density in g/ml", default=1.0,
                           description="Solution Density in g/ml")
 solvate.promote_parameter("solvents", promoted_name="solvents", title="Solvent components",
@@ -63,12 +64,12 @@ solvate.promote_parameter("padding_distance", promoted_name="padding_distance", 
 job.add_cube(solvate)
 cube_list.append(solvate)
 
-ff = ForceFieldPrep("ForceField")
+ff = ForceFieldSetCube("ForceField")
 job.add_cube(ff)
 cube_list.append(ff)
 
 # Minimization
-minimize = OpenMMminimizeCube("Minimize")
+minimize = OpenMMminimizeSetCube("Minimize")
 minimize.promote_parameter('restraints', promoted_name='m_restraints', default="noh ligand",
                            description='Select mask to apply restarints')
 minimize.promote_parameter('restraintWt', promoted_name='m_restraintWt', default=5.0,
@@ -77,7 +78,7 @@ job.add_cube(minimize)
 cube_list.append(minimize)
 
 # NVT Warm-up
-warmup = OpenMMnvtCube('warmup', title='warmup')
+warmup = OpenMMnvtSetCube('warmup', title='warmup')
 warmup.promote_parameter('time', promoted_name='warm_psec', default=20.0,
                          description='Length of MD run in picoseconds')
 warmup.promote_parameter('restraints', promoted_name='w_restraints', default="noh ligand",
@@ -95,7 +96,7 @@ job.add_cube(warmup)
 cube_list.append(warmup)
 
 # NPT Equilibration stage
-equil = OpenMMnptCube('equil', title='equil')
+equil = OpenMMnptSetCube('equil', title='equil')
 equil.promote_parameter('time', promoted_name='eq_psec', default=20.0,
                         description='Length of MD run in picoseconds')
 equil.promote_parameter('restraints', promoted_name='eq_restraints', default="noh ligand",
@@ -128,13 +129,11 @@ for i in range(0, chunks):
     job.add_cube(solvationfe)
     cube_list.append(solvationfe)
 
-ofs = OEMolOStreamCube('ofs', title='OFS-Success')
-ofs.set_parameters(backend='s3')
+ofs = DataSetWriterCube('ofs', title='OFS-Success')
 job.add_cube(ofs)
 cube_list.append(ofs)
 
-fail = OEMolOStreamCube('fail', title='OFS-Failure')
-fail.set_parameters(backend='s3')
+fail = DataSetWriterCube('fail', title='OFS-Failure')
 fail.set_parameters(data_out='fail.oeb.gz')
 job.add_cube(fail)
 cube_list.append(fail)

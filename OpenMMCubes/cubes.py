@@ -612,4 +612,4 @@ class OpenMMnptSetCube(ParallelMixin, OERecordComputeCube):
             # Return failed mol
             self.failure.emit(record)
 
-        return 
+        return

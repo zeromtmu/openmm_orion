@@ -1,8 +1,13 @@
 import traceback
 from openeye import oechem
 from tempfile import TemporaryDirectory
-from floe.api import (parameter, ParallelOEMolComputeCube, OEMolComputeCube, MoleculeInputPort,
+from floe.api import (parameter, ParallelMixin, ParallelOEMolComputeCube, OEMolComputeCube, MoleculeInputPort,
                       BatchMoleculeOutputPort, BatchMoleculeInputPort)
+
+from cuberecord import OERecordComputeCube, OEField
+from cuberecord.constants import DEFAULT_MOL_NAME
+from datarecord import Types, Meta, ColumnMeta
+
 
 from yank.experiment import ExperimentBuilder
 from oeommtools import utils as oeommutils
@@ -12,9 +17,10 @@ import os
 from YankCubes import utils as yankutils
 from YankCubes.yank_templates import yank_solvation_template, yank_binding_template
 import itertools
+import OpenMMCubes.utils as omm_utils
 
 
-class YankSolvationFECube(ParallelOEMolComputeCube):
+class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
     version = "0.0.0"
     title = "YankSolvationFECube"
     description = """
@@ -90,13 +96,31 @@ class YankSolvationFECube(ParallelOEMolComputeCube):
         self.opt = vars(self.args)
         self.opt['Logger'] = self.log
 
-    def process(self, solvated_system, port):
+    def process(self, record, port):
 
         try:
             # The copy of the dictionary option as local variable
             # is necessary to avoid filename collisions due to
             # the parallel cube processes
             opt = dict(self.opt)
+
+            field_system = OEField(DEFAULT_MOL_NAME, Types.Chem.Mol,
+                                   meta=ColumnMeta().set_option(Meta.Hints.Chem.PrimaryMol))
+
+            if not record.has_value(field_system):
+                self.log.warn("Missing molecule '{}' field".format(field_system.get_name()))
+                self.failure.emit(record)
+                return
+
+            solvated_system = record.get_value(field_system)
+
+            field_parmed = OEField("Parmed", omm_utils.ParmedData)
+
+            if not record.has_value(field_parmed):
+                self.log.warn("Missing molecule '{}' field".format(field_parmed.get_name()))
+                self.failure.emit(record)
+
+            parmed_structure = record.get_value(field_parmed)
 
             # Split the complex in components
             if not opt['rerun']:
@@ -119,7 +143,7 @@ class YankSolvationFECube(ParallelOEMolComputeCube):
 
             # Extract the MD data
             if not opt['rerun']:
-                mdData = data_utils.MDData(solvated_system)
+                mdData = omm_utils.MDData(parmed_structure)
                 solvated_structure = mdData.structure
 
                 # Extract the ligand parmed structure
@@ -209,15 +233,16 @@ class YankSolvationFECube(ParallelOEMolComputeCube):
                     oechem.OESetSDData(solute, 'DG_yank_solv', str(DeltaG_solvation))
                     oechem.OESetSDData(solute, 'dG_yank_solv', str(dDeltaG_solvation))
 
+            record.set_value(field_system, solute)
+
             # Emit the ligand
-            self.success.emit(solute)
+            self.success.emit(record)
 
         except Exception as e:
             # Attach an error message to the molecule that failed
             self.log.error(traceback.format_exc())
-            solvated_system.SetData('error', str(e))
             # Return failed mol
-            self.failure.emit(solvated_system)
+            self.failure.emit(record)
 
         return
 
