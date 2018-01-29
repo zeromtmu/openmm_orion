@@ -1,12 +1,17 @@
 from __future__ import unicode_literals
 from floe.api import WorkFloe
 
-from cuberecord import DataSetWriterCube
+from cuberecord import DataSetWriterCube, DataSetReaderCube
 from LigPrepCubes.ports import LigandSetReaderCube
 from LigPrepCubes.cubes import LigandSetChargeCube
 
 from ComplexPrepCubes.port import ProteinSetReaderCube
-from ComplexPrepCubes.cubes import ComplexSetPrepCube, HydrationSetCube, SolvationSetCube, ForceFieldSetCube
+
+from ComplexPrepCubes.cubes import (
+    ComplexSetPrepCube,
+    HydrationSetCube,
+    SolvationSetCube,
+    ForceFieldSetCube)
 
 job = WorkFloe("ComplexPrep")
 

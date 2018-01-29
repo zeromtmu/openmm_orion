@@ -1,13 +1,16 @@
 from __future__ import unicode_literals
 from floe.api import OutputPort, InputPort, Port, parameter
 from floe.constants import BYTES, ADVANCED
-from floe.api.orion import StreamingDataset, config_from_env
+from floe.api.orion import config_from_env
+from cuberecord.orion import StreamingDataset
 from openeye import oechem
 
 from cuberecord import OERecordComputeCubeBase, OEField
 from cuberecord.ports import DataRecordOutputPort
 from cuberecord.oldrecordutil import oe_mol_to_data_record
-from datarecord import OEReadDataRecord, Types
+from datarecord import OEReadDataRecord, Types, Column
+
+from cuberecord.constants import DEFAULT_MOL_NAME
 
 try:
     import cPickle as pickle
@@ -142,6 +145,28 @@ class LigandSetReaderCube(OERecordComputeCubeBase):
                                       input_format='.oeb',
                                       block_size=chunk_size)
             for record in stream:
+
+                col_ligand = Column(DEFAULT_MOL_NAME, Types.Chem.Mol)
+
+                if not col_ligand.has_value(record):
+                    self.log.warn("Missing '{}' column".format(col_ligand.get_name()))
+                    self.failure.emit(record)
+                    return
+
+                ligand = col_ligand.get_value(record)
+
+                for at in ligand.GetAtoms():
+                    residue = oechem.OEAtomGetResidue(at)
+                    residue.SetName(self.args.type_lig)
+                    oechem.OEAtomSetResidue(at, residue)
+
+                col_ligand.set_value(record, ligand)
+
+                if self.args.IDTag:
+                    name = 'l' + ligand.GetTitle()[0:12] + '_' + str(count)
+                    col_id = Column("ID", Types.String)
+                    col_id.set_value(record, name)
+
                 self.success.emit(record)
                 count += 1
                 if limit is not None and count >= limit:

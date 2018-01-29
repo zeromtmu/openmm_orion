@@ -173,7 +173,7 @@ fail.set_parameters(data_out='fail.oeb.gz')
 job.add_cubes(iprot, iligs, chargelig, complx, solvate, ff, complex_prep_ofs,
               minComplex, minimization_ofs, warmup, equil1, equil2, equil3, equilibration_ofs, prod, ofs, fail)
 
-iprot.success.connect(complx.protein_port_port)
+iprot.success.connect(complx.protein_port)
 iligs.success.connect(chargelig.intake)
 chargelig.success.connect(complx.intake)
 complx.success.connect(solvate.intake)

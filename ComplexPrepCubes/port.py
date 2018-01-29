@@ -1,12 +1,13 @@
-from floe.api.orion import StreamingDataset, config_from_env
-
+from floe.api.orion import config_from_env
+from cuberecord.orion import StreamingDataset
 from openeye import oechem
 from cuberecord import OERecordComputeCubeBase, OEField
 from cuberecord.ports import DataRecordOutputPort
 from floe.api import parameter
 from floe.constants import ADVANCED
-from datarecord import OEReadDataRecord, Types
+from datarecord import OEReadDataRecord, Types, OEDataRecord, Column
 from cuberecord.oldrecordutil import oe_mol_to_data_record
+from cuberecord.constants import DEFAULT_MOL_NAME
 
 
 class ProteinSetReaderCube(OERecordComputeCubeBase):
@@ -79,15 +80,16 @@ class ProteinSetReaderCube(OERecordComputeCubeBase):
                                       input_format='.oeb',
                                       block_size=chunk_size)
             for record in stream:
+                # record seems to be an OEDataRecord object not OERecord
 
-                field_mol = OEField("Molecule", Types.Chem.Mol)
+                col_mol = Column(DEFAULT_MOL_NAME, Types.Chem.Mol)
 
-                if not record.has_value(field_mol):
-                    self.log.warn("Missing '{}' column".format(field_mol.get_name()))
+                if not col_mol.has_value(record):
+                    self.log.warn("Missing '{}' column".format(col_mol.get_name()))
                     self.failure.emit(record)
                     return
 
-                mol = record.get_value(field_mol)
+                mol = col_mol.get_value(record)
                 mol_copy = oechem.OEMol(mol)
 
                 # Try to recognize the residue name
@@ -104,8 +106,8 @@ class ProteinSetReaderCube(OERecordComputeCubeBase):
 
                 if self.args.IDTag:
                     name = 'p' + self.args.protein_prefix + '_' + str(count)
-                    field_id = OEField("ID", Types.String)
-                    record.set_value(field_id, name)
+                    col_id = Column("ID", Types.String)
+                    col_id.set_value(record, name)
 
                 self.success.emit(record)
                 count += 1
@@ -113,7 +115,7 @@ class ProteinSetReaderCube(OERecordComputeCubeBase):
                     break
         else:
             # Read locally
-            if self.args.data_in.endswith(".oedb")  or self.args.data_in.endswith(".json"):
+            if self.args.data_in.endswith(".oedb") or self.args.data_in.endswith(".json"):
                 if self.args.data_in.endswith("json"):
                     fmt = 'json'
                 else:

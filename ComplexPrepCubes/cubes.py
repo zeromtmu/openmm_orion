@@ -67,14 +67,14 @@ class HydrationSetCube(ParallelMixin, OERecordComputeCube):
             field_system = OEField(DEFAULT_MOL_NAME, Types.Chem.Mol,
                                    meta=ColumnMeta().set_option(Meta.Hints.Chem.PrimaryMol))
 
-            field_system_id = OEField("ID", Types.String)
-
             if not record.has_value(field_system):
                 self.log.warn("Missing molecule '{}' field".format(field_system.get_name()))
                 self.failure.emit(record)
                 return
 
             system = record.get_value(field_system)
+
+            field_system_id = OEField("ID", Types.String)
 
             if not record.has_value(field_system_id):
                 self.log.warn("Missing molecule ID '{}' field".format(field_system_id.get_name()))
@@ -205,14 +205,14 @@ class SolvationSetCube(ParallelMixin, OERecordComputeCube):
             field_system = OEField(DEFAULT_MOL_NAME, Types.Chem.Mol,
                                    meta=ColumnMeta().set_option(Meta.Hints.Chem.PrimaryMol))
 
-            field_system_id = OEField("ID", Types.String)
-
             if not record.has_value(field_system):
                 self.log.warn("Missing molecule '{}' field".format(field_system.get_name()))
                 self.failure.emit(record)
                 return
 
             solute = record.get_value(field_system)
+
+            field_system_id = OEField("ID", Types.String)
 
             if not record.has_value(field_system_id):
                 self.log.warn("Missing molecule ID '{}' field".format(field_system_id.get_name()))
@@ -297,7 +297,7 @@ class ComplexSetPrepCube(OERecordComputeCube):
         self.opt['Logger'] = self.log
         self.wait_on('protein_port')
         self.count = 0
-        self.protein = False
+        self.check_protein = False
 
     def process(self, record, port):
         try:
@@ -307,14 +307,14 @@ class ComplexSetPrepCube(OERecordComputeCube):
                 field_mol = OEField(DEFAULT_MOL_NAME, Types.Chem.Mol,
                                     meta=ColumnMeta().set_option(Meta.Hints.Chem.PrimaryMol))
 
-                field_id = OEField("ID", Types.String)
-
                 if not record.has_value(field_mol):
                     self.log.warn("Missing Protein '{}' field".format(field_mol.get_name()))
                     self.failure.emit(record)
                     return
 
                 mol = record.get_value(field_mol)
+
+                field_id = OEField("ID", Types.String)
 
                 if not record.has_value(field_id):
                     self.log.warn("Missing Protein ID '{}' field".format(field_id.get_name()))
@@ -334,7 +334,6 @@ class ComplexSetPrepCube(OERecordComputeCube):
             if self.check_protein:
 
                 field_mol = OEField(DEFAULT_MOL_NAME, Types.Chem.Mol)
-                field_id = OEField("ID", Types.String)
 
                 if not record.has_value(field_mol):
                     self.log.warn("Missing Ligand '{}' field".format(field_mol.get_name()))
@@ -342,6 +341,8 @@ class ComplexSetPrepCube(OERecordComputeCube):
                     return
 
                 mol = record.get_value(field_mol)
+
+                field_id = OEField("ID", Types.String)
 
                 if not record.has_value(field_id):
                     self.log.warn("Missing Ligand ID '{}' field".format(field_id.get_name()))
@@ -480,7 +481,6 @@ class ForceFieldSetCube(ParallelMixin, OERecordComputeCube):
             opt = self.opt
 
             field_system = OEField(DEFAULT_MOL_NAME, Types.Chem.Mol)
-            field_system_id = OEField("ID", Types.String)
 
             if not record.has_value(field_system):
                 self.log.warn("Missing molecule '{}' fied".format(field_system.get_name()))
@@ -488,6 +488,8 @@ class ForceFieldSetCube(ParallelMixin, OERecordComputeCube):
                 return
 
             system = record.get_value(field_system)
+
+            field_system_id = OEField("ID", Types.String)
 
             if not record.has_value(field_system_id):
                 self.log.warn("Missing molecule ID '{}' field".format(field_system_id.get_name()))

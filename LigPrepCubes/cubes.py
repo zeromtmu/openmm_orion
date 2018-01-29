@@ -3,7 +3,7 @@ from LigPrepCubes import ff_utils
 from floe.api import ParallelMixin, parameter
 
 from cuberecord import OERecordComputeCube, OEField
-from datarecord import Types
+from datarecord import Types, Meta, ColumnMeta
 from oeommtools import utils as oeommutils
 from cuberecord.constants import DEFAULT_MOL_NAME
 
@@ -76,6 +76,7 @@ class LigandSetChargeCube(ParallelMixin, OERecordComputeCube):
                 self.log.info("ELF10 charge method applied to the ligand: {}".format(ligand.GetTitle()))
 
             record.set_value(field_mol, ligand)
+
             self.success.emit(record)
 
         except:
