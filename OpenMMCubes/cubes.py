@@ -30,11 +30,11 @@ class OpenMMminimizeSetCube(ParallelMixin, OERecordComputeCube):
     # Override defaults for some parameters
     parameter_overrides = {
         "gpu_count": {"default": 1},
-        "memory_mb": {"default": 2000},
+        "memory_mb": {"default": 6000},
         "instance_tags": {"default": "cuda8"},
         "spot_policy": {"default": "Allowed"},
         "prefetch_count": {"default": 1},  # 1 molecule at a time
-        "item_timeout": {"default": 3600},  # Default 1 hour limit (units are seconds)
+        "item_timeout": {"default": 43200},  # Default 12 hour limit (units are seconds)
         "item_count": {"default": 1}  # 1 molecule at a time
     }
 
@@ -215,11 +215,11 @@ class OpenMMnvtSetCube(ParallelMixin, OERecordComputeCube):
     # Override defaults for some parameters
     parameter_overrides = {
         "gpu_count": {"default": 1},
-        "memory_mb": {"default": 2000},
+        "memory_mb": {"default": 6000},
         "instance_tags": {"default": "cuda8"},
         "spot_policy": {"default": "Allowed"},
         "prefetch_count": {"default": 1},  # 1 molecule at a time
-        "item_timeout": {"default": 3600},  # Default 1 hour limit (units are seconds)
+        "item_timeout": {"default": 43200},  # Default 12 hour limit (units are seconds)
         "item_count": {"default": 1}  # 1 molecule at a time
     }
 
@@ -423,11 +423,11 @@ class OpenMMnptSetCube(ParallelMixin, OERecordComputeCube):
     # Override defaults for some parameters
     parameter_overrides = {
         "gpu_count": {"default": 1},
-        "memory_mb": {"default": 2000},
+        "memory_mb": {"default": 6000},
         "instance_tags": {"default": "cuda8"},
         "spot_policy": {"default": "Allowed"},
         "prefetch_count": {"default": 1},  # 1 molecule at a time
-        "item_timeout": {"default": 3600},  # Default 1 hour limit (units are seconds)
+        "item_timeout": {"default": 43200},  # Default 12 hour limit (units are seconds)
         "item_count": {"default": 1}  # 1 molecule at a time
     }
 
