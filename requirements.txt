@@ -4,6 +4,7 @@ openeye-toolkits
 OpenEye-floe>=0.3.73b
 OpenEye-datarecord==0.5.0
 OpenEye-cuberecord==0.3.30
+OpenEye-Big-Storage>=0.0.3
 
 # Dev Stack
 invoke
