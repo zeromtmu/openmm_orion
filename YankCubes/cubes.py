@@ -67,11 +67,6 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
         default=500,
         help_text="Number of steps per iteration")
 
-    timestep = parameter.DecimalParameter(
-        'timestep',
-        default=2.0,
-        help_text="Timestep (fs)")
-
     nonbondedCutoff = parameter.DecimalParameter(
         'nonbondedCutoff',
         default=10.0,
@@ -91,6 +86,11 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
         'analyze',
         default=False,
         help_text="Start Yank Analysis on the collected results")
+
+    hmr = parameter.BooleanParameter(
+        'hmr',
+        default=False,
+        description='Hydrogen Mass Reduction')
 
     def begin(self):
         self.opt = vars(self.args)
@@ -150,6 +150,13 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                 solute_structure = solvated_structure.split()[0][0]
                 solute_structure.box = None
 
+                solvent_res_names = set()
+                for res in solvated_structure.residues:
+                    solvent_res_names.add(res.name)
+                solvent_res_names.remove(solute_structure.residues[0].name)
+
+                solvent_str_names = ' '.join(solvent_res_names)
+
                 # Set the ligand title
                 solute.SetTitle(solvated_system.GetTitle())
 
@@ -204,17 +211,19 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                                                  verbose='yes' if opt['verbose'] else 'no',
                                                  minimize='yes' if opt['minimize'] else 'no',
                                                  output_directory=output_directory,
-                                                 timestep=opt['timestep'],
+                                                 timestep=4.0 if opt['hmr'] else 2.0,
                                                  nsteps_per_iteration=opt['nsteps_per_iteration'],
                                                  number_iterations=opt['iterations'],
                                                  temperature=opt['temperature'],
                                                  pressure=opt['pressure'],
                                                  resume_sim='yes' if opt['rerun'] else 'no',
                                                  resume_setup='yes' if opt['rerun'] else 'no',
+                                                 hydrogen_mass=4.0 if opt['hmr'] else 1.0,
                                                  solvated_pdb_fn=solvated_structure_fn,
                                                  solvated_xml_fn=solvated_omm_sys_serialized_fn,
                                                  solute_pdb_fn=solute_structure_fn,
-                                                 solute_xml_fn=solute_omm_sys_serialized_fn))
+                                                 solute_xml_fn=solute_omm_sys_serialized_fn,
+                                                 solvent_dsl=solvent_str_names))
 
                 # Run Yank
                 yaml_builder.run_experiments()

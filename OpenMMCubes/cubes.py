@@ -120,6 +120,11 @@ class OpenMMminimizeSetCube(ParallelMixin, OERecordComputeCube):
         choices=['single', 'mixed', 'double'],
         help_text='Select the CUDA or OpenCL precision')
 
+    hmr = parameter.BooleanParameter(
+        'hmr',
+        default=False,
+        description='Hydrogen Mass Reduction')
+
     def begin(self):
         self.opt = vars(self.args)
         self.opt['Logger'] = self.log
@@ -325,6 +330,11 @@ class OpenMMnvtSetCube(ParallelMixin, OERecordComputeCube):
         default='single',
         choices=['single', 'mixed', 'double'],
         help_text='Select the CUDA or OpenCL precision')
+
+    hmr = parameter.BooleanParameter(
+        'hmr',
+        default=False,
+        description='Hydrogen Mass Reduction')
 
     def begin(self):
         self.opt = vars(self.args)
@@ -538,6 +548,11 @@ class OpenMMnptSetCube(ParallelMixin, OERecordComputeCube):
         default='single',
         choices=['single', 'mixed', 'double'],
         help_text='Select the CUDA or OpenCL precision')
+
+    hmr = parameter.BooleanParameter(
+        'hmr',
+        default=False,
+        description='Hydrogen Mass Reduction')
 
     def begin(self):
         self.opt = vars(self.args)
