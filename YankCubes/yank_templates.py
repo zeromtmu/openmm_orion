@@ -28,6 +28,7 @@ systems:
     phase2_path: [{solute_pdb_fn}, {solute_xml_fn}]
     solvent1: solvent
     solvent2: vacuum
+    {solute}
     solvent_dsl: resname {solvent_dsl}
     
 protocols:

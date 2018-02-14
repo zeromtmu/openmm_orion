@@ -4,12 +4,13 @@ from floe.api import WorkFloe
 from cuberecord import DataSetWriterCube
 from LigPrepCubes.ports import LigandSetReaderCube
 from LigPrepCubes.cubes import LigandSetChargeCube
+from LigPrepCubes.ports import DataSetWriterCubeStripCustom
 
 from ComplexPrepCubes.port import ProteinSetReaderCube
 from ComplexPrepCubes.cubes import ComplexSetPrepCube, HydrationSetCube, SolvationSetCube, ForceFieldSetCube
 from OpenMMCubes.cubes import OpenMMminimizeSetCube
 
-job = WorkFloe("ComplexPrep")
+job = WorkFloe("Complex Preparation with Minimization")
 
 job.description = """
 Complex Preparation Workflow
@@ -55,7 +56,7 @@ minimize = OpenMMminimizeSetCube('minComplex')
 minimize.promote_parameter('steps', promoted_name='steps', default=0)
 # minComplex.promote_parameter('center', promoted_name='center', default=True)
 
-ofs = DataSetWriterCube('ofs', title='OFS-Success')
+ofs = DataSetWriterCubeStripCustom('ofs', title='OFS-Success')
 
 fail = DataSetWriterCube('fail', title='OFS-Failure')
 fail.set_parameters(data_out='fail.oeb.gz')

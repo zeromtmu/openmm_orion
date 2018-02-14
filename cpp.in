@@ -1,0 +1,4 @@
+parm system.prmtop
+trajin trj.dcd 1 last
+trajout trj.nc
+go

@@ -5,7 +5,7 @@ from cuberecord import DataSetWriterCube
 from OpenMMCubes.cubes import OpenMMminimizeSetCube, OpenMMnvtSetCube, OpenMMnptSetCube
 from ComplexPrepCubes.cubes import HydrationSetCube, ComplexSetPrepCube, ForceFieldSetCube, SolvationSetCube
 from ComplexPrepCubes.port import ProteinSetReaderCube
-from LigPrepCubes.ports import LigandSetReaderCube
+from LigPrepCubes.ports import LigandSetReaderCube, DataSetWriterCubeStripCustom
 from LigPrepCubes.cubes import LigandSetChargeCube
 
 job = WorkFloe('Merk Frosst MD Protocol')
@@ -70,7 +70,7 @@ ff.promote_parameter('ligand_forcefield', promoted_name='ligand_ff', default='GA
 ff.promote_parameter('other_forcefield', promoted_name='other_ff', default='GAFF2')
 
 # Output the prepared systems
-complex_prep_ofs = DataSetWriterCube('complex_prep_ofs', title='ComplexSetUpOut')
+complex_prep_ofs = DataSetWriterCubeStripCustom('complex_prep_ofs', title='ComplexSetUpOut')
 complex_prep_ofs.set_parameters(data_out=iprot.promoted_parameters['protein_prefix']['default']+'_SetUp.oeb.gz')
 
 # Minimization
@@ -83,7 +83,7 @@ minComplex.promote_parameter('steps', promoted_name='steps', default=1000)
 minComplex.promote_parameter('center', promoted_name='center', default=True)
 
 # Output the minimized systems
-minimization_ofs = DataSetWriterCube('minimization_ofs', title='MinimizationOut')
+minimization_ofs = DataSetWriterCubeStripCustom('minimization_ofs', title='MinimizationOut')
 minimization_ofs.set_parameters(data_out=iprot.promoted_parameters['protein_prefix']['default']+'_Minimization.oeb.gz')
 
 # NVT simulation. Here the assembled system is warmed up to the final selected temperature
@@ -150,7 +150,7 @@ equil3.promote_parameter('outfname', promoted_name='eq3_outfname', default='equi
                          description='Equilibration suffix name')
 
 # Output the equilibrated systems
-equilibration_ofs = DataSetWriterCube("equilibration_ofs", title='EquilibrationOut')
+equilibration_ofs = DataSetWriterCubeStripCustom("equilibration_ofs", title='EquilibrationOut')
 equilibration_ofs.set_parameters(data_out=iprot.promoted_parameters['protein_prefix']['default']+'_Equilibration.oeb.gz')
 
 prod = OpenMMnptSetCube("Production")
@@ -164,7 +164,7 @@ prod.promote_parameter('reporter_interval', promoted_name='prod_reporter_interva
 prod.promote_parameter('outfname', promoted_name='prod_outfname', default='prod',
                        description='Equilibration suffix name')
 
-ofs = DataSetWriterCube('ofs', title='OFS-Success')
+ofs = DataSetWriterCubeStripCustom('ofs', title='OFS-Success')
 
 
 fail = DataSetWriterCube('fail', title='OFS-Failure')

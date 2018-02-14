@@ -5,12 +5,19 @@ from floe.api.orion import config_from_env
 from cuberecord.orion import StreamingDataset
 from openeye import oechem
 
+from cuberecord.orion import SimpleDatasetUploader
 from cuberecord import OERecordComputeCubeBase, OEField
-from cuberecord.ports import DataRecordOutputPort
-from cuberecord.oldrecordutil import oe_mol_to_data_record
-from datarecord import OEReadDataRecord, Types, Column
+from cuberecord.ports import DataRecordOutputPort, DataRecordInputPort
+from cuberecord.oldrecordutil import oe_mol_to_data_record, oe_data_record_to_mol
+from datarecord import OEReadDataRecord, Types, Column, OEWriteDataRecord
 
 from cuberecord.constants import DEFAULT_MOL_NAME
+
+from datarecord import OEDataRecord, Meta, ColumnMeta, Column
+
+
+from time import time
+
 
 try:
     import cPickle as pickle
@@ -197,7 +204,7 @@ class LigandSetReaderCube(OERecordComputeCubeBase):
                             residue.SetName(self.args.type_lig)
                             oechem.OEAtomSetResidue(at, residue)
 
-                        record = oe_mol_to_data_record(mol)
+                        record = oe_mol_to_data_record(mol, include_sd_data=False)
 
                         if self.args.IDTag:
                             name = 'l' + mol.GetTitle()[0:12] + '_' + str(count)
@@ -214,3 +221,125 @@ class LigandSetReaderCube(OERecordComputeCubeBase):
             self.log.info("Read {} molecules in {} seconds. ({} mol/sec)".format(count,
                                                                                  stopwatch.Elapsed(),
                                                                                  count/stopwatch.Elapsed()))
+
+
+class DataSetWriterCubeStripCustom(OERecordComputeCubeBase):
+    intake = DataRecordInputPort('intake')
+    title = "Record Writer (New Data Model)"
+    description = """
+    Writes a data set to Orion
+
+    This writer cube is for the new data model"""
+    classification = [["Input/Output"]]
+    tags = ["OpenEye", "OEDataRecord", "Reader", "Input/Output", "Output", "I/O"]
+
+    data_out = parameter.DataSetOutputParameter('data_out',
+                                                required=True,
+                                                title='Name of data set to create',
+                                                description='The data set to output')
+
+    chunk_size = parameter.IntegerParameter('chunk_size',
+                                            required=False,
+                                            default=1000,
+                                            min_value=1,
+                                            max_value=10000,
+                                            description='Number of data records to send to the server with each request',
+                                            level=ADVANCED)
+
+    log_timer = parameter.BooleanParameter('log_timer',
+                                           title="Enable timing log",
+                                           default=False,
+                                           description="Log timing of the reader to the log")
+
+    pack_mol = parameter.BooleanParameter('pack_mol',
+                                          default=True,
+                                          title='Pack Molecule',
+                                          description='Pack Child Molecular data for the orion backend.  '
+                                                      'Only turn this off if '
+                                                      'you are doing this explicity in an earlier cube.')
+
+    _stopwatch = None
+    _count = 0
+    _begin_time = None
+    _process_time = None
+    config = None
+    in_orion = None
+    ofs = None
+
+    def begin(self):
+
+        if self.args.log_timer:
+            self._stopwatch = oechem.OEStopwatch()
+            self._count = 0
+            self._begin_time = time()
+            self._process_time = 0.0
+        self.config = config_from_env()
+        self.in_orion = self.config is not None
+        if self.in_orion:
+            if self.args.log_timer:
+                log = self.log
+            else:
+                log = None
+            self.ofs = SimpleDatasetUploader(self.args.data_out,
+                                             chunk_size=self.args.chunk_size,
+                                             tags=[self.name],
+                                             log=log)
+        else:
+            if self.args.data_out.endswith(".oedb"):
+                self.ofs = oechem.oeofstream(str(self.args.data_out))
+            else:
+                self.ofs = oechem.oemolostream(str(self.args.data_out))
+
+    def process(self, record, port):
+        if self._process_time is not None:
+            begin_time = time()
+        else:
+            begin_time = None
+        if self.in_orion:
+            # col_Parmed = Column("Parmed", Types.Custom)
+            #
+            # if col_Parmed.has_value(record):
+            #     col_Parmed.delete_column(record)
+
+            for col in record.get_columns(include_meta=False):
+                if col.get_type() == Types.Custom:
+                    col.delete_from(record)
+
+            self.ofs.write_record(record)
+        else:
+
+            # for col in record.get_columns(include_meta=False):
+            #     if col.get_type() == Types.Custom:
+            #         print(col)
+            #         col.delete_from(record)
+
+            if self.args.data_out.endswith(".oedb"):
+                OEWriteDataRecord(self.ofs, record, fmt='oeb')
+            elif self.args.data_out.endswith(".json"):
+                OEWriteDataRecord(self.ofs, record, fmt='json')
+            else:
+                mol = oe_data_record_to_mol(record)
+                if mol is not None:
+                    oechem.OEWriteMolecule(self.ofs, mol)
+        self._count += 1
+        if self._process_time is not None:
+            self._process_time += time() - begin_time
+
+    def end(self):
+        self.ofs.close()
+        if self._stopwatch is not None:
+            self.log.info("Wrote {} molecules in {} seconds. (CPU time)"
+                          "({} molecules/sec".format(self._count,
+                                                     self._stopwatch.Elapsed(),
+                                                     self._count/self._stopwatch.Elapsed()))
+        if self._process_time is not None and self._process_time > 0.0:
+            self.log.info("Process function Wrote {} molecules in {} seconds (wall time). "
+                          "({} molecules/sec".format(self._count,
+                                                     self._process_time,
+                                                     self._count/self._process_time))
+        if self._begin_time is not None:
+            wall_time = time() - self._begin_time
+            self.log.info("Wrote {} molecules in {} process seconds. (wall time)"
+                          "({} molecules/sec".format(self._count,
+                                                     wall_time,
+                                                     self._count/wall_time))

@@ -123,7 +123,7 @@ class OpenMMminimizeSetCube(ParallelMixin, OERecordComputeCube):
     hmr = parameter.BooleanParameter(
         'hmr',
         default=False,
-        description='Hydrogen Mass Reduction')
+        description='Hydrogen Mass Repartion')
 
     def begin(self):
         self.opt = vars(self.args)
@@ -287,13 +287,13 @@ class OpenMMnvtSetCube(ParallelMixin, OERecordComputeCube):
         choices=['DCD', 'NetCDF', 'HDF5'],
         help_text="NetCDF, DCD, HDF5. File type to write trajectory files")
 
-    trajectory_interval = parameter.IntegerParameter(
+    trajectory_interval = parameter.DecimalParameter(
         'trajectory_interval',
         default=0.0,
         help_text="time interval for trajectory snapshots in ps. If 0 the trajectory"
                   "file will not be generated")
 
-    reporter_interval = parameter.IntegerParameter(
+    reporter_interval = parameter.DecimalParameter(
         'reporter_interval',
         default=0.0,
         help_text="Time interval for reporting data in ps. If 0 the reporter file"
@@ -334,7 +334,7 @@ class OpenMMnvtSetCube(ParallelMixin, OERecordComputeCube):
     hmr = parameter.BooleanParameter(
         'hmr',
         default=False,
-        description='Hydrogen Mass Reduction')
+        description='Hydrogen Mass Repartion')
 
     def begin(self):
         self.opt = vars(self.args)
@@ -505,13 +505,13 @@ class OpenMMnptSetCube(ParallelMixin, OERecordComputeCube):
         choices=['DCD', 'NetCDF', 'HDF5'],
         help_text="NetCDF, DCD, HDF5. File type to write trajectory files")
 
-    trajectory_interval = parameter.IntegerParameter(
+    trajectory_interval = parameter.DecimalParameter(
         'trajectory_interval',
         default=0.0,
         help_text="time interval for trajectory snapshots in ps. If 0 the trajectory"
                   "file will not be generated")
 
-    reporter_interval = parameter.IntegerParameter(
+    reporter_interval = parameter.DecimalParameter(
         'reporter_interval',
         default=0.0,
         help_text="Time interval for reporting data in ps. If 0 the reporter file"
@@ -552,7 +552,7 @@ class OpenMMnptSetCube(ParallelMixin, OERecordComputeCube):
     hmr = parameter.BooleanParameter(
         'hmr',
         default=False,
-        description='Hydrogen Mass Reduction')
+        description='Hydrogen Mass Repartion')
 
     def begin(self):
         self.opt = vars(self.args)

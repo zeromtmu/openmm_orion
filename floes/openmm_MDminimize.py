@@ -2,8 +2,9 @@ from __future__ import unicode_literals
 from floe.api import WorkFloe
 from OpenMMCubes.cubes import OpenMMminimizeSetCube
 from cuberecord import DataSetReaderCube, DataSetWriterCube
+from LigPrepCubes.ports import DataSetWriterCubeStripCustom
 
-job = WorkFloe("MDminimize")
+job = WorkFloe("Minimize")
 
 job.description = """
 Minimize an OpenMM-ready solvated complex
@@ -33,7 +34,7 @@ ifs.promote_parameter("data_in", promoted_name="system", title='System Input Fil
 min = OpenMMminimizeSetCube('Minimize')
 min.promote_parameter('steps', promoted_name='steps')
 
-ofs = DataSetWriterCube('ofs', title='OFS-Success')
+ofs = DataSetWriterCubeStripCustom('ofs', title='OFS-Success')
 
 fail = DataSetWriterCube('fail', title='OFS-Failure')
 fail.set_parameters(data_out='fail.oeb.gz')

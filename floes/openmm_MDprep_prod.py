@@ -4,11 +4,11 @@ from cuberecord import DataSetWriterCube
 from OpenMMCubes.cubes import OpenMMminimizeSetCube, OpenMMnvtSetCube, OpenMMnptSetCube
 from ComplexPrepCubes.cubes import HydrationSetCube, ComplexSetPrepCube, ForceFieldSetCube, SolvationSetCube
 from ComplexPrepCubes.port import ProteinSetReaderCube
-from LigPrepCubes.ports import LigandSetReaderCube
+from LigPrepCubes.ports import LigandSetReaderCube, DataSetWriterCubeStripCustom
 from LigPrepCubes.cubes import LigandSetChargeCube
 
 
-job = WorkFloe('Merk Frosst MD Protocol')
+job = WorkFloe('Merk Frosst MD Protocol Longer Equilibration')
 
 job.description = """
 Set up an OpenMM complex then minimize, warm up and equilibrate a system by using three equilibration stages
@@ -69,10 +69,6 @@ ff.promote_parameter('solvent_forcefield', promoted_name='solvent_ff', default='
 ff.promote_parameter('ligand_forcefield', promoted_name='ligand_ff', default='GAFF2')
 ff.promote_parameter('other_forcefield', promoted_name='other_ff', default='GAFF2')
 
-# Output the prepared systems
-complex_prep_ofs = DataSetWriterCube('complex_prep_ofs', title='ComplexSetUpOut')
-complex_prep_ofs.set_parameters(data_out=iprot.promoted_parameters['protein_prefix']['default']+'_SetUp.oeb.gz')
-
 # Minimization
 minComplex = OpenMMminimizeSetCube('minComplex', title='Minimize')
 minComplex.promote_parameter('restraints', promoted_name='m_restraints', default="noh (ligand or protein)",
@@ -81,10 +77,6 @@ minComplex.promote_parameter('restraintWt', promoted_name='m_restraintWt', defau
                              description='Restraint weight')
 minComplex.promote_parameter('steps', promoted_name='steps', default=0)
 minComplex.promote_parameter('center', promoted_name='center', default=True)
-
-# Output the minimized systems
-minimization_ofs = DataSetWriterCube('minimization_ofs', title='MinimizationOut')
-minimization_ofs.set_parameters(data_out=iprot.promoted_parameters['protein_prefix']['default']+'_Minimization.oeb.gz')
 
 # NVT simulation. Here the assembled system is warmed up to the final selected temperature
 warmup = OpenMMnvtSetCube('warmup', title='warmup')
@@ -149,10 +141,6 @@ equil3.promote_parameter('reporter_interval', promoted_name='eq3_reporter_interv
 equil3.promote_parameter('outfname', promoted_name='eq3_outfname', default='equil3',
                          description='Equilibration suffix name')
 
-# Output the equilibrated systems
-equilibration_ofs = DataSetWriterCube("equilibration_ofs", title='EquilibrationOut')
-equilibration_ofs.set_parameters(data_out=iprot.promoted_parameters['protein_prefix']['default']+'_Equilibration.oeb.gz')
-
 prod = OpenMMnptSetCube("Production")
 prod.promote_parameter('time', promoted_name='prod_psec', default=2000.0,
                        description='Length of MD run in picoseconds')
@@ -164,14 +152,14 @@ prod.promote_parameter('reporter_interval', promoted_name='prod_reporter_interva
 prod.promote_parameter('outfname', promoted_name='prod_outfname', default='prod',
                        description='Equilibration suffix name')
 
-ofs = DataSetWriterCube('ofs', title='OFS-Success')
+ofs = DataSetWriterCubeStripCustom('ofs', title='OFS-Success')
 
 
 fail = DataSetWriterCube('fail', title='OFS-Failure')
 fail.set_parameters(data_out='fail.oeb.gz')
 
-job.add_cubes(iprot, iligs, chargelig, complx, solvate, ff, complex_prep_ofs,
-              minComplex, minimization_ofs, warmup, equil1, equil2, equil3, equilibration_ofs, prod, ofs, fail)
+job.add_cubes(iprot, iligs, chargelig, complx, solvate, ff,
+              minComplex, warmup, equil1, equil2, equil3, prod, ofs, fail)
 
 iprot.success.connect(complx.protein_port)
 iligs.success.connect(chargelig.intake)
@@ -179,14 +167,11 @@ chargelig.success.connect(complx.intake)
 complx.success.connect(solvate.intake)
 solvate.success.connect(ff.intake)
 ff.success.connect(minComplex.intake)
-ff.success.connect(complex_prep_ofs.intake)
 minComplex.success.connect(warmup.intake)
-minComplex.success.connect(minimization_ofs.intake)
 warmup.success.connect(equil1.intake)
 equil1.success.connect(equil2.intake)
 equil2.success.connect(equil3.intake)
 equil3.success.connect(prod.intake)
-equil3.success.connect(equilibration_ofs.intake)
 prod.success.connect(ofs.intake)
 prod.failure.connect(fail.intake)
 

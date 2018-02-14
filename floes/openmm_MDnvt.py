@@ -3,7 +3,9 @@ from floe.api import WorkFloe
 from OpenMMCubes.cubes import OpenMMnvtSetCube
 from cuberecord import DataSetReaderCube, DataSetWriterCube
 
-job = WorkFloe("NVT Run")
+from LigPrepCubes.ports import DataSetWriterCubeStripCustom
+
+job = WorkFloe("NVT Simulation")
 
 job.description = """
 NVT simulation of an OpenMM-ready System
@@ -49,7 +51,7 @@ nvt.promote_parameter('outfname', promoted_name='suffix', default='nvt',
                       description='Equilibration suffix name')
 nvt.promote_parameter('tar', promoted_name='tar', default=True)
 
-ofs = DataSetWriterCube('ofs', title='OFS-Success')
+ofs = DataSetWriterCubeStripCustom('ofs', title='OFS-Success')
 
 fail = DataSetWriterCube('fail', title='OFS-Failure')
 fail.set_parameters(data_out='fail.oeb.gz')

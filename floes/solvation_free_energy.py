@@ -3,11 +3,11 @@ from floe.api import WorkFloe
 from cuberecord import DataSetWriterCube
 from ComplexPrepCubes.cubes import SolvationSetCube, ForceFieldSetCube
 from LigPrepCubes.cubes import LigandSetChargeCube
-from LigPrepCubes.ports import LigandSetReaderCube
+from LigPrepCubes.ports import LigandSetReaderCube, DataSetWriterCubeStripCustom
 from YankCubes.cubes import YankSolvationFECube
 from OpenMMCubes.cubes import OpenMMminimizeSetCube, OpenMMnvtSetCube, OpenMMnptSetCube
 
-job = WorkFloe("SolvationFreeEnergy")
+job = WorkFloe("Solvation Free Energy")
 
 job.description = """
 Solvation Free Energy Calculation of small molecules
@@ -25,8 +25,8 @@ ofs: Output file
 """
 
 # *************USER SETTING**************
-yank_iteration_per_chunk = 1000
-chunks = 1
+yank_iteration_per_chunk = 500
+chunks = 2
 # ***************************************
 
 cube_list = []
@@ -75,7 +75,7 @@ minimize.promote_parameter('restraints', promoted_name='m_restraints', default="
 minimize.promote_parameter('restraintWt', promoted_name='m_restraintWt', default=5.0,
                            description='Restraint weight in kcal/(mol A^2')
 minimize.promote_parameter('hmr', promoted_name='hmr', default=True,
-                           description='Enable hydrogen mass reduction')
+                           description='Enable hydrogen mass repartion')
 job.add_cube(minimize)
 cube_list.append(minimize)
 
@@ -95,7 +95,7 @@ warmup.promote_parameter('outfname', promoted_name='w_outfname', default='warmup
                          description='Equilibration suffix name')
 warmup.promote_parameter('center', promoted_name='center', default=True)
 warmup.promote_parameter('hmr', promoted_name='hmr', default=True,
-                         description='Enable hydrogen mass reduction')
+                         description='Enable hydrogen mass repartion')
 job.add_cube(warmup)
 cube_list.append(warmup)
 
@@ -114,7 +114,7 @@ equil.promote_parameter('reporter_interval', promoted_name='eq_reporter_interval
 equil.promote_parameter('outfname', promoted_name='eq_outfname', default='equil',
                         description='Equilibration suffix name')
 equil.promote_parameter('hmr', promoted_name='hmr', default=True,
-                        description='Enable hydrogen mass reduction')
+                        description='Enable hydrogen mass repartion')
 job.add_cube(equil)
 cube_list.append(equil)
 
@@ -125,7 +125,7 @@ for i in range(0, chunks):
     solvationfe.promote_parameter('nonbondedCutoff', promoted_name='nonbondedCutoff'+str(i), default=10.0)
 
     solvationfe.promote_parameter('hmr', promoted_name='hmr'+str(i), default=True,
-                                  description='Enable hydrogen mass reduction')
+                                  description='Enable hydrogen mass repartion')
 
     if i == 0:
         solvationfe.promote_parameter('rerun', promoted_name='rerun' + str(i), default=False)
@@ -138,7 +138,7 @@ for i in range(0, chunks):
     job.add_cube(solvationfe)
     cube_list.append(solvationfe)
 
-ofs = DataSetWriterCube('ofs', title='OFS-Success')
+ofs = DataSetWriterCubeStripCustom('ofs', title='OFS-Success')
 job.add_cube(ofs)
 cube_list.append(ofs)
 

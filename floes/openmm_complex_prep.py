@@ -4,6 +4,7 @@ from floe.api import WorkFloe
 from cuberecord import DataSetWriterCube, DataSetReaderCube
 from LigPrepCubes.ports import LigandSetReaderCube
 from LigPrepCubes.cubes import LigandSetChargeCube
+from LigPrepCubes.ports import DataSetWriterCubeStripCustom
 
 from ComplexPrepCubes.port import ProteinSetReaderCube
 
@@ -13,7 +14,7 @@ from ComplexPrepCubes.cubes import (
     SolvationSetCube,
     ForceFieldSetCube)
 
-job = WorkFloe("ComplexPrep")
+job = WorkFloe("Complex Preparation")
 
 job.description = """
 Complex Preparation Workflow
@@ -54,7 +55,9 @@ solvate = HydrationSetCube("Hydration")
 
 ff = ForceFieldSetCube("ForceField")
 
-ofs = DataSetWriterCube('ofs', title='OFS-Success')
+# ofs = DataSetWriterCube('ofs', title='OFS-Success')
+ofs = DataSetWriterCubeStripCustom('ofs', title='OFS-Success')
+
 
 fail = DataSetWriterCube('fail', title='OFS-Failure')
 fail.set_parameters(data_out='fail.oeb.gz')

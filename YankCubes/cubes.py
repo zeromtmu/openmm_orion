@@ -3,11 +3,11 @@ from openeye import oechem
 from tempfile import TemporaryDirectory
 from floe.api import (parameter, ParallelMixin, ParallelOEMolComputeCube, OEMolComputeCube, MoleculeInputPort,
                       BatchMoleculeOutputPort, BatchMoleculeInputPort)
+from floe.api.orion import in_orion
 
 from cuberecord import OERecordComputeCube, OEField
 from cuberecord.constants import DEFAULT_MOL_NAME
 from datarecord import Types, Meta, ColumnMeta
-
 
 from yank.experiment import ExperimentBuilder
 from oeommtools import utils as oeommutils
@@ -18,6 +18,11 @@ from YankCubes import utils as yankutils
 from YankCubes.yank_templates import yank_solvation_template, yank_binding_template
 import itertools
 import OpenMMCubes.utils as omm_utils
+
+import tarfile
+from big_storage import LargeFileDataType
+
+from mdtraj.core.residue_names import _WATER_RESIDUES as water_names
 
 
 class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
@@ -37,6 +42,10 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
 
     # Override defaults for some parameters
     parameter_overrides = {
+        "gpu_count": {"default": 1},
+        "memory_mb": {"default": 6000},
+        "instance_tags": {"default": "cuda8"},
+        "spot_policy": {"default": "Allowed"},
         "prefetch_count": {"default": 1},  # 1 molecule at a time
         "item_timeout": {"default": 43200},  # Default 12 hour limit (units are seconds)
         "item_count": {"default": 1}  # 1 molecule at a time
@@ -142,20 +151,30 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                 opt.update(new_args)
 
             # Extract the MD data
+            mdData = omm_utils.MDData(parmed_structure)
+            solvated_structure = mdData.structure
+
+            # Extract the ligand parmed structure
+            solute_structure = solvated_structure.split()[0][0]
+            solute_structure.box = None
+
+            solvent_res_names = set()
+            for res in solvated_structure.residues:
+                solvent_res_names.add(res.name)
+            solvent_res_names.remove(solute_structure.residues[0].name)
+
+            solute_str_name = solute_structure.residues[0].name
+            solvent_str_names = ' '.join(solvent_res_names)
+
+            # if len(solvent_res_names) == 1 and list(solvent_res_names)[0] in water_names:
+            #     solute_key = ''
+            # else:
+            #     solute_key = 'ligand_dsl: resname {}'.format(solute_str_name)
+
+            # Testing
+            solute_key = ''
+
             if not opt['rerun']:
-                mdData = omm_utils.MDData(parmed_structure)
-                solvated_structure = mdData.structure
-
-                # Extract the ligand parmed structure
-                solute_structure = solvated_structure.split()[0][0]
-                solute_structure.box = None
-
-                solvent_res_names = set()
-                for res in solvated_structure.residues:
-                    solvent_res_names.add(res.name)
-                solvent_res_names.remove(solute_structure.residues[0].name)
-
-                solvent_str_names = ' '.join(solvent_res_names)
 
                 # Set the ligand title
                 solute.SetTitle(solvated_system.GetTitle())
@@ -184,7 +203,17 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                 opt['Logger'].info("Output Directory {}".format(output_directory))
 
                 if opt['rerun']:
-                    yankutils.download(solute, output_directory)
+                    if in_orion():
+                        lf_file = OEField("lf_field", LargeFileDataType)
+                    else:
+                        lf_file = OEField("lf_field", Types.String)
+
+                    file_id = record.get_value(lf_file)
+                    filename = yankutils.download(file_id)
+
+                    with tarfile.open(filename) as tar:
+                        tar.extractall(path=output_directory)
+                        # os.remove(filename)
 
                 solvated_structure_fn = os.path.join(output_directory, "solvated.pdb")
                 solute_structure_fn = os.path.join(output_directory, "solute.pdb")
@@ -206,7 +235,26 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                     solute_f.write(solute_omm_sys_serialized)
                     solute_f.close()
 
+                self.log.warn(yank_solvation_template.format(
+                                                 verbose='yes' if opt['verbose'] else 'no',
+                                                 minimize='yes' if opt['minimize'] else 'no',
+                                                 output_directory=output_directory,
+                                                 timestep=4.0 if opt['hmr'] else 2.0,
+                                                 nsteps_per_iteration=opt['nsteps_per_iteration'],
+                                                 number_iterations=opt['iterations'],
+                                                 temperature=opt['temperature'],
+                                                 pressure=opt['pressure'],
+                                                 resume_sim='yes' if opt['rerun'] else 'no',
+                                                 resume_setup='yes' if opt['rerun'] else 'no',
+                                                 hydrogen_mass=4.0 if opt['hmr'] else 1.0,
+                                                 solvated_pdb_fn=solvated_structure_fn,
+                                                 solvated_xml_fn=solvated_omm_sys_serialized_fn,
+                                                 solute_pdb_fn=solute_structure_fn,
+                                                 solute_xml_fn=solute_omm_sys_serialized_fn,
+                                                 solute=solute_key,
+                                                 solvent_dsl=solvent_str_names))
                 # Build the Yank Experiment
+
                 yaml_builder = ExperimentBuilder(yank_solvation_template.format(
                                                  verbose='yes' if opt['verbose'] else 'no',
                                                  minimize='yes' if opt['minimize'] else 'no',
@@ -223,13 +271,25 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                                                  solvated_xml_fn=solvated_omm_sys_serialized_fn,
                                                  solute_pdb_fn=solute_structure_fn,
                                                  solute_xml_fn=solute_omm_sys_serialized_fn,
+                                                 solute=solute_key,
                                                  solvent_dsl=solvent_str_names))
 
                 # Run Yank
                 yaml_builder.run_experiments()
 
-                # Upload file
-                yankutils.upload(solute, output_directory)
+                # Tar the temp dir with its content:
+                tar_fn = os.path.basename(output_directory) + '.tar.gz'
+                with tarfile.open(tar_fn, mode='w:gz') as archive:
+                    archive.add(output_directory, arcname='.', recursive=True)
+
+                if in_orion():
+                    lf_file = OEField("lf_field", LargeFileDataType)
+                else:
+                    lf_file = OEField("lf_field", Types.String)
+
+                lf = yankutils.upload(tar_fn)
+
+                record.set_value(lf_file, lf)
 
                 if opt['analyze']:
 
