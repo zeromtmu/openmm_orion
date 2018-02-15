@@ -63,7 +63,7 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
 
     minimize = parameter.BooleanParameter(
         'minimize',
-        default=False,
+        default=True,
         help_text="Minimize input system")
 
     iterations = parameter.IntegerParameter(
@@ -163,13 +163,7 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                 solvent_res_names.add(res.name)
             solvent_res_names.remove(solute_structure.residues[0].name)
 
-            solute_str_name = solute_structure.residues[0].name
             solvent_str_names = ' '.join(solvent_res_names)
-
-            # if len(solvent_res_names) == 1 and list(solvent_res_names)[0] in water_names:
-            #     solute_key = ''
-            # else:
-            #     solute_key = 'ligand_dsl: resname {}'.format(solute_str_name)
 
             # Testing
             solute_key = ''
@@ -215,6 +209,9 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                         tar.extractall(path=output_directory)
                         # os.remove(filename)
 
+                    # Disable minimization if restart is enabled
+                    opt['minimize'] = False
+
                 solvated_structure_fn = os.path.join(output_directory, "solvated.pdb")
                 solute_structure_fn = os.path.join(output_directory, "solute.pdb")
 
@@ -251,7 +248,6 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                                                  solvated_xml_fn=solvated_omm_sys_serialized_fn,
                                                  solute_pdb_fn=solute_structure_fn,
                                                  solute_xml_fn=solute_omm_sys_serialized_fn,
-                                                 solute=solute_key,
                                                  solvent_dsl=solvent_str_names))
                 # Build the Yank Experiment
 
