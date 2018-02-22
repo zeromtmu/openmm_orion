@@ -74,7 +74,7 @@ minimize.promote_parameter('restraints', promoted_name='m_restraints', default="
                            description='Select mask to apply restarints')
 minimize.promote_parameter('restraintWt', promoted_name='m_restraintWt', default=5.0,
                            description='Restraint weight in kcal/(mol A^2')
-minimize.promote_parameter('hmr', promoted_name='hmr', default=True,
+minimize.promote_parameter('hmr', promoted_name='hmr', default=False,
                            description='Enable hydrogen mass repartion')
 job.add_cube(minimize)
 cube_list.append(minimize)
@@ -94,7 +94,7 @@ warmup.promote_parameter('reporter_interval', promoted_name='w_reporter_interval
 warmup.promote_parameter('outfname', promoted_name='w_outfname', default='warmup',
                          description='Equilibration suffix name')
 warmup.promote_parameter('center', promoted_name='center', default=True)
-warmup.promote_parameter('hmr', promoted_name='hmr', default=True,
+warmup.promote_parameter('hmr', promoted_name='hmr', default=False,
                          description='Enable hydrogen mass repartion')
 job.add_cube(warmup)
 cube_list.append(warmup)
@@ -113,7 +113,7 @@ equil.promote_parameter('reporter_interval', promoted_name='eq_reporter_interval
                         description='Reporter saving interval in ps')
 equil.promote_parameter('outfname', promoted_name='eq_outfname', default='equil',
                         description='Equilibration suffix name')
-equil.promote_parameter('hmr', promoted_name='hmr', default=True,
+equil.promote_parameter('hmr', promoted_name='hmr', default=False,
                         description='Enable hydrogen mass repartion')
 job.add_cube(equil)
 cube_list.append(equil)

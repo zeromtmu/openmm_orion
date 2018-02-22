@@ -30,13 +30,13 @@ def BoundingBox(molecule, save_pdb=False, scale_factor=1.0):
     if save_pdb:
         cube = [
                 [min_coord_sf[0], min_coord_sf[1], min_coord_sf[2]],  # 0
-                [max_coord_sf[0], min_coord_sf[1], min_coord_sf[2]],  # 1
-                [min_coord_sf[0], max_coord_sf[1], min_coord_sf[2]],  # 2
-                [max_coord_sf[0], max_coord_sf[1], min_coord_sf[2]],  # 3
-                [min_coord_sf[0], min_coord_sf[1], max_coord_sf[2]],  # 4
-                [max_coord_sf[0], min_coord_sf[1], max_coord_sf[2]],  # 5
-                [min_coord_sf[0], max_coord_sf[1], max_coord_sf[2]],  # 6
-                [max_coord_sf[0], max_coord_sf[1], max_coord_sf[2]]   # 7
+                [max_coord_sf[0]-0.5, min_coord_sf[1], min_coord_sf[2]],  # 1
+                [min_coord_sf[0], max_coord_sf[1]-0.5, min_coord_sf[2]],  # 2
+                [max_coord_sf[0]-0.5, max_coord_sf[1]-0.5, min_coord_sf[2]],  # 3
+                [min_coord_sf[0], min_coord_sf[1], max_coord_sf[2]-0.5],  # 4
+                [max_coord_sf[0]-0.5, min_coord_sf[1], max_coord_sf[2]-0.5],  # 5
+                [min_coord_sf[0], max_coord_sf[1]-0.5, max_coord_sf[2]-0.5],  # 6
+                [max_coord_sf[0]-0.5, max_coord_sf[1]-0.5, max_coord_sf[2]-0.5]   # 7
                 ]
 
         f = open("bb.pdb", 'w')

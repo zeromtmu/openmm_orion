@@ -73,7 +73,7 @@ def simulation(mdData, **opt):
 
     # OpenMM Integrator
     integrator = openmm.LangevinIntegrator(opt['temperature']*unit.kelvin, 1/unit.picoseconds, stepLen)
-    
+
     if opt['SimType'] == 'npt':
         if box is None:
             oechem.OEThrow.Fatal("NPT simulation without box vector")
