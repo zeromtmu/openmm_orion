@@ -123,7 +123,7 @@ class OpenMMminimizeSetCube(ParallelMixin, OERecordComputeCube):
     hmr = parameter.BooleanParameter(
         'hmr',
         default=False,
-        description='Hydrogen Mass Repartion')
+        description='Enable/Disable Hydrogen Mass Repartitioning')
 
     def begin(self):
         self.opt = vars(self.args)
@@ -334,7 +334,7 @@ class OpenMMnvtSetCube(ParallelMixin, OERecordComputeCube):
     hmr = parameter.BooleanParameter(
         'hmr',
         default=False,
-        description='Hydrogen Mass Repartion')
+        description='Enable/Disable Hydrogen Mass Repartitioning')
 
     def begin(self):
         self.opt = vars(self.args)
@@ -552,7 +552,7 @@ class OpenMMnptSetCube(ParallelMixin, OERecordComputeCube):
     hmr = parameter.BooleanParameter(
         'hmr',
         default=False,
-        description='Hydrogen Mass Repartion')
+        description='Enable/Disable Hydrogen Mass Repartitioning')
 
     def begin(self):
         self.opt = vars(self.args)

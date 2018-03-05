@@ -95,7 +95,7 @@ class SSTMapSetCube(ParallelMixin, OERecordComputeCube):
                                                                                          excipients.NumAtoms()))
 
             if opt['center_ligand'] and ligand.NumAtoms():
-                bb = BoundingBox(ligand, save_pdb=False, scale_factor=2.0)
+                bb = BoundingBox(ligand, save_pdb=False, scale_factor=1.0)
             elif protein.NumAtoms():
                 bb = BoundingBox(protein, save_pdb=False, scale_factor=1.0)
             else:
@@ -124,10 +124,24 @@ class SSTMapSetCube(ParallelMixin, OERecordComputeCube):
             ny = int(round((bb[1][1]-bb[0][1])/opt['grid_resolution']))
             nz = int(round((bb[1][2]-bb[0][2])/opt['grid_resolution']))
 
+            # gist = sm.GridWaterAnalysis(
+            #     system_top_fn,
+            #     opt['trj_fn'],
+            #     start_frame=0, num_frames=1500,
+            #     ligand_file='ligand.pdb',
+            #     grid_dimensions=[nx,
+            #                      ny,
+            #                      nz],
+            #     grid_resolution=[opt['grid_resolution'],
+            #                      opt['grid_resolution'],
+            #                      opt['grid_resolution']],
+            #     prefix="system", supporting_file=system_top_fn.split(".")[0] + '.top')
+
+            # Define the Gist Grid
             gist = sm.GridWaterAnalysis(
                 system_top_fn,
                 opt['trj_fn'],
-                start_frame=0, num_frames=1500,
+                start_frame=0, num_frames=trj.n_frames,
                 ligand_file='ligand.pdb',
                 grid_dimensions=[nx,
                                  ny,
@@ -135,21 +149,7 @@ class SSTMapSetCube(ParallelMixin, OERecordComputeCube):
                 grid_resolution=[opt['grid_resolution'],
                                  opt['grid_resolution'],
                                  opt['grid_resolution']],
-                prefix="system", supporting_file=system_top_fn.split(".")[0] + '.top')
-
-            # Define the Gist Grid
-            # gist = sm.GridWaterAnalysis(
-            #     system_top_fn,
-            #     opt['trj_fn'],
-            #     start_frame=0, num_frames=500,
-            #     grid_center=center,
-            #     grid_dimensions=[nx,
-            #                      ny,
-            #                      nz],
-            #     grid_resolution=[opt['grid_resolution'],
-            #                      opt['grid_resolution'],
-            #                      opt['grid_resolution']],
-            #     prefix="system", supporting_file=system_top_fn.split(".")[0]+'.top')
+                prefix="system", supporting_file=system_top_fn.split(".")[0]+'.top')
 
             # gist info
             gist.print_system_summary()
@@ -203,17 +203,17 @@ class SSTMapSetCube(ParallelMixin, OERecordComputeCube):
                                     center[2],
                                     opt['grid_resolution'])
 
-            # oegrid_Esw = OEScalarGrid(nx, ny, nz,
-            #                           center[0],
-            #                           center[1],
-            #                           center[2],
-            #                           opt['grid_resolution'])
-            #
-            # oegrid_Eww = OEScalarGrid(nx, ny, nz,
-            #                           center[0],
-            #                           center[1],
-            #                           center[2],
-            #                           opt['grid_resolution'])
+            oegrid_Esw = OEScalarGrid(nx, ny, nz,
+                                      center[0],
+                                      center[1],
+                                      center[2],
+                                      opt['grid_resolution'])
+
+            oegrid_Eww = OEScalarGrid(nx, ny, nz,
+                                      center[0],
+                                      center[1],
+                                      center[2],
+                                      opt['grid_resolution'])
 
             # Set OEGrid Values from Gist voxels
             for i in range(oegrid_gO.GetSize()):
@@ -221,14 +221,14 @@ class SSTMapSetCube(ParallelMixin, OERecordComputeCube):
                 y = y_gist_voxels[i]
                 z = z_gist_voxels[i]
                 oegrid_gO.SetValue(x, y, z, grid_gO[i])
-                # oegrid_Esw.SetValue(x, y, z, grid_E_sw_dens[i])
-                # oegrid_Eww.SetValue(x, y, z, grid_E_ww_dens[i])
+                oegrid_Esw.SetValue(x, y, z, grid_E_sw_dens[i])
+                oegrid_Eww.SetValue(x, y, z, grid_E_ww_dens[i])
 
             self.log.warn("<>>>>>>>>>>>>>>>>>>>HERE<<<<<<<<<<<<<<<<<>")
             # Write out OEGrids
             OEWriteGrid("g_O.grd", oegrid_gO)
-            # OEWriteGrid("E_sw.grd", oegrid_Esw)
-            # OEWriteGrid("E_ww.grd", oegrid_Eww)
+            OEWriteGrid("E_sw.grd", oegrid_Esw)
+            OEWriteGrid("E_ww.grd", oegrid_Eww)
 
             # Emit the ligand
             self.success.emit(record)
