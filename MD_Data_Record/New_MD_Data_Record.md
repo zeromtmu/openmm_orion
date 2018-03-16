@@ -26,7 +26,7 @@ an **MDSystemRecord** and finally the *Stage Name* (we have to agree on these na
 |*Log Data*   Type: Text File|  
 |**MDSystemRecord**   Type: Custom|  
 
-The list of **MDStageRecord** is an ordered list (see figure) so we can easily 
+The list of **MDStageRecord** is an ordered list so we can easily 
 retrieve for example the last simulation to carry forward. We did the best we could 
 to remember our meeting discussion and feel free to add anything that is relevant 
 before I’ll start to implement. Refer to the following figure for an overview.  
