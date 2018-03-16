@@ -31,5 +31,5 @@ retrieve for example the last simulation to carry forward. We did the best we co
 to remember our meeting discussion and feel free to add anything that is relevant 
 before I’ll start to implement. Refer to the following figure for an overview.  
 
-![Data Record MD](https://github.com/oess/openmm_orion/tree/gcalabro_data_record/MD_Data_Record/images/Plan_MD_DataRecord.png)
+[![Data Record MD](https://github.com/oess/openmm_orion/tree/gcalabro_data_record/MD_Data_Record/images/Plan_MD_DataRecord.png)](https://github.com/oess/openmm_orion/tree/gcalabro_data_record/MD_Data_Record/images/Plan_MD_DataRecord.png)
 
