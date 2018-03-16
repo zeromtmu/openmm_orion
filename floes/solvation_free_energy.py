@@ -138,7 +138,8 @@ for i in range(0, chunks):
     job.add_cube(solvationfe)
     cube_list.append(solvationfe)
 
-ofs = DataSetWriterCubeStripCustom('ofs', title='OFS-Success')
+# ofs = DataSetWriterCubeStripCustom('ofs', title='OFS-Success')
+ofs = DataSetWriterCube('ofs', title='OFS-Success')
 job.add_cube(ofs)
 cube_list.append(ofs)
 

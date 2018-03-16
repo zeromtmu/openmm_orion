@@ -152,7 +152,8 @@ prod.promote_parameter('reporter_interval', promoted_name='prod_reporter_interva
 prod.promote_parameter('outfname', promoted_name='prod_outfname', default='prod',
                        description='Equilibration suffix name')
 
-ofs = DataSetWriterCubeStripCustom('ofs', title='OFS-Success')
+# ofs = DataSetWriterCubeStripCustom('ofs', title='OFS-Success')
+ofs = DataSetWriterCube('ofs', title='OFS-Success')
 
 
 fail = DataSetWriterCube('fail', title='OFS-Failure')

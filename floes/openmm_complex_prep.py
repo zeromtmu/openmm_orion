@@ -55,8 +55,8 @@ solvate = HydrationSetCube("Hydration")
 
 ff = ForceFieldSetCube("ForceField")
 
-#ofs = DataSetWriterCube('ofs', title='OFS-Success')
-ofs = DataSetWriterCubeStripCustom('ofs', title='OFS-Success')
+ofs = DataSetWriterCube('ofs', title='OFS-Success')
+#ofs = DataSetWriterCubeStripCustom('ofs', title='OFS-Success')
 
 
 fail = DataSetWriterCube('fail', title='OFS-Failure')

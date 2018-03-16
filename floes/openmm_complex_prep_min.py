@@ -56,7 +56,8 @@ minimize = OpenMMminimizeSetCube('minComplex')
 minimize.promote_parameter('steps', promoted_name='steps', default=0)
 # minComplex.promote_parameter('center', promoted_name='center', default=True)
 
-ofs = DataSetWriterCubeStripCustom('ofs', title='OFS-Success')
+# ofs = DataSetWriterCubeStripCustom('ofs', title='OFS-Success')
+ofs = DataSetWriterCube('ofs', title='OFS-Success')
 
 fail = DataSetWriterCube('fail', title='OFS-Failure')
 fail.set_parameters(data_out='fail.oeb.gz')

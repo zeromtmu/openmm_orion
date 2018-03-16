@@ -1,9 +1,9 @@
 from __future__ import unicode_literals
 from floe.api import WorkFloe
 from cuberecord import DataSetWriterCube, DataSetReaderCube
-from TrjAnalysis.cubes import SSTMapSetCube
+from TrjAnalysis.cubes import SSTMapGistCube
 
-job = WorkFloe("Testing SSTMAP")
+job = WorkFloe("Testing SSTMAP GIST")
 
 job.description = """
 Testing Floe
@@ -24,7 +24,7 @@ ifs = DataSetReaderCube("ifs")
 
 ifs.promote_parameter("data_in", promoted_name="system", title="System Input File", description="System file name")
 
-scube = SSTMapSetCube("SSTMap")
+scube = SSTMapGistCube("SSTMap")
 
 scube.promote_parameter("trj_fn", promoted_name='trj', default='trj.dcd')
 

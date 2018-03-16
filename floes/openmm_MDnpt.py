@@ -58,7 +58,8 @@ npt.promote_parameter('outfname', promoted_name='suffix', default='npt',
 npt.promote_parameter('tar', promoted_name='tar', default=True)
 
 
-ofs = DataSetWriterCubeStripCustom('ofs', title='OFS-Success')
+# ofs = DataSetWriterCubeStripCustom('ofs', title='OFS-Success')
+ofs = DataSetWriterCube('ofs', title='OFS-Success')
 
 fail = DataSetWriterCube('fail', title='OFS-Failure')
 fail.set_parameters(data_out='fail.oeb.gz')

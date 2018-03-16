@@ -99,7 +99,7 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
     hmr = parameter.BooleanParameter(
         'hmr',
         default=False,
-        description='Hydrogen Mass Reduction')
+        description='Hydrogen Mass Repartitioning')
 
     def begin(self):
         self.opt = vars(self.args)
