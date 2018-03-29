@@ -2,23 +2,13 @@ import traceback
 from LigPrepCubes import ff_utils
 from floe.api import ParallelMixin, parameter
 
-from cuberecord import OERecordComputeCube, OEField
-from datarecord import Types, Meta, ColumnMeta
+from cuberecord import OERecordComputeCube
+from datarecord import Types, OEField
 from oeommtools import utils as oeommutils
-from cuberecord.constants import DEFAULT_MOL_NAME
-
-from tempfile import TemporaryDirectory
-import os
-import random
-import string
-import tarfile
-from LigPrepCubes.ff_utils import upload, download
-from floe.api.orion import in_orion, upload_file
-from big_storage import LargeFileDataType
-from OpenMMCubes.utils import ParmedData
+from cuberecord.oldrecordutil import DEFAULT_MOL_NAME
 
 
-class LigandSetChargeCube(ParallelMixin, OERecordComputeCube):
+class LigandChargeCube(ParallelMixin, OERecordComputeCube):
     title = "Ligand Charge Cube"
     version = "0.0.0"
     classification = [["Ligand Preparation", "OEChem", "Ligand preparation"]]

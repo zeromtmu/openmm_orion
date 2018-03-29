@@ -1,9 +1,7 @@
 from __future__ import unicode_literals
 from floe.api import WorkFloe
-from OpenMMCubes.cubes import OpenMMnvtSetCube
+from MDCubes.OpenMMCubes.cubes import OpenMMNvtCube
 from cuberecord import DataSetReaderCube, DataSetWriterCube
-
-from LigPrepCubes.ports import DataSetWriterCubeStripCustom
 
 job = WorkFloe("NVT Simulation")
 
@@ -33,7 +31,7 @@ ifs = DataSetReaderCube("SystemReader", title="System Reader")
 ifs.promote_parameter("data_in", promoted_name="system", title='System Input File',
                       description="System input file")
 
-nvt = OpenMMnvtSetCube('nvt')
+nvt = OpenMMNvtCube('nvt')
 nvt.promote_parameter('time', promoted_name='picosec', default=10.0)
 nvt.promote_parameter('temperature', promoted_name='temperature', default=300.0,
                       description='Selected temperature in K')

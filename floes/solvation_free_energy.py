@@ -1,11 +1,14 @@
 from __future__ import unicode_literals
 from floe.api import WorkFloe
 from cuberecord import DataSetWriterCube
-from ComplexPrepCubes.cubes import SolvationSetCube, ForceFieldSetCube
-from LigPrepCubes.cubes import LigandSetChargeCube
-from LigPrepCubes.ports import LigandSetReaderCube, DataSetWriterCubeStripCustom
+from ComplexPrepCubes.cubes import SolvationCube
+from ForceFieldCubes.cubes import ForceFieldCube
+from LigPrepCubes.cubes import LigandChargeCube
+from LigPrepCubes.ports import LigandReaderCube
 from YankCubes.cubes import YankSolvationFECube
-from OpenMMCubes.cubes import OpenMMminimizeSetCube, OpenMMnvtSetCube, OpenMMnptSetCube
+from MDCubes.OpenMMCubes.cubes import (OpenMMminimizeCube,
+                                       OpenMMNvtCube,
+                                       OpenMMNptCube)
 
 job = WorkFloe("Solvation Free Energy")
 
@@ -25,7 +28,7 @@ ofs: Output file
 """
 
 # *************USER SETTING**************
-yank_iteration_per_chunk = 500
+yank_iteration_per_chunk = 5
 chunks = 2
 # ***************************************
 
@@ -35,18 +38,18 @@ job.classification = [['Solvation Free Energy']]
 job.tags = [tag for lists in job.classification for tag in lists]
 
 # Ligand setting
-iligs = LigandSetReaderCube("Ligands", title="Ligand Reader")
+iligs = LigandReaderCube("Ligands", title="Ligand Reader")
 iligs.promote_parameter("data_in", promoted_name="ligands", title="Ligand Input File", description="Ligand file name")
 job.add_cube(iligs)
 cube_list.append(iligs)
 
-chargelig = LigandSetChargeCube("LigCharge")
+chargelig = LigandChargeCube("LigCharge")
 chargelig.promote_parameter('max_conformers', promoted_name='max_conformers',
                             description="Set the max number of conformers per ligand", default=800)
 job.add_cube(chargelig)
 cube_list.append(chargelig)
 
-solvate = SolvationSetCube("Solvation")
+solvate = SolvationCube("Solvation")
 solvate.promote_parameter("density", promoted_name="density", title="Solution density in g/ml", default=1.0,
                           description="Solution Density in g/ml")
 solvate.promote_parameter("solvents", promoted_name="solvents", title="Solvent components",
@@ -64,12 +67,12 @@ solvate.promote_parameter("padding_distance", promoted_name="padding_distance", 
 job.add_cube(solvate)
 cube_list.append(solvate)
 
-ff = ForceFieldSetCube("ForceField")
+ff = ForceFieldCube("ForceField")
 job.add_cube(ff)
 cube_list.append(ff)
 
 # Minimization
-minimize = OpenMMminimizeSetCube("Minimize")
+minimize = OpenMMminimizeCube("Minimize")
 minimize.promote_parameter('restraints', promoted_name='m_restraints', default="noh ligand",
                            description='Select mask to apply restarints')
 minimize.promote_parameter('restraintWt', promoted_name='m_restraintWt', default=5.0,
@@ -80,7 +83,7 @@ job.add_cube(minimize)
 cube_list.append(minimize)
 
 # NVT Warm-up
-warmup = OpenMMnvtSetCube('warmup', title='warmup')
+warmup = OpenMMNvtCube('warmup', title='warmup')
 warmup.promote_parameter('time', promoted_name='warm_psec', default=20.0,
                          description='Length of MD run in picoseconds')
 warmup.promote_parameter('restraints', promoted_name='w_restraints', default="noh ligand",
@@ -100,7 +103,7 @@ job.add_cube(warmup)
 cube_list.append(warmup)
 
 # NPT Equilibration stage
-equil = OpenMMnptSetCube('equil', title='equil')
+equil = OpenMMNptCube('equil', title='equil')
 equil.promote_parameter('time', promoted_name='eq_psec', default=20.0,
                         description='Length of MD run in picoseconds')
 equil.promote_parameter('restraints', promoted_name='eq_restraints', default="noh ligand",
@@ -132,8 +135,8 @@ for i in range(0, chunks):
     else:
         solvationfe.promote_parameter('rerun', promoted_name='rerun' + str(i), default=True)
 
-    if i == (chunks - 1):
-        solvationfe.promote_parameter('analyze', promoted_name='analyze' + str(i), default=True)
+    # if i == (chunks - 1):
+    #     solvationfe.promote_parameter('analyze', promoted_name='analyze' + str(i), default=True)
 
     job.add_cube(solvationfe)
     cube_list.append(solvationfe)

@@ -1,18 +1,17 @@
 from __future__ import unicode_literals
 from floe.api import WorkFloe
 
-from cuberecord import DataSetWriterCube, DataSetReaderCube
-from LigPrepCubes.ports import LigandSetReaderCube
-from LigPrepCubes.cubes import LigandSetChargeCube
-from LigPrepCubes.ports import DataSetWriterCubeStripCustom
+from cuberecord import DataSetWriterCube
+from LigPrepCubes.ports import LigandReaderCube
+from LigPrepCubes.cubes import LigandChargeCube
 
-from ComplexPrepCubes.port import ProteinSetReaderCube
+from ProtPrepCubes.ports import ProteinReaderCube
 
-from ComplexPrepCubes.cubes import (
-    ComplexSetPrepCube,
-    HydrationSetCube,
-    SolvationSetCube,
-    ForceFieldSetCube)
+from ComplexPrepCubes.cubes import (ComplexPrepCube,
+                                    HydrationCube,
+                                    SolvationCube)
+
+from ForceFieldCubes.cubes import ForceFieldCube
 
 job = WorkFloe("Complex Preparation")
 
@@ -37,27 +36,25 @@ job.classification = [['Simulation']]
 job.tags = [tag for lists in job.classification for tag in lists]
 
 # Ligand setting
-iligs = LigandSetReaderCube("Ligand Reader", title="Ligand Reader")
+iligs = LigandReaderCube("Ligand Reader", title="Ligand Reader")
 iligs.promote_parameter("data_in", promoted_name="ligands", title="Ligand Input File", description="Ligand file name")
 
-chargelig = LigandSetChargeCube("LigCharge")
+chargelig = LigandChargeCube("LigCharge")
 chargelig.promote_parameter('max_conformers', promoted_name='max_conformers',
                             description="Set the max number of conformers per ligand", default=800)
 
-iprot = ProteinSetReaderCube("Protein Reader", title="Protein Reader")
+iprot = ProteinReaderCube("Protein Reader", title="Protein Reader")
 iprot.promote_parameter("data_in", promoted_name="protein", title="Protein Input File", description="Protein file name")
 iprot.promote_parameter("protein_prefix", promoted_name="protein_prefix", default='PRT',
                         description="Protein Prefix")
 
-complx = ComplexSetPrepCube("Complex")
+complx = ComplexPrepCube("Complex")
 
-solvate = HydrationSetCube("Hydration")
+solvate = HydrationCube("Hydration")
 
-ff = ForceFieldSetCube("ForceField")
+ff = ForceFieldCube("ForceField")
 
 ofs = DataSetWriterCube('ofs', title='OFS-Success')
-#ofs = DataSetWriterCubeStripCustom('ofs', title='OFS-Success')
-
 
 fail = DataSetWriterCube('fail', title='OFS-Failure')
 fail.set_parameters(data_out='fail.oeb.gz')

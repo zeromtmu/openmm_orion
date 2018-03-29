@@ -3,8 +3,6 @@ import numpy as np
 from simtk import unit
 import yaml
 from yank.analyze import get_analyzer
-from floe.api.orion import in_orion
-from big_storage import LargeFile
 
 
 def analyze_directory(source_directory):
@@ -56,24 +54,3 @@ def analyze_directory(source_directory):
     dDeltaH = dDeltaH * kT / unit.kilocalories_per_mole
 
     return DeltaF, dDeltaF, DeltaH, dDeltaH
-
-
-def upload(filename):
-
-    file_id = filename
-
-    if in_orion():
-        file_id = LargeFile(filename)
-
-    return file_id
-
-
-def download(file_id):
-
-    filename = file_id
-
-    if in_orion():
-        filename = file_id.retrieve()
-        file_id.delete()
-
-    return filename

@@ -1,8 +1,7 @@
 from __future__ import unicode_literals
 from floe.api import WorkFloe
-from OpenMMCubes.cubes import OpenMMminimizeSetCube
+from MDCubes.OpenMMCubes.cubes import OpenMMminimizeCube
 from cuberecord import DataSetReaderCube, DataSetWriterCube
-from LigPrepCubes.ports import DataSetWriterCubeStripCustom
 
 job = WorkFloe("Minimize")
 
@@ -31,7 +30,7 @@ ifs = DataSetReaderCube("SystemReader", title="System Reader")
 ifs.promote_parameter("data_in", promoted_name="system", title='System Input File',
                       description="System input file")
 
-min = OpenMMminimizeSetCube('Minimize')
+min = OpenMMminimizeCube('Minimize')
 min.promote_parameter('steps', promoted_name='steps')
 
 # fs = DataSetWriterCubeStripCustom('ofs', title='OFS-Success')

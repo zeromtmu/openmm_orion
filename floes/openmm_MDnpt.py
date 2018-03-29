@@ -1,9 +1,8 @@
 from __future__ import unicode_literals
 from floe.api import WorkFloe
-from OpenMMCubes.cubes import OpenMMnptSetCube
+from MDCubes.OpenMMCubes.cubes import OpenMMNptCube
 from cuberecord import DataSetReaderCube, DataSetWriterCube
 
-from LigPrepCubes.ports import DataSetWriterCubeStripCustom
 
 job = WorkFloe("NPT Simulation")
 
@@ -34,7 +33,7 @@ ifs = DataSetReaderCube("SystemReader", title="System Reader")
 ifs.promote_parameter("data_in", promoted_name="system", title='System Input File',
                       description="System input file")
 
-npt = OpenMMnptSetCube('npt')
+npt = OpenMMNptCube('npt')
 npt.promote_parameter('time', promoted_name='picosec', default=10.0,
                       description='Length of MD run in picoseconds')
 npt.promote_parameter('temperature', promoted_name='temperature', default=300.0,
@@ -57,8 +56,6 @@ npt.promote_parameter('outfname', promoted_name='suffix', default='npt',
 
 npt.promote_parameter('tar', promoted_name='tar', default=True)
 
-
-# ofs = DataSetWriterCubeStripCustom('ofs', title='OFS-Success')
 ofs = DataSetWriterCube('ofs', title='OFS-Success')
 
 fail = DataSetWriterCube('fail', title='OFS-Failure')
