@@ -393,13 +393,13 @@ class ParmedData(ObjectBase):
         return parmed.structure.copy(value)
 
     @staticmethod
-    def to_bytes(structure, fmt='oeb'):
+    def to_bytes(structure):
         struct_dict = structure.__getstate__()
         pkl_obj = pickle.dumps(struct_dict)
         return bytes(pkl_obj)
 
     @staticmethod
-    def from_bytes(data, fmt='oeb'):
+    def from_bytes(data):
         new_structure = parmed.structure.Structure()
         new_structure.__setstate__(pickle.loads(bytes(data)))
         return new_structure
