@@ -146,8 +146,6 @@ class ProteinReaderCube(SourceCube):
                                                                                  wall_time,
                                                                                  count/wall_time))
 
-
-
 # class ProteinSetReaderCube(OERecordComputeCubeBase):
 #     success = DataRecordOutputPort('success')
 #     title = "Record Reader (New Data Model)"

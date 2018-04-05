@@ -1,21 +1,3 @@
-# from __future__ import unicode_literals
-# from floe.api import OutputPort, InputPort, Port, parameter
-# from floe.constants import BYTES, ADVANCED
-# from floe.api.orion import config_from_env
-# from cuberecord.orion import StreamingDataset
-# from openeye import oechem
-#
-# from cuberecord.orion import SimpleDatasetUploader
-# from cuberecord import OERecordComputeCubeBase, OEField
-# from cuberecord.ports import DataRecordOutputPort, DataRecordInputPort
-# from cuberecord.oldrecordutil import oe_mol_to_data_record, oe_data_record_to_mol
-# from datarecord import OEReadDataRecord, Types, Column, OEWriteDataRecord
-#
-# from cuberecord.constants import DEFAULT_MOL_NAME
-# from datarecord import OEDataRecord, Meta, ColumnMeta, Column
-# from time import time
-
-
 from cuberecord.ports import RecordOutputPort
 from floe.api import SourceCube
 from floe.api.parameter import (IntegerParameter,
@@ -30,6 +12,8 @@ from cuberecord.orion import (StreamingDataset,
 from datarecord import OEReadDataRecord, OEField, Types, OEFieldMeta, Meta
 from cuberecord.oldrecordutil import oe_mol_to_data_record, DEFAULT_MOL_NAME
 from time import time
+
+from Standards import Fields
 
 
 class LigandReaderCube(SourceCube):
@@ -66,12 +50,12 @@ class LigandReaderCube(SourceCube):
                                  description="Log timing of the reader to the log")
 
     # Enable molecule unique identifier generation
-    IDTag = BooleanParameter('IDTag',
-                             default=True,
-                             required=False,
-                             help_text='If True/Checked ligands are enumerated by sequentially integers.'
-                                       'An OEField is added to the data record with tag: IDTag',
-                             level=ADVANCED)
+    ID = BooleanParameter('ID',
+                          default=True,
+                          required=False,
+                          help_text='If True/Checked ligands are enumerated by sequentially integers.'
+                                    'An OEField is added to the data record with field: ID',
+                          level=ADVANCED)
 
     # Ligand Residue Name
     lig_res_name = StringParameter('lig_res_name',
@@ -152,10 +136,9 @@ class LigandReaderCube(SourceCube):
 
                 record = oe_mol_to_data_record(mol, include_sd_data=False)
 
-                if self.args.IDTag:
+                if self.args.ID:
                     name = 'l' + mol.GetTitle()[0:12] + '_' + str(count)
-                    field_id = OEField("ID", Types.String, meta=OEFieldMeta().set_option(Meta.Source.ID))
-                    record.set_value(field_id, name)
+                    record.set_value(Fields.id, name)
 
                 if record is None:
                     break
@@ -177,15 +160,6 @@ class LigandReaderCube(SourceCube):
             self.log.info("Read {} molecules in {} seconds. ({} mol/sec)".format(count,
                                                                                  wall_time,
                                                                                  count/wall_time))
-
-
-
-
-
-
-
-
-
 
 
 # class LigandReaderCube(OERecordComputeCubeBase):

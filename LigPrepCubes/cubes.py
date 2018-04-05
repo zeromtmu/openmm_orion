@@ -3,10 +3,9 @@ from LigPrepCubes import ff_utils
 from floe.api import ParallelMixin, parameter
 
 from cuberecord import OERecordComputeCube
-from datarecord import Types, OEField
 from oeommtools import utils as oeommutils
-from cuberecord.oldrecordutil import DEFAULT_MOL_NAME
 
+from Standards import Fields
 
 class LigandChargeCube(ParallelMixin, OERecordComputeCube):
     title = "Ligand Charge Cube"
@@ -14,7 +13,9 @@ class LigandChargeCube(ParallelMixin, OERecordComputeCube):
     classification = [["Ligand Preparation", "OEChem", "Ligand preparation"]]
     tags = ['OEChem', 'Quacpac']
     description = """
-    This cube charges the Ligand by using the ELF10 charge method
+    This cube charges ligands by using the ELF10 charge method. If the ligands
+    are already charged the cube parameter charge_ligand can be used to skip the
+    charging stage
 
     Input:
     -------
@@ -37,7 +38,7 @@ class LigandChargeCube(ParallelMixin, OERecordComputeCube):
     max_conformers = parameter.IntegerParameter(
         'max_conformers',
         default=800,
-        help_text="Max number of ligand conformers")
+        help_text="Max number of ligand conformers generated to charge the ligands")
 
     charge_ligands = parameter.BooleanParameter(
         'charge_ligands',
@@ -50,14 +51,13 @@ class LigandChargeCube(ParallelMixin, OERecordComputeCube):
 
     def process(self, record, port):
         try:
-            field_mol = OEField(DEFAULT_MOL_NAME, Types.Chem.Mol)
 
-            if not record.has_value(field_mol):
-                self.log.warn("Missing '{}' field".format(field_mol.get_name()))
+            if not record.has_value(Fields.primary_molecule):
+                self.log.warn("Missing '{}' field".format(Fields.primary_molecule.get_name()))
                 self.failure.emit(record)
                 return
 
-            ligand = record.get_value(field_mol)
+            ligand = record.get_value(Fields.primary_molecule)
 
             # Ligand sanitation
             ligand = oeommutils.sanitizeOEMolecule(ligand)
@@ -75,7 +75,7 @@ class LigandChargeCube(ParallelMixin, OERecordComputeCube):
                     at.SetPartialCharge(map_charges[at.GetIdx()])
                 self.log.info("ELF10 charge method applied to the ligand: {}".format(ligand.GetTitle()))
 
-            record.set_value(field_mol, ligand)
+            record.set_value(Fields.primary_molecule, ligand)
 
             self.success.emit(record)
 

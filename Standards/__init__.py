@@ -1,1 +1,1 @@
-from standards import *
+from .standards import *

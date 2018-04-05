@@ -17,6 +17,10 @@ from openeye import oechem
 
 from MDCubes.OpenMMCubes import utils as pack_utils
 
+from Standards import (MDStageNames,
+                       Fields,
+                       MDRecords)
+
 from simtk.openmm import app
 from simtk import unit
 
@@ -206,11 +210,10 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
             record.set_value(system_field, system_reassembled)
             record.set_value(system_id_field, system_id)
 
-            parmed_field = OEField("Parmed", pack_utils.ParmedData)
+            md_stage = MDRecords.MDStageRecord(MDStageNames.SETUP, '',
+                                               MDRecords.MDSystemRecord(system_reassembled, system_structure))
 
-            self.log.warn(">>>>>>>> {}".format(parmed_field.get_type_name()))
-
-            record.set_value(parmed_field, system_structure)
+            record.set_value(Fields.md_stages, [md_stage])
 
             self.success.emit(record)
 
@@ -220,36 +223,3 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
             self.failure.emit(record)
 
         return
-
-
-class ForceFieldTestCube(OERecordComputeCube):
-    title = "Force Field Application Cube"
-    version = "0.0.0"
-    classification = [["Force Field Application", "OEChem"]]
-    tags = ['OEChem', 'OEBio', 'OpenMM']
-    description = """
-    The system is parametrized by using the selected force fields
-
-    Input:
-    -------
-    oechem.OEDataRecord - Streamed-in of the system to parametrize
-
-    Output:
-    -------
-    oechem.OEDataRecord - Emits the force field parametrized system
-    """
-
-    def begin(self):
-        self.opt = vars(self.args)
-        self.opt['Logger'] = self.log
-
-    def process(self, record, port):
-
-
-        parmed_field = OEField("Parmed", pack_utils.ParmedData)
-
-
-
-        self.success.emit(record)
-
-

@@ -2,20 +2,15 @@ import traceback
 from floe.api import (ParallelMixin,
                       parameter)
 
-from floe.api.orion import in_orion
-
 from cuberecord import OERecordComputeCube
 
-from datarecord import (Types,
-                        OEField)
-
-from cuberecord.oldrecordutil import DEFAULT_MOL_NAME
 import MDCubes.OpenMMCubes.utils as utils
 from openeye import oechem
 import MDCubes.OpenMMCubes.simtools as simtools
 
-if in_orion():
-    from big_storage import LargeFileDataType
+from Standards import (Fields,
+                       MDRecords,
+                       MDStageNames)
 
 
 class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
@@ -148,30 +143,35 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
             # the parallel cube processes
             opt = dict(self.opt)
 
-            system_field = OEField(DEFAULT_MOL_NAME, Types.Chem.Mol)
-
-            if not record.has_value(system_field):
-                self.log.warn("Missing molecule '{}' field".format(system_field.get_name()))
+            if not record.has_value(Fields.primary_molecule):
+                self.log.warn("Missing molecule '{}' field".format(Fields.primary_molecule.get_name()))
                 self.failure.emit(record)
                 return
 
-            system = record.get_value(system_field)
+            system = record.get_value(Fields.primary_molecule)
 
-            system_id_field = OEField("ID", Types.String)
-
-            if not record.has_value(system_id_field):
-                self.log.warn("Missing molecule ID '{}' column".format(system_id_field.get_name()))
+            if not record.has_value(Fields.id):
+                self.log.warn("Missing molecule ID '{}' column".format(Fields.id.get_name()))
                 system_id = system.GetTitle()
             else:
-                system_id = record.get_value(system_id_field)
+                system_id = record.get_value(Fields.id)
 
-            parmed_field = OEField("Parmed", utils.ParmedData)
-
-            if not record.has_value(parmed_field):
-                self.log.warn("Missing molecule '{}' field".format(parmed_field.get_name()))
+            if not record.has_value(Fields.md_stages):
+                self.log.warn("Missing '{}' field".format(Fields.md_stages.get_name()))
                 self.failure.emit(record)
 
-            parmed_structure = record.get_value(parmed_field)
+            # Extract the MDStageRecord list
+            md_stages = record.get_value(Fields.md_stages)
+
+            # Extract the most recent MDStageRecord
+            md_stage_record = md_stages[-1]
+
+            # Extract the MDSystemRecord
+            md_system_record = md_stage_record.get_value(Fields.md_system)
+
+            # Extract from the MDSystemRecord the topology and the Parmed structure
+            system = md_system_record.get_value(Fields.topology)
+            parmed_structure = md_system_record.get_value(Fields.structure)
 
             # Update cube simulation parameters with the eventually molecule SD tags
             new_args = {dp.GetTag(): dp.GetValue() for dp in oechem.OEGetSDDataPairs(system) if dp.GetTag() in
@@ -191,11 +191,19 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
 
             opt['molecule'] = system
 
+            # The system and the related parmed structure are passed as reference
+            # and therefore, they are updated
             self.log.info('MINIMIZING System: %s' % system_id)
             simtools.simulation(mdData, **opt)
 
-            record.set_value(system_field, system)
-            record.set_value(parmed_field, parmed_structure)
+            record.set_value(Fields.primary_molecule, system)
+
+            md_stage_record = MDRecords.MDStageRecord(MDStageNames.MINIMIZATION, '',
+                                                      MDRecords.MDSystemRecord(system, mdData.structure))
+
+            md_stages.append(md_stage_record)
+
+            record.set_value(Fields.md_stages, md_stages)
 
             self.success.emit(record)
 
@@ -358,30 +366,35 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
             # the parallel cube processes
             opt = dict(self.opt)
 
-            system_field = OEField(DEFAULT_MOL_NAME, Types.Chem.Mol)
-
-            if not record.has_value(system_field):
-                self.log.warn("Missing molecule '{}' field".format(system_field.get_name()))
+            if not record.has_value(Fields.primary_molecule):
+                self.log.warn("Missing molecule '{}' field".format(Fields.primary_molecule.get_name()))
                 self.failure.emit(record)
                 return
 
-            system = record.get_value(system_field)
+            system = record.get_value(Fields.primary_molecule)
 
-            system_id_field = OEField("ID", Types.String)
-
-            if not record.has_value(system_id_field):
-                self.log.warn("Missing molecule ID '{}' field".format(system_id_field.get_name()))
+            if not record.has_value(Fields.id):
+                self.log.warn("Missing molecule ID '{}' field".format(Fields.id.get_name()))
                 system_id = system.GetTitle()
             else:
-                system_id = record.get_value(system_id_field)
+                system_id = record.get_value(Fields.id)
 
-            parmed_field = OEField("Parmed", utils.ParmedData)
-
-            if not record.has_value(parmed_field):
-                self.log.warn("Missing molecule '{}' field".format(parmed_field.get_name()))
+            if not record.has_value(Fields.md_stages):
+                self.log.warn("Missing '{}' field".format(Fields.md_stages.get_name()))
                 self.failure.emit(record)
 
-            parmed_structure = record.get_value(parmed_field)
+            # Extract the MDStageRecord list
+            md_stages = record.get_value(Fields.md_stages)
+
+            # Extract the most recent MDStageRecord
+            md_stage_record = md_stages[-1]
+
+            # Extract the MDSystemRecord
+            md_system_record = md_stage_record.get_value(Fields.md_system)
+
+            # Extract from the MDSystemRecord the topology and the Parmed structure
+            system = md_system_record.get_value(Fields.topology)
+            parmed_structure = md_system_record.get_value(Fields.structure)
 
             # Update cube simulation parameters with the eventually molecule SD tags
             new_args = {dp.GetTag(): dp.GetValue() for dp in oechem.OEGetSDDataPairs(system) if dp.GetTag() in
@@ -401,15 +414,15 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
 
             opt['molecule'] = system
 
+            # The system and the related parmed structure are passed as reference
+            # and therefore, they are updated
             self.log.info('START NVT SIMULATION: %s' % system_id)
-
             simtools.simulation(mdData, **opt)
 
+            # Initialization Large Data File
+            lf = ''
+
             if opt['trajectory_interval']:
-                if in_orion():
-                    traj_field = OEField('trj_field', LargeFileDataType)
-                else:
-                    traj_field = OEField('trj_field', Types.String)
 
                 if opt['tar']:
                     fn = opt['outfname'] + '.tar'
@@ -425,10 +438,15 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
                                          .format(opt['trajectory_filetype']))
 
                 lf = utils.upload(fn)
-                record.set_value(traj_field, lf)
 
-            record.set_value(system_field, system)
-            record.set_value(parmed_field, parmed_structure)
+            record.set_value(Fields.primary_molecule, system)
+
+            md_stage_record = MDRecords.MDStageRecord(MDStageNames.NVT, '',
+                                                      MDRecords.MDSystemRecord(system, mdData.structure), trajectory=lf)
+
+            md_stages.append(md_stage_record)
+
+            record.set_value(Fields.md_stages, md_stages)
 
             self.success.emit(record)
 
@@ -597,30 +615,37 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
             # the parallel cube processes
             opt = dict(self.opt)
 
-            system_field = OEField(DEFAULT_MOL_NAME, Types.Chem.Mol)
-
-            if not record.has_value(system_field):
-                self.log.warn("Missing molecule '{}' field".format(system_field.get_name()))
+            if not record.has_value(Fields.primary_molecule):
+                self.log.warn("Missing molecule '{}' field".format(Fields.primary_molecule.get_name()))
                 self.failure.emit(record)
                 return
 
-            system = record.get_value(system_field)
+            system = record.get_value(Fields.primary_molecule)
 
-            system_id_field = OEField("ID", Types.String)
-
-            if not record.has_value(system_id_field):
-                self.log.warn("Missing molecule ID '{}' field".format(system_id_field.get_name()))
+            if not record.has_value(Fields.id):
+                self.log.warn("Missing molecule ID '{}' field".format(Fields.id.get_name()))
                 system_id = system.GetTitle()
             else:
-                system_id = record.get_value(system_id_field)
+                system_id = record.get_value(Fields.id)
 
-            parmed_field = OEField("Parmed", utils.ParmedData)
-
-            if not record.has_value(parmed_field):
-                self.log.warn("Missing molecule '{}' field".format(parmed_field.get_name()))
+            if not record.has_value(Fields.md_stages):
+                self.log.warn("Missing '{}' field".format(Fields.md_stages.get_name()))
                 self.failure.emit(record)
 
-            parmed_structure = record.get_value(parmed_field)
+            # Extract the MDStageRecord list
+            md_stages = record.get_value(Fields.md_stages)
+
+            print(md_stages)
+
+            # Extract the most recent MDStageRecord
+            md_stage_record = md_stages[-1]
+
+            # Extract the MDSystemRecord
+            md_system_record = md_stage_record.get_value(Fields.md_system)
+
+            # Extract from the MDSystemRecord the topology and the Parmed structure
+            system = md_system_record.get_value(Fields.topology)
+            parmed_structure = md_system_record.get_value(Fields.structure)
 
             # Update cube simulation parameters with the eventually molecule SD tags
             new_args = {dp.GetTag(): dp.GetValue() for dp in oechem.OEGetSDDataPairs(system) if dp.GetTag() in
@@ -642,15 +667,15 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
 
             opt['molecule'] = system
 
+            # The system and the related parmed structure are passed as reference
+            # and therefore, they are updated
             self.log.info('START NPT SIMULATION %s' % system_id)
             simtools.simulation(mdData, **opt)
 
-            if opt['trajectory_interval']:
-                if in_orion():
-                    traj_field = OEField('trj_field', LargeFileDataType)
-                else:
-                    traj_field = OEField('trj_field', Types.String)
+            # Initialization Large Data File
+            lf = ''
 
+            if opt['trajectory_interval']:
                 if opt['tar']:
                     fn = opt['outfname'] + '.tar'
                 else:
@@ -665,10 +690,15 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
                                          .format(opt['trajectory_filetype']))
 
                 lf = utils.upload(fn)
-                record.set_value(traj_field, lf)
 
-            record.set_value(system_field, system)
-            record.set_value(parmed_field, parmed_structure)
+            record.set_value(Fields.primary_molecule, system)
+
+            md_stage_record = MDRecords.MDStageRecord(MDStageNames.NPT, '',
+                                                      MDRecords.MDSystemRecord(system, mdData.structure), trajectory=lf)
+
+            md_stages.append(md_stage_record)
+
+            record.set_value(Fields.md_stages, md_stages)
 
             self.success.emit(record)
 

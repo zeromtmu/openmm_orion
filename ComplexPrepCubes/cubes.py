@@ -2,10 +2,7 @@ import traceback
 from cuberecord import OERecordComputeCube
 from cuberecord.ports import RecordInputPort
 from datarecord import (Types,
-                        Meta,
-                        OEFieldMeta,
-                        OEField,
-                        OERecord)
+                        OEField)
 
 from cuberecord.oldrecordutil import (DEFAULT_MOL_NAME,
                                       oe_mol_to_data_record)
@@ -18,6 +15,8 @@ from oeommtools import (utils as oeommutils,
 
 
 from ComplexPrepCubes import utils
+
+from Standards import Fields
 
 
 class HydrationCube(ParallelMixin, OERecordComputeCube):
@@ -64,30 +63,26 @@ class HydrationCube(ParallelMixin, OERecordComputeCube):
         try:
             opt = self.opt
 
-            system_field = OEField(DEFAULT_MOL_NAME, Types.Chem.Mol)
-
-            if not record.has_value(system_field):
-                self.log.warn("Missing molecule '{}' field".format(system_field.get_name()))
+            if not record.has_value(Fields.primary_molecule):
+                self.log.warn("Missing molecule '{}' field".format(Fields.primary_molecule.get_name()))
                 self.failure.emit(record)
                 return
 
-            system = record.get_value(system_field)
+            system = record.get_value(Fields.primary_molecule)
 
-            system_id_field = OEField("ID", Types.String)
-
-            if not record.has_value(system_id_field):
-                self.log.warn("Missing molecule ID '{}' field".format(system_id_field.get_name()))
+            if not record.has_value(Fields.id):
+                self.log.warn("Missing molecule ID '{}' field".format(Fields.id.get_name()))
                 system_id = system.GetTitle()
             else:
-                system_id = record.get_value(system_id_field)
+                system_id = record.get_value(Fields.id)
 
             # Solvate the system. Note that the solvated system is translated to the
             # OpenMM cube cell
             sol_system = utils.hydrate(system, opt)
             sol_system.SetTitle(system_id)
 
-            record.set_value(system_field, sol_system)
-            record.set_value(system_id_field, system_id)
+            record.set_value(Fields.primary_molecule, sol_system)
+            record.set_value(Fields.id, system_id)
 
             self.success.emit(record)
 
@@ -197,22 +192,18 @@ class SolvationCube(ParallelMixin, OERecordComputeCube):
         try:
             opt = self.opt
 
-            system_field = OEField(DEFAULT_MOL_NAME, Types.Chem.Mol)
-
-            if not record.has_value(system_field):
-                self.log.warn("Missing molecule '{}' field".format(system_field.get_name()))
+            if not record.has_value(Fields.primary_molecule):
+                self.log.warn("Missing molecule '{}' field".format(Fields.primary_molecule.get_name()))
                 self.failure.emit(record)
                 return
 
-            solute = record.get_value(system_field)
+            solute = record.get_value(Fields.primary_molecule)
 
-            system_id_field = OEField("ID", Types.String)
-
-            if not record.has_value(system_id_field):
-                self.log.warn("Missing molecule ID '{}' field".format(system_id_field.get_name()))
+            if not record.has_value(Fields.id):
+                self.log.warn("Missing molecule ID '{}' field".format(Fields.id.get_name()))
                 solute_id = solute.GetTitle()
             else:
-                solute_id = record.get_value(system_id_field)
+                solute_id = record.get_value(Fields.id)
 
             # Update cube simulation parameters with the eventually molecule SD tags
             new_args = {dp.GetTag(): dp.GetValue() for dp in oechem.OEGetSDDataPairs(solute) if dp.GetTag() in
@@ -233,8 +224,8 @@ class SolvationCube(ParallelMixin, OERecordComputeCube):
             self.log.info("Solvated System atom number: {}".format(sol_system.NumAtoms()))
             sol_system.SetTitle(solute_id)
 
-            record.set_value(system_field, sol_system)
-            record.set_value(system_id_field, solute_id)
+            record.set_value(Fields.primary_molecule, sol_system)
+            record.set_value(Fields.id, solute_id)
 
             self.success.emit(record)
 
@@ -283,22 +274,18 @@ class ComplexPrepCube(OERecordComputeCube):
             self.opt['Logger'] = self.log
             self.count = 0
 
-            prot_field = OEField(DEFAULT_MOL_NAME, Types.Chem.Mol)
-
-            if not record.has_value(prot_field):
-                self.log.warn("Missing Protein '{}' field".format(prot_field.get_name()))
+            if not record.has_value(Fields.primary_molecule):
+                self.log.warn("Missing Protein '{}' field".format(Fields.primary_molecule.get_name()))
                 self.failure.emit(record)
                 return
 
-            protein = record.get_value(prot_field)
+            protein = record.get_value(Fields.primary_molecule)
 
-            prot_id_field = OEField("ID", Types.String)
-
-            if not record.has_value(prot_id_field):
-                self.log.warn("Missing Protein ID '{}' field".format(prot_id_field.get_name()))
+            if not record.has_value(Fields.id):
+                self.log.warn("Missing Protein ID '{}' field".format(Fields.id.get_name()))
                 self.protein_id = 'p' + protein.GetTitle()
             else:
-                self.protein_id = record.get_value(prot_id_field)
+                self.protein_id = record.get_value(Fields.id)
 
             self.protein = protein
             return
@@ -306,21 +293,19 @@ class ComplexPrepCube(OERecordComputeCube):
     def process(self, record, port):
         try:
             if port == 'intake':
-                lig_field = OEField(DEFAULT_MOL_NAME, Types.Chem.Mol)
 
-                if not record.has_value(lig_field):
-                    self.log.warn("Missing Ligand '{}' field".format(lig_field.get_name()))
+                if not record.has_value(Fields.primary_molecule):
+                    self.log.warn("Missing Ligand '{}' field".format(Fields.primary_molecule.get_name()))
                     self.failure.emit(record)
                     return
-                ligand = record.get_value(lig_field)
 
-                lig_id_field = OEField("ID", Types.String)
+                ligand = record.get_value(Fields.primary_molecule)
 
-                if not record.has_value(lig_id_field):
-                    self.log.warn("Missing Ligand ID '{}' field".format(lig_id_field.get_name()))
+                if not record.has_value(Fields.id):
+                    self.log.warn("Missing Ligand ID '{}' field".format(Fields.id.get_name()))
                     lig_id = self.protein_id + '_l' + ligand.GetTitle()[0:12] + '_' + str(self.count)
                 else:
-                    lig_id = self.protein_id + '_' + record.get_value(lig_id_field)
+                    lig_id = self.protein_id + '_' + record.get_value(Fields.id)
 
                 num_conf = 0
 
@@ -369,22 +354,9 @@ class ComplexPrepCube(OERecordComputeCube):
                     # Create new OERecord
                     new_record = oe_mol_to_data_record(new_complex, include_sd_data=False)
 
-                    new_ligand_field = OEField("Ligand",
-                                               Types.Chem.Mol,
-                                               meta=OEFieldMeta().set_option(Meta.Hints.Chem.Ligand))
-
-                    new_protein_field = OEField("Protein",
-                                                Types.Chem.Mol,
-                                                meta=OEFieldMeta().set_option(Meta.Hints.Chem.Protein))
-
-                    complex_field_id = OEField("ID", Types.String, meta=OEFieldMeta().set_option(Meta.Source.ID))
-
-                    new_record.set_value(new_ligand_field, ligand)
-                    new_record.set_value(new_protein_field, self.protein)
-                    new_record.set_value(complex_field_id, complex_id_c)
-
-                    # for f in new_record.get_fields():
-                    #     print(f.get_meta().options)
+                    new_record.set_value(Fields.ligand, ligand)
+                    new_record.set_value(Fields.protein, self.protein)
+                    new_record.set_value(Fields.id, complex_id_c)
 
                     num_conf += 1
                     self.success.emit(new_record)
