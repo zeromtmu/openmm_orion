@@ -12,6 +12,9 @@ from Standards import (Fields,
                        MDRecords,
                        MDStageNames)
 
+from floe.api.orion import in_orion,  upload_file
+import tarfile
+
 
 class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
     title = 'Minimization Cube'
@@ -97,11 +100,6 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
         None means no bonds are constrained.
         HBonds means bonds with hydrogen are constrained""")
 
-    outfname = parameter.StringParameter(
-        'outfname',
-        default='min',
-        help_text='Filename suffix for output simulation files')
-
     center = parameter.BooleanParameter(
         'center',
         default=False,
@@ -133,7 +131,6 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
         self.opt = vars(self.args)
         self.opt['Logger'] = self.log
         self.opt['SimType'] = 'min'
-
         return
 
     def process(self, record, port):
@@ -142,6 +139,12 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
             # is necessary to avoid filename collisions due to
             # the parallel cube processes
             opt = dict(self.opt)
+
+            # Logger string
+            str_logger = '------------CUBE PARAMETERS----------'
+            for k, v in opt.items():
+                if isinstance(v, int) or isinstance(v, str) or isinstance(v, float):
+                    str_logger += '\n' + k + ' = ' + str(v)
 
             if not record.has_value(Fields.primary_molecule):
                 self.log.warn("Missing molecule '{}' field".format(Fields.primary_molecule.get_name()))
@@ -185,20 +188,19 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
                 self.log.info("Updating parameters for molecule: {}\n{}".format(system.GetTitle(), new_args))
                 opt.update(new_args)
 
-            opt['outfname'] = '{}-{}'.format(system_id, self.opt['outfname'])
-
             mdData = utils.MDData(parmed_structure)
 
             opt['molecule'] = system
+            opt['str_logger'] = str_logger
 
             # The system and the related parmed structure are passed as reference
-            # and therefore, they are updated
+            # and therefore, they are updated inside the simulation call
             self.log.info('MINIMIZING System: %s' % system_id)
-            simtools.simulation(mdData, **opt)
+            simtools.simulation(mdData, opt)
 
             record.set_value(Fields.primary_molecule, system)
 
-            md_stage_record = MDRecords.MDStageRecord(MDStageNames.MINIMIZATION, '',
+            md_stage_record = MDRecords.MDStageRecord(MDStageNames.MINIMIZATION, opt['str_logger'],
                                                       MDRecords.MDSystemRecord(system, mdData.structure))
 
             md_stages.append(md_stage_record)
@@ -297,12 +299,6 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
         None means no bonds are constrained.
         HBonds means bonds with hydrogen are constrained""")
 
-    trajectory_filetype = parameter.StringParameter(
-        'trajectory_filetype',
-        default='DCD',
-        choices=['DCD', 'NetCDF', 'HDF5'],
-        help_text="NetCDF, DCD, HDF5. File type to write trajectory files")
-
     trajectory_interval = parameter.DecimalParameter(
         'trajectory_interval',
         default=0.0,
@@ -315,15 +311,15 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
         help_text="Time interval for reporting data in ps. If 0 the reporter file"
                   "will not be generated")
 
-    outfname = parameter.StringParameter(
-        'outfname',
+    suffix = parameter.StringParameter(
+        'suffix',
         default='nvt',
         help_text='Filename suffix for output simulation files')
 
-    tar = parameter.BooleanParameter(
-        'tar',
+    upload_ui = parameter.BooleanParameter(
+        'upload_ui',
         default=False,
-        description='Create a tar.xz file of the attached data')
+        description='Upload the generated files to the Orion UI')
 
     center = parameter.BooleanParameter(
         'center',
@@ -365,6 +361,12 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
             # is necessary to avoid filename collisions due to
             # the parallel cube processes
             opt = dict(self.opt)
+
+            # Logger string
+            str_logger = '------------CUBE PARAMETERS----------'
+            for k, v in opt.items():
+                if isinstance(v, int) or isinstance(v, str) or isinstance(v, float):
+                    str_logger += '\n' + k + ' = ' + str(v)
 
             if not record.has_value(Fields.primary_molecule):
                 self.log.warn("Missing molecule '{}' field".format(Fields.primary_molecule.get_name()))
@@ -408,40 +410,51 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
                 self.log.info("Updating parameters for molecule: {}\n{}".format(system.GetTitle(), new_args))
                 opt.update(new_args)
 
-            opt['outfname'] = '{}-{}'.format(system_id, self.opt['outfname'])
+            opt['outfname'] = '{}-{}'.format(system_id, self.opt['suffix'])
 
             mdData = utils.MDData(parmed_structure)
 
             opt['molecule'] = system
+            opt['str_logger'] = str_logger
 
             # The system and the related parmed structure are passed as reference
             # and therefore, they are updated
             self.log.info('START NVT SIMULATION: %s' % system_id)
-            simtools.simulation(mdData, **opt)
+            simtools.simulation(mdData, opt)
 
-            # Initialization Large Data File
-            lf = ''
-
+            # Trajectory
             if opt['trajectory_interval']:
+                lf = utils.upload(opt['outfname']+'.h5')
+            else:  # Empty Trajectory
+                lf = ''
 
-                if opt['tar']:
-                    fn = opt['outfname'] + '.tar'
-                else:
-                    if opt['trajectory_filetype'] == 'NetCDF':
-                        fn = opt['outfname'] + '.nc'
-                    elif opt['trajectory_filetype'] == 'DCD':
-                        fn = opt['outfname'] + '.dcd'
-                    elif opt['trajectory_filetype'] == 'HDF5':
-                        fn = opt['outfname'] + '.hdf5'
-                    else:
-                        raise ValueError("The selected trajectory file format is not supported: {}"
-                                         .format(opt['trajectory_filetype']))
+            # Read in logging file if any
+            if opt['reporter_interval']:
 
-                lf = utils.upload(fn)
+                with open(opt['outfname']+'.log', 'r') as flog:
+                    str_logger = flog.read()
+
+                opt['str_logger'] += '\n'+str_logger
+
+            # If required upload files in the Orion UI
+            if in_orion() and opt['upload_ui']:
+                file_list = []
+                if opt['trajectory_interval']:
+                    file_list.append(opt['outfname']+'.h5')
+                if opt['reporter_interval']:
+                    file_list.append(opt['outfname'] + '.log')
+                if file_list:
+                    tarname = opt['outfname'] + '.tar'
+                    tar = tarfile.open(tarname, "w")
+                    for name in file_list:
+                        opt['Logger'].info('Adding {} to {}'.format(name, tarname))
+                        tar.add(name)
+                    tar.close()
+                    upload_file(tarname, tarname, tags=['TRAJECTORY'])
 
             record.set_value(Fields.primary_molecule, system)
 
-            md_stage_record = MDRecords.MDStageRecord(MDStageNames.NVT, '',
+            md_stage_record = MDRecords.MDStageRecord(MDStageNames.NVT, opt['str_logger'],
                                                       MDRecords.MDSystemRecord(system, mdData.structure), trajectory=lf)
 
             md_stages.append(md_stage_record)
@@ -546,12 +559,6 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
         None means no bonds are constrained.
         HBonds means bonds with hydrogen are constrained""")
 
-    trajectory_filetype = parameter.StringParameter(
-        'trajectory_filetype',
-        default='DCD',
-        choices=['DCD', 'NetCDF', 'HDF5'],
-        help_text="NetCDF, DCD, HDF5. File type to write trajectory files")
-
     trajectory_interval = parameter.DecimalParameter(
         'trajectory_interval',
         default=0.5,
@@ -564,15 +571,15 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
         help_text="Time interval for reporting data in ps. If 0 the reporter file"
                   "will not be generated")
 
-    outfname = parameter.StringParameter(
-        'outfname',
+    suffix = parameter.StringParameter(
+        'suffix',
         default='npt',
-        help_text='Filename suffix for output simulation files. Formatted: <title>-<outfname>')
+        help_text='Filename suffix for output simulation files')
 
-    tar = parameter.BooleanParameter(
-        'tar',
-        default=True,
-        description='Create a tar.xz file of the attached data')
+    upload_ui = parameter.BooleanParameter(
+        'upload_ui',
+        default=False,
+        description='Upload the generated files to the Orion UI')
 
     center = parameter.BooleanParameter(
         'center',
@@ -615,6 +622,12 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
             # the parallel cube processes
             opt = dict(self.opt)
 
+            # Logger string
+            str_logger = '------------CUBE PARAMETERS----------'
+            for k, v in opt.items():
+                if isinstance(v, int) or isinstance(v, str) or isinstance(v, float):
+                    str_logger += '\n' + k + ' = ' + str(v)
+
             if not record.has_value(Fields.primary_molecule):
                 self.log.warn("Missing molecule '{}' field".format(Fields.primary_molecule.get_name()))
                 self.failure.emit(record)
@@ -634,8 +647,6 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
 
             # Extract the MDStageRecord list
             md_stages = record.get_value(Fields.md_stages)
-
-            print(md_stages)
 
             # Extract the most recent MDStageRecord
             md_stage_record = md_stages[-1]
@@ -661,39 +672,50 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
 
                 opt.update(new_args)
 
-            opt['outfname'] = '{}-{}'.format(system_id, self.opt['outfname'])
+            opt['outfname'] = '{}-{}'.format(system_id, self.opt['suffix'])
 
             mdData = utils.MDData(parmed_structure)
 
             opt['molecule'] = system
+            opt['str_logger'] = str_logger
 
             # The system and the related parmed structure are passed as reference
             # and therefore, they are updated
             self.log.info('START NPT SIMULATION %s' % system_id)
-            simtools.simulation(mdData, **opt)
+            simtools.simulation(mdData, opt)
 
-            # Initialization Large Data File
-            lf = ''
-
+            # Trajectory
             if opt['trajectory_interval']:
-                if opt['tar']:
-                    fn = opt['outfname'] + '.tar'
-                else:
-                    if opt['trajectory_filetype'] == 'NetCDF':
-                        fn = opt['outfname'] + '.nc'
-                    elif opt['trajectory_filetype'] == 'DCD':
-                        fn = opt['outfname'] + '.dcd'
-                    elif opt['trajectory_filetype'] == 'HDF5':
-                        fn = opt['outfname'] + '.hdf5'
-                    else:
-                        raise ValueError("The selected trajectory file format is not supported: {}"
-                                         .format(opt['trajectory_filetype']))
+                lf = utils.upload(opt['outfname']+'.h5')
+            else:  # Empty Trajectory
+                lf = ''
 
-                lf = utils.upload(fn)
+            # Read in logging file if any
+            if opt['reporter_interval']:
+                with open(opt['outfname'] + '.log', 'r') as flog:
+                    str_logger = flog.read()
+
+                opt['str_logger'] += '\n' + str_logger
+
+            # If required upload files in the Orion UI
+            if in_orion() and opt['upload_ui']:
+                file_list = []
+                if opt['trajectory_interval']:
+                    file_list.append(opt['outfname']+'.h5')
+                if opt['reporter_interval']:
+                    file_list.append(opt['outfname'] + '.log')
+                if file_list:
+                    tarname = opt['outfname'] + '.tar'
+                    tar = tarfile.open(tarname, "w")
+                    for name in file_list:
+                        opt['Logger'].info('Adding {} to {}'.format(name, tarname))
+                        tar.add(name)
+                    tar.close()
+                    upload_file(tarname, tarname, tags=['TRAJECTORY'])
 
             record.set_value(Fields.primary_molecule, system)
 
-            md_stage_record = MDRecords.MDStageRecord(MDStageNames.NPT, '',
+            md_stage_record = MDRecords.MDStageRecord(MDStageNames.NPT,  opt['str_logger'],
                                                       MDRecords.MDSystemRecord(system, mdData.structure), trajectory=lf)
 
             md_stages.append(md_stage_record)

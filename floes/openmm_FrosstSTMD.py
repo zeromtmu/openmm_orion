@@ -79,11 +79,6 @@ ff.promote_parameter('solvent_forcefield', promoted_name='solvent_ff', default='
 ff.promote_parameter('ligand_forcefield', promoted_name='ligand_ff', default='GAFF2')
 ff.promote_parameter('other_forcefield', promoted_name='other_ff', default='GAFF2')
 
-# Output the prepared systems
-# complex_prep_ofs = DataSetWriterCubeStripCustom('complex_prep_ofs', title='ComplexSetUpOut')
-complex_prep_ofs = DataSetWriterCube('complex_prep_ofs', title='ComplexSetUpOut')
-complex_prep_ofs.set_parameters(data_out=iprot.promoted_parameters['protein_prefix']['default']+'_SetUp.oeb.gz')
-
 # Minimization
 minComplex = OpenMMminimizeCube('minComplex', title='Minimize')
 minComplex.promote_parameter('restraints', promoted_name='m_restraints', default="noh (ligand or protein)",
@@ -92,12 +87,6 @@ minComplex.promote_parameter('restraintWt', promoted_name='m_restraintWt', defau
                              description='Restraint weight')
 minComplex.promote_parameter('steps', promoted_name='steps', default=1000)
 minComplex.promote_parameter('center', promoted_name='center', default=True)
-
-# Output the minimized systems
-# minimization_ofs = DataSetWriterCubeStripCustom('minimization_ofs', title='MinimizationOut')
-minimization_ofs = DataSetWriterCube('minimization_ofs', title='MinimizationOut')
-
-minimization_ofs.set_parameters(data_out=iprot.promoted_parameters['protein_prefix']['default']+'_Minimization.oeb.gz')
 
 # NVT simulation. Here the assembled system is warmed up to the final selected temperature
 warmup = OpenMMNvtCube('warmup', title='warmup')
@@ -110,7 +99,7 @@ warmup.promote_parameter('trajectory_interval', promoted_name='w_trajectory_inte
                          description='Trajectory saving interval in ps')
 warmup.promote_parameter('reporter_interval', promoted_name='w_reporter_interval', default=1.0,
                          description='Reporter saving intervalin ps')
-warmup.promote_parameter('outfname', promoted_name='w_outfname', default='warmup',
+warmup.promote_parameter('suffix', promoted_name='w_outfname', default='warmup',
                          description='Equilibration suffix name')
 
 # The system is equilibrated at the right pressure and temperature in 3 stages
@@ -129,7 +118,7 @@ equil1.promote_parameter('trajectory_interval', promoted_name='eq1_trajectory_in
                          description='Trajectory saving interval in ps')
 equil1.promote_parameter('reporter_interval', promoted_name='eq1_reporter_interval', default=1.0,
                          description='Reporter saving interval in ps')
-equil1.promote_parameter('outfname', promoted_name='eq1_outfname', default='equil1',
+equil1.promote_parameter('suffix', promoted_name='eq1_outfname', default='equil1',
                          description='Equilibration suffix name')
 
 # NPT Equilibration stage 2
@@ -144,7 +133,7 @@ equil2.promote_parameter('trajectory_interval', promoted_name='eq2_trajectory_in
                          description='Trajectory saving interval in ps')
 equil2.promote_parameter('reporter_interval', promoted_name='eq2_reporter_interval', default=1.0,
                          description='Reporter saving interval in ps')
-equil2.promote_parameter('outfname', promoted_name='eq2_outfname', default='equil2',
+equil2.promote_parameter('suffix', promoted_name='eq2_outfname', default='equil2',
                          description='Equilibration suffix name')
 
 # NPT Equilibration stage 3
@@ -159,11 +148,10 @@ equil3.promote_parameter('trajectory_interval', promoted_name='eq3_trajectory_in
                          description='Trajectory saving interval in ps')
 equil3.promote_parameter('reporter_interval', promoted_name='eq3_reporter_interval', default=1.0,
                          description='Reporter saving interval in ps')
-equil3.promote_parameter('outfname', promoted_name='eq3_outfname', default='equil3',
+equil3.promote_parameter('suffix', promoted_name='eq3_outfname', default='equil3',
                          description='Equilibration suffix name')
 
 # Output the equilibrated systems
-# equilibration_ofs = DataSetWriterCubeStripCustom("equilibration_ofs", title='EquilibrationOut')
 equilibration_ofs = DataSetWriterCube("equilibration_ofs", title='EquilibrationOut')
 equilibration_ofs.set_parameters(data_out=iprot.promoted_parameters['protein_prefix']['default']+'_Equilibration.oeb.gz')
 
@@ -175,18 +163,16 @@ prod.promote_parameter('trajectory_interval', promoted_name='prod_trajectory_int
                        description='Trajectory saving interval in ps')
 prod.promote_parameter('reporter_interval', promoted_name='prod_reporter_interval', default=1.0,
                        description='Reporter saving interval is ps')
-prod.promote_parameter('outfname', promoted_name='prod_outfname', default='prod',
+prod.promote_parameter('suffix', promoted_name='prod_outfname', default='prod',
                        description='Equilibration suffix name')
 
-# ofs = DataSetWriterCubeStripCustom('ofs', title='OFS-Success')
 ofs = DataSetWriterCube('ofs', title='OFS-Success')
-
 
 fail = DataSetWriterCube('fail', title='OFS-Failure')
 fail.set_parameters(data_out='fail.oeb.gz')
 
-job.add_cubes(iprot, iligs, chargelig, complx, solvate, ff, complex_prep_ofs,
-              minComplex, minimization_ofs, warmup, equil1, equil2, equil3, equilibration_ofs, prod, ofs, fail)
+job.add_cubes(iprot, iligs, chargelig, complx, solvate, ff,
+              minComplex, warmup, equil1, equil2, equil3, equilibration_ofs, prod, ofs, fail)
 
 iprot.success.connect(complx.protein_port)
 iligs.success.connect(chargelig.intake)
@@ -194,9 +180,7 @@ chargelig.success.connect(complx.intake)
 complx.success.connect(solvate.intake)
 solvate.success.connect(ff.intake)
 ff.success.connect(minComplex.intake)
-ff.success.connect(complex_prep_ofs.intake)
 minComplex.success.connect(warmup.intake)
-minComplex.success.connect(minimization_ofs.intake)
 warmup.success.connect(equil1.intake)
 equil1.success.connect(equil2.intake)
 equil2.success.connect(equil3.intake)

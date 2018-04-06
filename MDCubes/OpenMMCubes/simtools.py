@@ -1,14 +1,15 @@
-import sys, mdtraj, tarfile, os
+import sys
+import mdtraj
 import numpy as np
 from sys import stdout
 from openeye import oechem
 from simtk import unit, openmm
 from simtk.openmm import app
-from floe.api.orion import in_orion,  upload_file
 from oeommtools import utils as oeommutils
+from platform import uname
 
 
-def simulation(mdData, **opt):
+def simulation(mdData, opt):
     """
     This supporting function performs: OpenMM Minimization, NVT and NPT
     Molecular Dynamics (MD) simulations
@@ -127,7 +128,7 @@ def simulation(mdData, **opt):
                 break
             except:
                 if plt_name == 'Reference':
-                    oechem.OEThrow.Fatal('It was not possible to select any OpenMM Platform')
+                    raise ValueError('It was not possible to select any OpenMM Platform')
                 else:
                     pass
         if platform.getName() in ['CUDA', 'OpenCL']:
@@ -142,8 +143,8 @@ def simulation(mdData, **opt):
                     break
                 except:
                     if precision == 'double':
-                        oechem.OEThrow.Fatal('It was not possible to select any Precision '
-                                             'for the selected Platform: {}'.format(platform.getName()))
+                        raise ValueError('It was not possible to select any Precision '
+                                         'for the selected Platform: {}'.format(platform.getName()))
                     else:
                         pass
         else:  # CPU or Reference
@@ -152,7 +153,7 @@ def simulation(mdData, **opt):
         try:
             platform = openmm.Platform.getPlatformByName(opt['platform'])
         except Exception as e:
-            oechem.OEThrow.Fatal('The selected platform is not supported: {}'.format(str(e)))
+            raise ValueError('The selected platform is not supported: {}'.format(str(e)))
 
         if opt['platform'] in ['CUDA', 'OpenCL']:
             try:
@@ -163,8 +164,8 @@ def simulation(mdData, **opt):
                                             platform=platform,
                                             platformProperties=properties)
             except Exception:
-                oechem.OEThrow.Fatal('It was not possible to set the {} precision for the {} platform'
-                                     .format(opt['cuda_opencl_precision'], opt['platform']))
+                raise ValueError('It was not possible to set the {} precision for the {} platform'
+                                 .format(opt['cuda_opencl_precision'], opt['platform']))
         else:  # CPU or Reference Platform
             simulation = app.Simulation(topology, system, integrator, platform=platform)
 
@@ -180,19 +181,19 @@ def simulation(mdData, **opt):
     # restarted from the previous State
     if opt['SimType'] in ['nvt', 'npt']:
 
-        if opt['trajectory_interval']:
-            structure.save(opt['outfname']+'.pdb', overwrite=True)
-            # GAC ADDED - TESTING
-            # Preserve original pdb file residue numbers
-            pdbfname_test = opt['outfname'] + '_ordering_test' + '.pdb'
-            ofs = oechem.oemolostream(pdbfname_test)
-            flavor = ofs.GetFlavor(oechem.OEFormat_PDB) ^ oechem.OEOFlavor_PDB_OrderAtoms
-            ofs.SetFlavor(oechem.OEFormat_PDB, flavor)
-
-            new_temp_mol = oeommutils.openmmTop_to_oemol(structure.topology, structure.positions, verbose=False)
-            new_pos = new_temp_mol.GetCoords()
-            opt['molecule'].SetCoords(new_pos)
-            oechem.OEWriteConstMolecule(ofs, opt['molecule'])
+        # if opt['trajectory_interval']:
+        #     structure.save(opt['outfname']+'.pdb', overwrite=True)
+        #     # GAC ADDED - TESTING
+        #     # Preserve original pdb file residue numbers
+        #     pdbfname_test = opt['outfname'] + '_ordering_test' + '.pdb'
+        #     ofs = oechem.oemolostream(pdbfname_test)
+        #     flavor = ofs.GetFlavor(oechem.OEFormat_PDB) ^ oechem.OEOFlavor_PDB_OrderAtoms
+        #     ofs.SetFlavor(oechem.OEFormat_PDB, flavor)
+        #
+        #     new_temp_mol = oeommutils.openmmTop_to_oemol(structure.topology, structure.positions, verbose=False)
+        #     new_pos = new_temp_mol.GetCoords()
+        #     opt['molecule'].SetCoords(new_pos)
+        #     oechem.OEWriteConstMolecule(ofs, opt['molecule'])
 
         if velocities is not None:
             opt['Logger'].info('RESTARTING simulation from a previous State')
@@ -213,17 +214,22 @@ def simulation(mdData, **opt):
     mmver = openmm.version.version
     mmplat = simulation.context.getPlatform()
 
-    if opt['verbose']:
-        # Host information
-        from platform import uname
-        for k, v in uname()._asdict().items():
-            print(k, ':', v, file=printfile)
-        # Platform properties
-        for prop in mmplat.getPropertyNames():
-            val = mmplat.getPropertyValue(simulation.context, prop)
-            print(prop, ':', val, file=printfile)
-            
-    print('OpenMM({}) simulation generated for {} platform'.format(mmver, mmplat.getName()), file=printfile)
+    str_logger = '\n' + '----------- SIMULATION ------------'
+    # Host information
+    for k, v in uname()._asdict().items():
+        str_logger += '\n' + k + ' = ' + v
+        print(k, ':', v, file=printfile)
+
+    # Platform properties
+    for prop in mmplat.getPropertyNames():
+        val = mmplat.getPropertyValue(simulation.context, prop)
+        str_logger += '\n' + prop + ' = ' + val
+        print(prop, ':', val, file=printfile)
+
+    info = 'OpenMM({}) simulation generated for {} platform'.format(mmver, mmplat.getName())
+    print(info, file=printfile)
+
+    str_logger += '\n'+info
 
     if opt['SimType'] in ['nvt', 'npt']:
 
@@ -268,10 +274,14 @@ def simulation(mdData, **opt):
         simulation.minimizeEnergy(maxIterations=opt['steps'])
 
         state = simulation.context.getState(getPositions=True, getEnergy=True)
-        print('Initial Energy = {}\nMinimized energy = {}'.format(
+
+        info = 'Initial Energy = {}\nMinimized energy = {}'.format(
             state_reference_start.getPotentialEnergy().in_units_of(unit.kilocalorie_per_mole),
-            state.getPotentialEnergy().in_units_of(unit.kilocalorie_per_mole)),
-              file=printfile)
+            state.getPotentialEnergy().in_units_of(unit.kilocalorie_per_mole))
+
+        print(info, file=printfile)
+
+        str_logger += '\n' + info
 
     # OpenMM Quantity object
     structure.positions = state.getPositions(asNumpy=False)
@@ -283,85 +293,14 @@ def simulation(mdData, **opt):
         # numpy array in units of angstrom/picoseconds
         structure.velocities = state.getVelocities(asNumpy=False)
 
-        # If required uploading files to Orion
-        _file_processing(**opt)
-
     # Update the OEMol complex positions to match the new
     # Parmed structure after the simulation
     new_temp_mol = oeommutils.openmmTop_to_oemol(structure.topology, structure.positions, verbose=False)
     new_pos = new_temp_mol.GetCoords()
     opt['molecule'].SetCoords(new_pos)
 
-    return
-
-
-def _file_processing(**opt):
-    """
-    This supporting function compresses the produced trajectory
-    and supporting files in a .tar file (if required ) and eventually
-    uploaded them to Orion. If not .tar file is selected then all the
-    generated files are eventually uploaded in Orion
-
-    Parameters
-    ----------
-    opt: python dictionary
-        A dictionary containing all the MD setting info
-    """
-
-    # Set the trajectory file name
-    if opt['trajectory_filetype'] == 'NetCDF':
-        trj_fn = opt['outfname'] +'.nc'
-    elif opt['trajectory_filetype'] == 'DCD':
-        trj_fn = opt['outfname'] +'.dcd'
-    elif opt['trajectory_filetype'] == 'HDF5':
-        trj_fn = opt['outfname'] + '.hdf5'
-    else:
-        oechem.OEThrow.Fatal("The selected trajectory filetype is not supported: {}"
-                             .format(opt['trajectory_filetype']))
-    # Set .pdb file names
-    pdb_fn = opt['outfname'] + '.pdb'
-    pdb_order_fn = opt['outfname'] + '_ordering_test' + '.pdb'
-    log_fn = opt['outfname'] + '.log'
-
-    # List all the file names
-    fnames = [trj_fn, pdb_fn, pdb_order_fn, log_fn]
-
-    ex_files = []
-
-    # Check which file names are actually produced files
-    for fn in fnames:
-        if os.path.isfile(fn):
-            ex_files.append(fn)
-
-    # Tar the outputted files if required
-    if opt['tar']:
-
-        tarname = opt['outfname'] + '.tar'
-
-        opt['Logger'].info('Creating tar file: {}'.format(tarname))
-
-        tar = tarfile.open(tarname, "w")
-
-        for name in ex_files:
-            opt['Logger'].info('Adding {} to {}'.format(name, tarname))
-            tar.add(name)
-        tar.close()
-
-        opt['molecule'].SetData(oechem.OEGetTag("Tar_fname"), tarname)
-
-        if in_orion():
-            upload_file(tarname, tarname, tags=['TRJ_INFO'])
-
-        # Clean up files that have been added to tar.
-        for tmp in ex_files:
-            try:
-                os.remove(tmp)
-            except:
-                pass
-    else:  # If not .tar file is required the files are eventually uploaded in Orion
-        if in_orion():
-            for fn in ex_files:
-                upload_file(fn, fn, tags=['TRJ_INFO'])
+    # Update the string logger
+    opt['str_logger'] += str_logger
 
     return
 
@@ -419,22 +358,7 @@ def getReporters(totalSteps=None, outfname=None, **opt):
         trajectory_steps = int(round(opt['trajectory_interval'] / (
                 opt['timestep'].in_units_of(unit.picoseconds) / unit.picoseconds)))
 
-        trj_fname = outfname
-        # Trajectory file format selection
-        if opt['trajectory_filetype'] == 'NetCDF':
-            trj_fname += '.nc'
-            traj_reporter = mdtraj.reporters.NetCDFReporter(trj_fname, trajectory_steps)
-        elif opt['trajectory_filetype'] == 'DCD':
-            trj_fname += '.dcd'
-            traj_reporter = app.DCDReporter(trj_fname, trajectory_steps)
-        elif opt['trajectory_filetype'] == 'HDF5':
-            trj_fname += '.hdf5'
-            mdtraj.reporters.HDF5Reporter(trj_fname, trajectory_steps)
-        else:
-            oechem.OEThrow.Fatal("The selected trajectory file format is not supported: {}"
-                                 .format(opt['trajectory_filetype']))
-
-        opt['molecule'].SetData(oechem.OEGetTag("Trj_fname"), trj_fname)
+        traj_reporter = mdtraj.reporters.HDF5Reporter(outfname+'.h5', trajectory_steps)
 
         reporters.append(traj_reporter)
 

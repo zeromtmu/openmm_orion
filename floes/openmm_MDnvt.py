@@ -45,11 +45,7 @@ nvt.promote_parameter('trajectory_interval', promoted_name='trajectory_interval'
 nvt.promote_parameter('reporter_interval', promoted_name='reporter_interval', default=1.0,
                       description='Reporter saving interval in ps')
 
-nvt.promote_parameter('outfname', promoted_name='suffix', default='nvt',
-                      description='Equilibration suffix name')
-nvt.promote_parameter('tar', promoted_name='tar', default=True)
 
-# ofs = DataSetWriterCubeStripCustom('ofs', title='OFS-Success')
 ofs = DataSetWriterCube('ofs', title='OFS-Success')
 
 fail = DataSetWriterCube('fail', title='OFS-Failure')

@@ -50,11 +50,8 @@ npt.promote_parameter('trajectory_interval', promoted_name='trajectory_interval'
                       description='Trajectory saving interval in ps')
 npt.promote_parameter('reporter_interval', promoted_name='reporter_interval', default=1.0,
                       description='Reporter saving interval in ps')
-npt.promote_parameter('outfname', promoted_name='suffix', default='prod',
+npt.promote_parameter('suffix', promoted_name='suffix', default='prod',
                       description='Equilibration suffix name')
-
-npt.promote_parameter('tar', promoted_name='tar', default=False)
-
 
 ofs = DataSetWriterCube('ofs', title='OFS-Success')
 
