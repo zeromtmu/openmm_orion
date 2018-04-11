@@ -60,12 +60,16 @@ options:
   temperature: {temperature:f}*kelvin
   pressure: {pressure:f}*atmosphere
   anisotropic_dispersion_cutoff: auto
-
+  resume_simulation: {resume_sim}
+  resume_setup: {resume_sim}
+  hydrogen_mass: {hydrogen_mass:f}*amu
+  
 systems:
   solvation-system:
     phase1_path: [{complex_pdb_fn}, {complex_xml_fn}]
     phase2_path: [{solvent_pdb_fn}, {solvent_xml_fn}]
     ligand_dsl: resname {ligand_resname}
+
 protocols:
   solvation-protocol:
     solvent1:

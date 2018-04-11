@@ -393,6 +393,6 @@ def download(file_id):
 
     if in_orion():
         filename = file_id.retrieve()
-        file_id.delete()
+        # file_id.delete()
 
     return filename

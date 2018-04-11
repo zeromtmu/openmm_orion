@@ -20,6 +20,13 @@ from YankCubes.cubes import (SyncBindingFECube,
 from cuberecord import DataSetWriterCube
 
 
+# *************USER SETTING**************
+yank_iteration_per_chunk = 500
+chunks = 2
+# ***************************************
+
+cube_list = []
+
 job = WorkFloe('Yank Binding Affinity')
 
 job.description = """
@@ -46,11 +53,13 @@ job.tags = [tag for lists in job.classification for tag in lists]
 # Ligand setting
 iligs = LigandReaderCube("LigandReader", title="Ligand Reader")
 iligs.promote_parameter("data_in", promoted_name="ligands", title="Ligand Input File", description="Ligand file name")
-
+job.add_cube(iligs)
 
 chargelig = LigandChargeCube("LigCharge")
 chargelig.promote_parameter('max_conformers', promoted_name='max_conformers',
                             description="Set the max number of conformers per ligand", default=800)
+job.add_cube(chargelig)
+
 
 # Protein Reading cube. The protein prefix parameter is used to select a name for the
 # output system files
@@ -59,14 +68,17 @@ iprot.promote_parameter("data_in", promoted_name="protein", title='Protein Input
                         description="Protein file name")
 iprot.promote_parameter("protein_prefix", promoted_name="protein_prefix",
                         default='PRT', description="Protein prefix")
+job.add_cube(iprot)
 
 # COMPLEX SETTING
 
 # Complex cube used to assemble the ligands and the solvated protein
 complx = ComplexPrepCube("Complex")
+job.add_cube(complx)
 
 # The solvation cube is used to solvate the system and define the ionic strength of the solution
 solvateComplex = HydrationCube("HydrationComplex", title="HydrationComplex")
+job.add_cube(solvateComplex)
 
 # Complex Force Field Application
 ffComplex = ForceFieldCube("ForceFieldComplex", title="ForceFieldComplex")
@@ -74,6 +86,8 @@ ffComplex.promote_parameter('protein_forcefield', promoted_name='protein_ff', de
 ffComplex.promote_parameter('solvent_forcefield', promoted_name='solvent_ff', default='tip3p.xml')
 ffComplex.promote_parameter('ligand_forcefield', promoted_name='ligand_ff', default='GAFF2')
 ffComplex.promote_parameter('other_forcefield', promoted_name='other_ff', default='GAFF2')
+job.add_cube(ffComplex)
+
 
 # Minimization
 minComplex = OpenMMminimizeCube('minComplex', title='MinimizeComplex')
@@ -81,6 +95,7 @@ minComplex.promote_parameter('restraints', promoted_name='m_restraints', default
                              description='Select mask to apply restarints')
 minComplex.promote_parameter('restraintWt', promoted_name='m_restraintWt', default=5.0,
                              description='Restraint weight')
+job.add_cube(minComplex)
 
 # NVT simulation. Here the assembled system is warmed up to the final selected temperature
 warmupComplex = OpenMMNvtCube('warmupComplex', title='warmupComplex')
@@ -93,8 +108,9 @@ warmupComplex.promote_parameter('trajectory_interval', promoted_name='w_trajecto
                                 description='Trajectory saving interval')
 warmupComplex.promote_parameter('reporter_interval', promoted_name='w_reporter_interval', default=0.0,
                                 description='Reporter saving interval')
-warmupComplex.promote_parameter('outfname', promoted_name='w_outfname', default='warmup',
+warmupComplex.promote_parameter('suffix', promoted_name='w_suffix_complex', default='warmup_complex',
                                 description='Equilibration suffix name')
+job.add_cube(warmupComplex)
 
 # The system is equilibrated at the right pressure and temperature in 3 stages
 # The main difference between the stages is related to the restraint force used
@@ -112,8 +128,9 @@ equil1Complex.promote_parameter('trajectory_interval', promoted_name='eq1_trajec
                                 description='Trajectory saving interval')
 equil1Complex.promote_parameter('reporter_interval', promoted_name='eq1_reporter_interval', default=0.0,
                                 description='Reporter saving interval')
-equil1Complex.promote_parameter('outfname', promoted_name='eq1_outfname', default='equil1',
+equil1Complex.promote_parameter('suffix', promoted_name='eq1_suffix', default='equil1',
                                 description='Equilibration suffix name')
+job.add_cube(equil1Complex)
 
 # NPT Equilibration stage 2
 equil2Complex = OpenMMNptCube('equil2Complex', title='equil2Complex')
@@ -127,8 +144,9 @@ equil2Complex.promote_parameter('trajectory_interval', promoted_name='eq2_trajec
                                 description='Trajectory saving interval')
 equil2Complex.promote_parameter('reporter_interval', promoted_name='eq2_reporter_interval', default=0.0,
                                 description='Reporter saving interval')
-equil2Complex.promote_parameter('outfname', promoted_name='eq2_outfname', default='equil2',
+equil2Complex.promote_parameter('suffix', promoted_name='eq2_suffix', default='equil2',
                                 description='Equilibration suffix name')
+job.add_cube(equil2Complex)
 
 # NPT Equilibration stage 3
 equil3Complex = OpenMMNptCube('equil3Complex', title='equil3Complex')
@@ -142,13 +160,15 @@ equil3Complex.promote_parameter('trajectory_interval', promoted_name='eq3_trajec
                                 description='Trajectory saving interval')
 equil3Complex.promote_parameter('reporter_interval', promoted_name='eq3_reporter_interval', default=0.0,
                                 description='Reporter saving interval')
-equil3Complex.promote_parameter('outfname', promoted_name='eq3_outfname', default='equil3',
+equil3Complex.promote_parameter('suffix', promoted_name='eq3_suffix', default='equil3',
                                 description='Equilibration suffix name')
+job.add_cube(equil3Complex)
 
 # LIGAND SETTING
 
 # Solvate Ligands
 solvateLigand = HydrationCube("HydrationLigand", title="HydrationLigand")
+job.add_cube(solvateLigand)
 
 # Ligand Force Field Application
 ffLigand = ForceFieldCube("ForceFieldLigand", title="ForceFieldLigand")
@@ -158,6 +178,7 @@ ffLigand.promote_parameter('ligand_forcefield', promoted_name='ligand_ff',
                            default=ffComplex.promoted_parameters['ligand_forcefield']['default'])
 ffLigand.promote_parameter('other_forcefield', promoted_name='other_ff',
                            default=ffComplex.promoted_parameters['other_forcefield']['default'])
+job.add_cube(ffLigand)
 
 # Ligand Minimization
 minimizeLigand = OpenMMminimizeCube("MinimizeLigand")
@@ -165,6 +186,7 @@ minimizeLigand.promote_parameter('restraints', promoted_name='m_restraints', def
                                  description='Select mask to apply restraints')
 minimizeLigand.promote_parameter('restraintWt', promoted_name='m_restraintWt', default=5.0,
                                  description='Restraint weight in kcal/(mol A^2')
+job.add_cube(minimizeLigand)
 
 # Ligand NVT Warm-up
 warmupLigand = OpenMMNvtCube('warmupLigand', title='warmupLigand')
@@ -178,9 +200,10 @@ warmupLigand.promote_parameter('trajectory_interval', promoted_name='w_trajector
                                description='Trajectory saving interval')
 warmupLigand.promote_parameter('reporter_interval', promoted_name='w_reporter_interval', default=0.0,
                                description='Reporter saving interval')
-warmupLigand.promote_parameter('outfname', promoted_name='w_outfname', default='warmup',
+warmupLigand.promote_parameter('suffix', promoted_name='w_suffix_ligand', default='warmup_ligand',
                                description='Equilibration suffix name')
 # warmupLigand.promote_parameter('center', promoted_name='center', default=True)
+job.add_cube(warmupLigand)
 
 # Ligand NPT Equilibration stage
 equilLigand = OpenMMNptCube('equilLigand', title='equilLigand')
@@ -194,22 +217,45 @@ equilLigand.promote_parameter('trajectory_interval', promoted_name='eq_trajector
                               description='Trajectory saving interval')
 equilLigand.promote_parameter('reporter_interval', promoted_name='eq_reporter_interval', default=0.0,
                               description='Reporter saving interval')
-equilLigand.promote_parameter('outfname', promoted_name='eq_outfname', default='equil',
+equilLigand.promote_parameter('suffix', promoted_name='eq_suffix', default='equil',
                               description='Equilibration suffix name')
+job.add_cube(equilLigand)
 
 sync = SyncBindingFECube("SyncCube")
+job.add_cube(sync)
+cube_list.append(sync)
 
-yank = YankBindingFECube("YankABFE")
+
+for i in range(0, chunks):
+    yank = YankBindingFECube("YankABFE"+str(i))
+
+    yank.promote_parameter('iterations', promoted_name='iterations'+str(i),
+                           default=yank_iteration_per_chunk*(i+1))
+    yank.promote_parameter('nonbondedCutoff', promoted_name='nonbondedCutoff'+str(i), default=10.0)
+
+    yank.promote_parameter('hmr', promoted_name='hmr'+str(i), default=False,
+                           description='Hydrogen Mass Repartitioning')
+
+    if i == 0:
+        yank.promote_parameter('rerun', promoted_name='rerun' + str(i), default=False)
+    else:
+        yank.promote_parameter('rerun', promoted_name='rerun' + str(i), default=True)
+
+    if i == (chunks - 1):
+        yank.promote_parameter('analyze', promoted_name='analyze' + str(i), default=True)
+
+    job.add_cube(yank)
+    cube_list.append(yank)
+
 
 ofs = DataSetWriterCube('ofs', title='OFS-Success')
+job.add_cube(ofs)
+cube_list.append(ofs)
 
 fail = DataSetWriterCube('fail', title='OFS-Failure')
 fail.set_parameters(data_out='fail.oeb.gz')
-
-job.add_cubes(iprot, iligs, chargelig, complx, solvateComplex, ffComplex,
-              minComplex, warmupComplex, equil1Complex, equil2Complex, equil3Complex,
-              solvateLigand, ffLigand, minimizeLigand, warmupLigand, equilLigand,
-              sync, yank, ofs, fail)
+job.add_cube(fail)
+cube_list.append(fail)
 
 # Connections
 iprot.success.connect(complx.protein_port)
@@ -232,10 +278,12 @@ ffLigand.success.connect(minimizeLigand.intake)
 minimizeLigand.success.connect(warmupLigand.intake)
 warmupLigand.success.connect(equilLigand.intake)
 equilLigand.success.connect(sync.solvated_ligand_in_port)
-# SYNC
-sync.success.connect(yank.intake)
-yank.success.connect(ofs.intake)
-yank.failure.connect(fail.intake)
+
+# Connections Yank cubes
+for i in range(0, len(cube_list)-2):
+    cube_list[i].success.connect(cube_list[i + 1].intake)
+    if i == len(cube_list) - 3:
+        cube_list[i].failure.connect(cube_list[i+2].intake)
 
 
 if __name__ == "__main__":

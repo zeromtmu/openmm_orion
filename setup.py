@@ -31,8 +31,8 @@ def get_version():
         return version
 
 setup(
-    name="OpenMMOrion",
-    version='0.3.7',
+    name="MDOrion",
+    version='0.3.8',
     packages=find_packages(include=['examples'], exclude=['tests*']),
     include_package_data=True,
     package_data={'examples': find_package_data('examples/data', 'examples')},

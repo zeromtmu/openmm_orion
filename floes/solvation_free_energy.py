@@ -28,7 +28,7 @@ ofs: Output file
 """
 
 # *************USER SETTING**************
-yank_iteration_per_chunk = 5
+yank_iteration_per_chunk = 500
 chunks = 2
 # ***************************************
 
@@ -94,7 +94,7 @@ warmup.promote_parameter('trajectory_interval', promoted_name='w_trajectory_inte
                          description='Trajectory saving interval in ps')
 warmup.promote_parameter('reporter_interval', promoted_name='w_reporter_interval', default=0.0,
                          description='Reporter saving interval in ps')
-warmup.promote_parameter('outfname', promoted_name='w_outfname', default='warmup',
+warmup.promote_parameter('suffix', promoted_name='w_suffix', default='warmup',
                          description='Equilibration suffix name')
 warmup.promote_parameter('center', promoted_name='center', default=True)
 warmup.promote_parameter('hmr', promoted_name='hmr', default=False,
@@ -114,7 +114,7 @@ equil.promote_parameter('trajectory_interval', promoted_name='eq_trajectory_inte
                         description='Trajectory saving interval in ps')
 equil.promote_parameter('reporter_interval', promoted_name='eq_reporter_interval', default=0.0,
                         description='Reporter saving interval in ps')
-equil.promote_parameter('outfname', promoted_name='eq_outfname', default='equil',
+equil.promote_parameter('suffix', promoted_name='eq_suffix', default='equil',
                         description='Equilibration suffix name')
 equil.promote_parameter('hmr', promoted_name='hmr', default=False,
                         description='Hydrogen Mass Repartitioning')
@@ -135,13 +135,12 @@ for i in range(0, chunks):
     else:
         solvationfe.promote_parameter('rerun', promoted_name='rerun' + str(i), default=True)
 
-    # if i == (chunks - 1):
-    #     solvationfe.promote_parameter('analyze', promoted_name='analyze' + str(i), default=True)
+    if i == (chunks - 1):
+        solvationfe.promote_parameter('analyze', promoted_name='analyze' + str(i), default=True)
 
     job.add_cube(solvationfe)
     cube_list.append(solvationfe)
 
-# ofs = DataSetWriterCubeStripCustom('ofs', title='OFS-Success')
 ofs = DataSetWriterCube('ofs', title='OFS-Success')
 job.add_cube(ofs)
 cube_list.append(ofs)
@@ -151,8 +150,8 @@ fail.set_parameters(data_out='fail.oeb.gz')
 job.add_cube(fail)
 cube_list.append(fail)
 
+# Connections
 for i in range(0, len(cube_list)-2):
-    print(i)
     cube_list[i].success.connect(cube_list[i + 1].intake)
     if i == len(cube_list) - 3:
         cube_list[i].failure.connect(cube_list[i+2].intake)

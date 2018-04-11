@@ -22,6 +22,7 @@ class MDStageNames:
     MINIMIZATION = 'MINIMIZATION'
     NVT = 'NVT'
     NPT = 'NPT'
+    FEC = 'FEC'
 
 # ---------------- Field Standards -------------- #
 
