@@ -7,12 +7,8 @@ from floe.api.orion import in_orion, upload_file
 from simtk import unit, openmm
 from simtk.openmm import app
 
-from cuberecord.orion import StreamingDataset
-
 if in_orion():
-    from big_storage import LargeFile
-
-
+    from cuberecord import OELargeFile
 try:
     import cPickle as pickle
 except ImportError:
@@ -284,25 +280,6 @@ def combinePositions(proteinPositions, molPositions):
     return positions
 
 
-def download_dataset_to_file(dataset_id):
-    """
-    Used to retrieve a data set either from Orion or from the local machine
-    """
-    if in_orion():
-        if dataset_id in download_cache:
-            return download_cache[dataset_id]
-        if os.path.isfile(dataset_id):
-            download_cache[dataset_id] = dataset_id
-            return dataset_id
-        tmp = NamedTemporaryFile(suffix=".oeb.gz", delete=False)
-        stream = StreamingDataset(dataset_id, input_format=".oeb.gz")
-        stream.download_to_file(tmp.name)
-        download_cache[dataset_id] = tmp.name
-        return tmp.name
-    else:
-        return dataset_id
-
-    
 def dump_query(prefix, name, qmol, receptor):
     """
     Writes the Molecule or receptor out to file
@@ -382,7 +359,7 @@ def upload(filename):
     file_id = filename
 
     if in_orion():
-        file_id = LargeFile(filename)
+        file_id = OELargeFile(filename)
 
     return file_id
 

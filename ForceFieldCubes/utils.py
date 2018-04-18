@@ -6,6 +6,7 @@ import parmed
 from openeye import oequacpac
 from LigPrepCubes import ff_utils
 import numpy as np
+import itertools
 
 
 proteinResidues = ['ALA', 'ASN', 'CYS', 'GLU', 'HIS',
@@ -233,23 +234,28 @@ def applyffExcipients(excipients, opt):
         # It is important the order used to assemble the structures. In order to
         # avoid mismatch between the coordinates and the structures, it is convenient
         # to use the unrecognized residue order
-        unmatched_res_order_count = []
-        i = 0
-        while i < len(unmatched_res_order):
-            res_name = unmatched_res_order[i]
-            for j in range(i+1, len(unmatched_res_order)):
-                if unmatched_res_order[j] == res_name:
-                    continue
-                else:
-                    break
-            if i == (len(unmatched_res_order) - 1):
-                num = 1
-                unmatched_res_order_count.append((res_name, num))
-                break
-            else:
-                num = j - i
-                unmatched_res_order_count.append((res_name, num))
-                i = j
+        # unmatched_res_order_count = []
+        # i = 0
+        # while i < len(unmatched_res_order):
+        #     res_name = unmatched_res_order[i]
+        #     for j in range(i+1, len(unmatched_res_order)):
+        #         if unmatched_res_order[j] == res_name:
+        #             continue
+        #         else:
+        #             break
+        #     if i == (len(unmatched_res_order) - 1):
+        #         num = 1
+        #         unmatched_res_order_count.append((res_name, num))
+        #         break
+        #     else:
+        #         num = j - i
+        #         unmatched_res_order_count.append((res_name, num))
+        #         i = j
+
+        # It is important the order used to assemble the structures. In order to
+        # avoid mismatch between the coordinates and the structures, it is convenient
+        # to use the unrecognized residue order
+        unmatched_res_order_count = [(k, len(list(g))) for k, g in itertools.groupby(unmatched_res_order)]
 
         # Merge all the unrecognized Parmed structure
         unrc_struc = parmed.Structure()
@@ -303,7 +309,7 @@ def applyffLigand(ligand, opt):
     # Parametrize the Ligand
     pmd = ff_utils.ParamLigStructure(ligand, opt['ligand_forcefield'], prefix_name=opt['prefix_name'])
     ligand_structure = pmd.parameterize()
-    ligand_structure.residues[0].name = "LIG"
+    ligand_structure.residues[0].name = opt['ligand_res_name']
     opt['Logger'].info("Ligand parametrized by using: {}".format(opt['ligand_forcefield']))
 
     return ligand_structure

@@ -1,7 +1,6 @@
 # OE Stack
 openeye-toolkits==2018.2.1
-OpenEye-datarecord==0.10.0
-OpenEye-cuberecord==0.8.8
-OpenEye-Big-Storage==0.0.5
+OpenEye-datarecord==0.10.1
+OpenEye-cuberecord==0.10.6
 OpenEye-orionclient==0.1.4
-OpenEye-floe==0.5.*
+OpenEye-floe==0.5.1

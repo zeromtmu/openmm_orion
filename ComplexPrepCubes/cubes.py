@@ -1,18 +1,13 @@
 import traceback
+from datarecord import OERecord
 from cuberecord import OERecordComputeCube
 from cuberecord.ports import RecordInputPort
-from datarecord import (Types,
-                        OEField)
-
-from cuberecord.oldrecordutil import (DEFAULT_MOL_NAME,
-                                      oe_mol_to_data_record)
 
 from floe.api import (ParallelMixin,
                       parameter)
 from openeye import oechem
 from oeommtools import (utils as oeommutils,
                         packmol)
-
 
 from ComplexPrepCubes import utils
 
@@ -64,9 +59,8 @@ class HydrationCube(ParallelMixin, OERecordComputeCube):
             opt = self.opt
 
             if not record.has_value(Fields.primary_molecule):
-                self.log.warn("Missing molecule '{}' field".format(Fields.primary_molecule.get_name()))
-                self.failure.emit(record)
-                return
+                self.log.error("Missing molecule '{}' field".format(Fields.primary_molecule.get_name()))
+                raise ValueError("Missing the Primary Molecule")
 
             system = record.get_value(Fields.primary_molecule)
 
@@ -148,6 +142,12 @@ class SolvationCube(ParallelMixin, OERecordComputeCube):
         help_text="Molar fractions of each solvent components. The molar fractions are specified"
                   "as comma separated molar fractions strings e.g. 0.5,0.2,0.3")
 
+    verbose = parameter.StringParameter(
+        'verbose',
+        required=True,
+        default=False,
+        help_text='Output Packmol log')
+
     geometry = parameter.StringParameter(
         'geometry',
         default='box',
@@ -178,11 +178,6 @@ class SolvationCube(ParallelMixin, OERecordComputeCube):
         help_text='Neutralize the solute by adding Na+ and Cl- counter-ions based on'
                   'the solute formal charge')
 
-    ref_structure = parameter.BooleanParameter(
-        'ref_structure',
-        default=True,
-        help_text="If Checked/True the molecule before solvation is attached to the solvated one")
-
     def begin(self):
         self.opt = vars(self.args)
         self.opt['Logger'] = self.log
@@ -193,9 +188,8 @@ class SolvationCube(ParallelMixin, OERecordComputeCube):
             opt = self.opt
 
             if not record.has_value(Fields.primary_molecule):
-                self.log.warn("Missing molecule '{}' field".format(Fields.primary_molecule.get_name()))
-                self.failure.emit(record)
-                return
+                self.log.error("Missing molecule '{}' field".format(Fields.primary_molecule.get_name()))
+                raise ValueError("Missing the Primary Molecule")
 
             solute = record.get_value(Fields.primary_molecule)
 
@@ -275,7 +269,7 @@ class ComplexPrepCube(OERecordComputeCube):
             self.count = 0
 
             if not record.has_value(Fields.primary_molecule):
-                self.log.warn("Missing Protein '{}' field".format(Fields.primary_molecule.get_name()))
+                self.log.error("Missing Protein '{}' field".format(Fields.primary_molecule.get_name()))
                 self.failure.emit(record)
                 return
 
@@ -295,9 +289,8 @@ class ComplexPrepCube(OERecordComputeCube):
             if port == 'intake':
 
                 if not record.has_value(Fields.primary_molecule):
-                    self.log.warn("Missing Ligand '{}' field".format(Fields.primary_molecule.get_name()))
-                    self.failure.emit(record)
-                    return
+                    self.log.error("Missing Ligand '{}' field".format(Fields.primary_molecule.get_name()))
+                    raise ValueError("Missing the Primary Molecule")
 
                 ligand = record.get_value(Fields.primary_molecule)
 
@@ -351,16 +344,20 @@ class ComplexPrepCube(OERecordComputeCube):
 
                     new_complex.SetTitle(complex_id_c)
 
-                    # Create new OERecord
-                    new_record = oe_mol_to_data_record(new_complex, include_sd_data=False)
+                    new_record = OERecord()
+
+                    new_record.set_value(Fields.primary_molecule, new_complex)
 
                     new_record.set_value(Fields.ligand, ligand)
                     new_record.set_value(Fields.protein, self.protein)
                     new_record.set_value(Fields.id, complex_id_c)
 
                     num_conf += 1
+
                     self.success.emit(new_record)
+
                 self.count += 1
+
         except:
             self.log.error(traceback.format_exc())
             # Return failed record

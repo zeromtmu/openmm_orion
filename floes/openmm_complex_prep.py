@@ -50,7 +50,7 @@ iprot.promote_parameter("protein_prefix", promoted_name="protein_prefix", defaul
 
 complx = ComplexPrepCube("Complex")
 
-solvate = HydrationCube("Hydration")
+solvate = SolvationCube("Hydration")
 
 ff = ForceFieldCube("ForceField")
 

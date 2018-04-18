@@ -6,7 +6,6 @@ from cuberecord import OERecordComputeCube
 from datarecord import (Types,
                         OEField)
 
-from cuberecord.oldrecordutil import DEFAULT_MOL_NAME
 from oeommtools import utils as oeommutils
 
 from ForceFieldCubes import utils as ffutils
@@ -89,14 +88,12 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
         try:
             opt = self.opt
 
-            system_field = OEField(DEFAULT_MOL_NAME, Types.Chem.Mol)
-
-            if not record.has_value(system_field):
-                self.log.warn("Missing molecule '{}' fied".format(system_field.get_name()))
+            if not record.has_value(Fields.primary_molecule):
+                self.log.warn("Missing molecule '{}' field".format(Fields.primary_molecule.get_name()))
                 self.failure.emit(record)
                 return
 
-            system = record.get_value(system_field)
+            system = record.get_value(Fields.primary_molecule)
 
             system_id_field = OEField("ID", Types.String)
 
@@ -207,7 +204,7 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
                                               constraints=app.HBonds,
                                               removeCMMotion=False)
 
-            record.set_value(system_field, system_reassembled)
+            record.set_value(Fields.primary_molecule, system_reassembled)
             record.set_value(system_id_field, system_id)
 
             md_stage = MDRecords.MDStageRecord(MDStageNames.SETUP, '',

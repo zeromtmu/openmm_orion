@@ -1,34 +1,30 @@
-from datarecord.types import ObjectBase
+from datarecord.types import CustomHandler
 import pickle
 import parmed
 
 
-class ParmedData(ObjectBase):
+class ParmedData(CustomHandler):
 
     @staticmethod
     def get_name():
         return 'Parmed'
 
-    @staticmethod
-    def validate(value):
+    @classmethod
+    def validate(cls, value):
         return isinstance(value, parmed.structure.Structure)
 
-    @staticmethod
-    def copy(value):
+    @classmethod
+    def copy(cls, value):
         return parmed.structure.copy(value)
 
     @staticmethod
-    def to_bytes(structure):
+    def serialize(structure):
         struct_dict = structure.__getstate__()
         pkl_obj = pickle.dumps(struct_dict)
         return bytes(pkl_obj)
 
     @staticmethod
-    def from_bytes(data):
+    def deserialize(data):
         new_structure = parmed.structure.Structure()
         new_structure.__setstate__(pickle.loads(bytes(data)))
         return new_structure
-
-    @staticmethod
-    def isPOD():
-        return False

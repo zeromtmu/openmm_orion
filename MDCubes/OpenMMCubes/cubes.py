@@ -1,11 +1,14 @@
 import traceback
+
 from floe.api import (ParallelMixin,
                       parameter)
 
 from cuberecord import OERecordComputeCube
 
 import MDCubes.OpenMMCubes.utils as utils
+
 from openeye import oechem
+
 import MDCubes.OpenMMCubes.simtools as simtools
 
 from Standards import (Fields,
@@ -13,7 +16,12 @@ from Standards import (Fields,
                        MDStageNames)
 
 from floe.api.orion import in_orion,  upload_file
+
 import tarfile
+
+import copy
+
+import textwrap
 
 
 class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
@@ -55,10 +63,10 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
     restraints = parameter.StringParameter(
         'restraints',
         default='',
-        help_text="""Mask selection to apply restraints. Possible keywords are:
-                  ligand, protein, water, ions, ca_protein, cofactors.
-                  The selection can be refined by using logical tokens:
-                  not, noh, and, or, diff, around""")
+        help_text=""""Mask selection to apply harmonic restraints. 
+        Possible keywords are: ligand, protein, water, ions, 
+        ca_protein, cofactors. The selection can be refined 
+        by using logical tokens: not, noh, and, or, diff, around""")
 
     restraintWt = parameter.DecimalParameter(
         'restraintWt',
@@ -69,9 +77,9 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
         'freeze',
         default='',
         help_text="""Mask selection to freeze atoms along the MD
-                  simulation. Possible keywords are: ligand, protein, water,
-                  ions, ca_protein, cofactors. The selection can be refined by
-                  using logical tokens: not, noh, and, or, diff, around""")
+        simulation. Possible keywords are: ligand, protein, water,
+        ions, ca_protein, cofactors. The selection can be refined by
+        using logical tokens: not, noh, and, or, diff, around""")
 
     temperature = parameter.DecimalParameter(
         'temperature',
@@ -89,7 +97,7 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
         'nonbondedCutoff',
         default=10,
         help_text="""The non-bonded cutoff in angstroms.
-        This is ignored if the non-bonded method is NoCutoff.""")
+        This is ignored if the non-bonded method is NoCutoff""")
 
     constraints = parameter.StringParameter(
         'constraints',
@@ -127,6 +135,14 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
         default=False,
         description='Enable/Disable Hydrogen Mass Repartitioning')
 
+    save_md_stage = parameter.BooleanParameter(
+        'save_md_stage',
+        default=True,
+        help_text="""Save the md simulation stage. If False all 
+        the MD simulation data will be discharged i.e. trajectory, 
+        logs etc. and just the final MD state will be updated""")
+
+
     def begin(self):
         self.opt = vars(self.args)
         self.opt['Logger'] = self.log
@@ -141,27 +157,41 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
             opt = dict(self.opt)
 
             # Logger string
-            str_logger = '------------CUBE PARAMETERS----------'
-            for k, v in opt.items():
-                if isinstance(v, int) or isinstance(v, str) or isinstance(v, float):
-                    str_logger += '\n' + k + ' = ' + str(v)
+            str_logger = '-'*32 + ' MIN CUBE PARAMETERS ' + '-'*32
+            for k, v in sorted(self.parameters().items()):
+                tmp_default = copy.deepcopy(v)
+
+                if v.default is None:
+                    tmp_default.default = 'None'
+                elif isinstance(v, parameter.BooleanParameter):
+                    if v.default:
+                        tmp_default.default = 'True'
+                    else:
+                        tmp_default.default = 'False'
+                else:
+                    tmp_description = textwrap.fill(" ".join(v.description.split()),
+                                                    subsequent_indent=' ' * 39, width=80)
+                    str_logger += "\n{:<25} = {:<10} {}".format(k,
+                                                                getattr(self.args, tmp_default.name),
+                                                                tmp_description)
+
+            str_logger += "\n{:<25} = {:<10}".format("Simulation Type", opt['SimType'])
 
             if not record.has_value(Fields.primary_molecule):
-                self.log.warn("Missing molecule '{}' field".format(Fields.primary_molecule.get_name()))
-                self.failure.emit(record)
-                return
+                opt['Logger'].error("Missing molecule '{}' field".format(Fields.primary_molecule.get_name()))
+                raise ValueError("Missing the Primary Molecule")
 
             system = record.get_value(Fields.primary_molecule)
 
             if not record.has_value(Fields.id):
-                self.log.warn("Missing molecule ID '{}' column".format(Fields.id.get_name()))
+                opt['Logger'].warn("Missing molecule ID '{}' column".format(Fields.id.get_name()))
                 system_id = system.GetTitle()
             else:
                 system_id = record.get_value(Fields.id)
 
             if not record.has_value(Fields.md_stages):
-                self.log.warn("Missing '{}' field".format(Fields.md_stages.get_name()))
-                self.failure.emit(record)
+                opt['Logger'].error("Missing '{}' field".format(Fields.md_stages.get_name()))
+                raise ValueError("The System does not seem to be parametrized by the Force Field")
 
             # Extract the MDStageRecord list
             md_stages = record.get_value(Fields.md_stages)
@@ -185,7 +215,7 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
                         new_args[k] = float(new_args[k])
                     except:
                         pass
-                self.log.info("Updating parameters for molecule: {}\n{}".format(system.GetTitle(), new_args))
+                opt['Logger'].info("Updating parameters for molecule: {}\n{}".format(system.GetTitle(), new_args))
                 opt.update(new_args)
 
             mdData = utils.MDData(parmed_structure)
@@ -195,17 +225,16 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
 
             # The system and the related parmed structure are passed as reference
             # and therefore, they are updated inside the simulation call
-            self.log.info('MINIMIZING System: %s' % system_id)
+            opt['Logger'].info('MINIMIZING System: {}'.format(system_id))
             simtools.simulation(mdData, opt)
 
             record.set_value(Fields.primary_molecule, system)
 
-            md_stage_record = MDRecords.MDStageRecord(MDStageNames.MINIMIZATION, opt['str_logger'],
-                                                      MDRecords.MDSystemRecord(system, mdData.structure))
-
-            md_stages.append(md_stage_record)
-
-            record.set_value(Fields.md_stages, md_stages)
+            if['save_md_stage']:
+                md_stage_record = MDRecords.MDStageRecord(MDStageNames.MINIMIZATION, opt['str_logger'],
+                                                          MDRecords.MDSystemRecord(system, mdData.structure))
+                md_stages.append(md_stage_record)
+                record.set_value(Fields.md_stages, md_stages)
 
             self.success.emit(record)
 
@@ -253,16 +282,16 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
 
     time = parameter.DecimalParameter(
         'time',
-        default=10.0,
-        help_text="NVT simulation time in picoseconds")
+        default=0.01,
+        help_text="NVT simulation time in nanoseconds")
 
     restraints = parameter.StringParameter(
         'restraints',
         default='',
-        help_text=""""Mask selection to apply restraints. Possible keywords are:
-                  ligand, protein, water, ions, ca_protein, cofactors.
-                  The selection can be refined by using logical tokens:
-                  not, noh, and, or, diff, around""")
+        help_text=""""Mask selection to apply harmonic restraints. 
+        Possible keywords are: ligand, protein, water, ions, 
+        ca_protein, cofactors. The selection can be refined 
+        by using logical tokens: not, noh, and, or, diff, around""")
 
     restraintWt = parameter.DecimalParameter(
         'restraintWt',
@@ -273,9 +302,9 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
         'freeze',
         default='',
         help_text="""Mask selection to freeze atoms along the MD
-                  simulation. Possible keywords are: ligand, protein, water,
-                  ions, ca_protein, cofactors. The selection can be refined by
-                  using logical tokens: not, noh, and, or, diff, around""")
+        simulation. Possible keywords are: ligand, protein, water,
+        ions, ca_protein, cofactors. The selection can be refined by
+        using logical tokens: not, noh, and, or, diff, around""")
 
     nonbondedMethod = parameter.StringParameter(
         'nonbondedMethod',
@@ -302,14 +331,14 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
     trajectory_interval = parameter.DecimalParameter(
         'trajectory_interval',
         default=0.0,
-        help_text="time interval for trajectory snapshots in ps. If 0 the trajectory"
-                  "file will not be generated")
+        help_text="""Time interval for trajectory snapshots in ns. 
+        If 0 the trajectory file will not be generated""")
 
     reporter_interval = parameter.DecimalParameter(
         'reporter_interval',
         default=0.0,
-        help_text="Time interval for reporting data in ps. If 0 the reporter file"
-                  "will not be generated")
+        help_text="""Time interval for reporting data in ns. 
+        If 0 the reporter file will not be generated""")
 
     suffix = parameter.StringParameter(
         'suffix',
@@ -319,17 +348,17 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
     upload_ui = parameter.BooleanParameter(
         'upload_ui',
         default=False,
-        description='Upload the generated files to the Orion UI')
+        help_text='Upload the generated files to the Orion UI')
 
     center = parameter.BooleanParameter(
         'center',
         default=False,
-        description='Center the system to the OpenMM unit cell')
+        help_text='Center the system to the OpenMM unit cell')
 
     verbose = parameter.BooleanParameter(
         'verbose',
         default=True,
-        description='Increase log file verbosity')
+        help_text='Increase log file verbosity')
 
     platform = parameter.StringParameter(
         'platform',
@@ -346,7 +375,14 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
     hmr = parameter.BooleanParameter(
         'hmr',
         default=False,
-        description='Enable/Disable Hydrogen Mass Repartitioning')
+        help_text='Enable/Disable Hydrogen Mass Repartitioning')
+
+    save_md_stage = parameter.BooleanParameter(
+        'save_md_stage',
+        default=True,
+        help_text="""Save the md simulation stage. If False all 
+        the MD simulation data will be discharged i.e. trajectory, 
+        logs etc. and just the final MD state will be updated""")
 
     def begin(self):
         self.opt = vars(self.args)
@@ -363,27 +399,42 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
             opt = dict(self.opt)
 
             # Logger string
-            str_logger = '------------CUBE PARAMETERS----------'
-            for k, v in opt.items():
-                if isinstance(v, int) or isinstance(v, str) or isinstance(v, float):
-                    str_logger += '\n' + k + ' = ' + str(v)
+            # Logger string
+            str_logger = '-'*32 + ' NVT CUBE PARAMETERS ' + '-'*32
+            for k, v in sorted(self.parameters().items()):
+                tmp_default = copy.deepcopy(v)
+
+                if v.default is None:
+                    tmp_default.default = 'None'
+                elif isinstance(v, parameter.BooleanParameter):
+                    if v.default:
+                        tmp_default.default = 'True'
+                    else:
+                        tmp_default.default = 'False'
+                else:
+                    tmp_description = textwrap.fill(" ".join(v.description.split()),
+                                                    subsequent_indent=' ' * 39, width=80)
+                    str_logger += "\n{:<25} = {:<10} {}".format(k,
+                                                                getattr(self.args, tmp_default.name),
+                                                                tmp_description)
+
+            str_logger += "\n{:<25} = {:<10}".format("Simulation Type", opt['SimType'])
 
             if not record.has_value(Fields.primary_molecule):
-                self.log.warn("Missing molecule '{}' field".format(Fields.primary_molecule.get_name()))
-                self.failure.emit(record)
-                return
+                opt['Logger'].error("Missing molecule '{}' field".format(Fields.primary_molecule.get_name()))
+                raise ValueError("Missing the Primary Molecule")
 
             system = record.get_value(Fields.primary_molecule)
 
             if not record.has_value(Fields.id):
-                self.log.warn("Missing molecule ID '{}' field".format(Fields.id.get_name()))
+                opt['Logger'].warn("Missing molecule ID '{}' field".format(Fields.id.get_name()))
                 system_id = system.GetTitle()
             else:
                 system_id = record.get_value(Fields.id)
 
             if not record.has_value(Fields.md_stages):
-                self.log.warn("Missing '{}' field".format(Fields.md_stages.get_name()))
-                self.failure.emit(record)
+                opt['Logger'].warn("Missing '{}' field".format(Fields.md_stages.get_name()))
+                raise ValueError("The System does not seem to be parametrized by the Force Field")
 
             # Extract the MDStageRecord list
             md_stages = record.get_value(Fields.md_stages)
@@ -407,10 +458,10 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
                         new_args[k] = float(new_args[k])
                     except:
                         pass
-                self.log.info("Updating parameters for molecule: {}\n{}".format(system.GetTitle(), new_args))
+                opt['Logger'].info("Updating parameters for molecule: {}\n{}".format(system.GetTitle(), new_args))
                 opt.update(new_args)
 
-            opt['outfname'] = '{}-{}'.format(system_id, self.opt['suffix'])
+            opt['outfname'] = '{}-{}'.format(system_id, opt['suffix'])
 
             mdData = utils.MDData(parmed_structure)
 
@@ -419,7 +470,7 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
 
             # The system and the related parmed structure are passed as reference
             # and therefore, they are updated
-            self.log.info('START NVT SIMULATION: %s' % system_id)
+            opt['Logger'].info('START NVT SIMULATION: {}'.format(system_id))
             simtools.simulation(mdData, opt)
 
             # Trajectory
@@ -454,12 +505,12 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
 
             record.set_value(Fields.primary_molecule, system)
 
-            md_stage_record = MDRecords.MDStageRecord(MDStageNames.NVT, opt['str_logger'],
-                                                      MDRecords.MDSystemRecord(system, mdData.structure), trajectory=lf)
-
-            md_stages.append(md_stage_record)
-
-            record.set_value(Fields.md_stages, md_stages)
+            if opt['save_md_stage']:
+                md_stage_record = MDRecords.MDStageRecord(MDStageNames.NVT, opt['str_logger'],
+                                                          MDRecords.MDSystemRecord(system, mdData.structure),
+                                                          trajectory=lf)
+                md_stages.append(md_stage_record)
+                record.set_value(Fields.md_stages, md_stages)
 
             self.success.emit(record)
 
@@ -513,29 +564,29 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
 
     time = parameter.DecimalParameter(
         'time',
-        default=10.0,
-        help_text="NPT simulation time in picoseconds")
+        default=0.01,
+        help_text="NPT simulation time in nanoseconds")
 
     restraints = parameter.StringParameter(
         'restraints',
         default='',
-        help_text=""""Mask selection to apply restraints. Possible keywords are:
-                  ligand, protein, water, ions, ca_protein, cofactors.
-                  The selection can be refined by using logical tokens:
-                  not, noh, and, or, diff, around""")
+        help_text=""""Mask selection to apply harmonic restraints. 
+        Possible keywords are: ligand, protein, water, ions, 
+        ca_protein, cofactors. The selection can be refined 
+        by using logical tokens: not, noh, and, or, diff, around""")
 
     restraintWt = parameter.DecimalParameter(
         'restraintWt',
         default=2.0,
-        help_text="Restraint weight for xyz atom restraints in kcal/(mol ang^2)")
+        help_text="Restraint weight for xyz atom restraints in kcal/(mol A^2)")
 
     freeze = parameter.StringParameter(
         'freeze',
         default='',
         help_text="""Mask selection to freeze atoms along the MD simulation.
-                  Possible keywords are: ligand, protein, water, ions, ca_protein,
-                  cofactors. The selection can be refined by using logical tokens:
-                  not, noh, and, or, diff, around""")
+        Possible keywords are: ligand, protein, water, ions, ca_protein,
+        cofactors. The selection can be refined by using logical tokens:
+        not, noh, and, or, diff, around""")
 
     nonbondedMethod = parameter.StringParameter(
         'nonbondedMethod',
@@ -561,15 +612,15 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
 
     trajectory_interval = parameter.DecimalParameter(
         'trajectory_interval',
-        default=0.5,
-        help_text="time interval for trajectory snapshots in ps. If 0 the trajectory"
-                  "file will not be generated")
+        default=0.0,
+        help_text="""Time interval for trajectory snapshots in ns. 
+        If 0 the trajectory file will not be generated""")
 
     reporter_interval = parameter.DecimalParameter(
         'reporter_interval',
-        default=0.5,
-        help_text="Time interval for reporting data in ps. If 0 the reporter file"
-                  "will not be generated")
+        default=0.0,
+        help_text="""Time interval for reporting data in ns. 
+        If 0 the reporter file will not be generated""")
 
     suffix = parameter.StringParameter(
         'suffix',
@@ -579,17 +630,17 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
     upload_ui = parameter.BooleanParameter(
         'upload_ui',
         default=False,
-        description='Upload the generated files to the Orion UI')
+        help_text='Upload the generated files to the Orion UI')
 
     center = parameter.BooleanParameter(
         'center',
         default=False,
-        description='Center the system to the OpenMM unit cell')
+        help_text='Center the system to the OpenMM unit cell')
 
     verbose = parameter.BooleanParameter(
         'verbose',
         default=True,
-        description='Increase log file verbosity.')
+        help_text='Increase log file verbosity.')
 
     platform = parameter.StringParameter(
         'platform',
@@ -606,7 +657,14 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
     hmr = parameter.BooleanParameter(
         'hmr',
         default=False,
-        description='Enable/Disable Hydrogen Mass Repartitioning')
+        help_text='Enable/Disable Hydrogen Mass Repartitioning')
+
+    save_md_stage = parameter.BooleanParameter(
+        'save_md_stage',
+        default=True,
+        help_text="""Save the md simulation stage. If False all 
+        the MD simulation data will be discharged i.e. trajectory, 
+        logs etc. and just the final MD state will be updated""")
 
     def begin(self):
         self.opt = vars(self.args)
@@ -623,27 +681,41 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
             opt = dict(self.opt)
 
             # Logger string
-            str_logger = '------------CUBE PARAMETERS----------'
-            for k, v in opt.items():
-                if isinstance(v, int) or isinstance(v, str) or isinstance(v, float):
-                    str_logger += '\n' + k + ' = ' + str(v)
+            str_logger = '-'*32 + ' NPT CUBE PARAMETERS ' + '-'*32
+            for k, v in sorted(self.parameters().items()):
+                tmp_default = copy.deepcopy(v)
+
+                if v.default is None:
+                    tmp_default.default = 'None'
+                elif isinstance(v, parameter.BooleanParameter):
+                    if v.default:
+                        tmp_default.default = 'True'
+                    else:
+                        tmp_default.default = 'False'
+                else:
+                    tmp_description = textwrap.fill(" ".join(v.description.split()),
+                                                    subsequent_indent=' ' * 39, width=80)
+                    str_logger += "\n{:<25} = {:<10} {}".format(k,
+                                                                getattr(self.args, tmp_default.name),
+                                                                tmp_description)
+
+            str_logger += "\n{:<25} = {:<10}".format("Simulation Type", opt['SimType'])
 
             if not record.has_value(Fields.primary_molecule):
-                self.log.warn("Missing molecule '{}' field".format(Fields.primary_molecule.get_name()))
-                self.failure.emit(record)
-                return
+                opt['Logger'].error("Missing molecule '{}' field".format(Fields.primary_molecule.get_name()))
+                raise ValueError("Missing the Primary Molecule")
 
             system = record.get_value(Fields.primary_molecule)
 
             if not record.has_value(Fields.id):
-                self.log.warn("Missing molecule ID '{}' field".format(Fields.id.get_name()))
+                opt['Logger'].warn("Missing molecule ID '{}' field".format(Fields.id.get_name()))
                 system_id = system.GetTitle()
             else:
                 system_id = record.get_value(Fields.id)
 
             if not record.has_value(Fields.md_stages):
-                self.log.warn("Missing '{}' field".format(Fields.md_stages.get_name()))
-                self.failure.emit(record)
+                opt['Logger'].warn("Missing '{}' field".format(Fields.md_stages.get_name()))
+                raise ValueError("The System does not seem to be parametrized by the Force Field")
 
             # Extract the MDStageRecord list
             md_stages = record.get_value(Fields.md_stages)
@@ -668,11 +740,11 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
                         new_args[k] = float(new_args[k])
                     except:
                         pass
-                self.log.info("Updating parameters for molecule: {}\n{}".format(system.GetTitle(), new_args))
+                opt['Logger'].info("Updating parameters for molecule: {}\n{}".format(system.GetTitle(), new_args))
 
                 opt.update(new_args)
 
-            opt['outfname'] = '{}-{}'.format(system_id, self.opt['suffix'])
+            opt['outfname'] = '{}-{}'.format(system_id, opt['suffix'])
 
             mdData = utils.MDData(parmed_structure)
 
@@ -681,7 +753,7 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
 
             # The system and the related parmed structure are passed as reference
             # and therefore, they are updated
-            self.log.info('START NPT SIMULATION %s' % system_id)
+            opt['Logger'].info('START NPT SIMULATION: {}'.format(system_id))
             simtools.simulation(mdData, opt)
 
             # Trajectory
@@ -715,12 +787,12 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
 
             record.set_value(Fields.primary_molecule, system)
 
-            md_stage_record = MDRecords.MDStageRecord(MDStageNames.NPT,  opt['str_logger'],
-                                                      MDRecords.MDSystemRecord(system, mdData.structure), trajectory=lf)
-
-            md_stages.append(md_stage_record)
-
-            record.set_value(Fields.md_stages, md_stages)
+            if opt['save_md_stage']:
+                md_stage_record = MDRecords.MDStageRecord(MDStageNames.NPT,  opt['str_logger'],
+                                                          MDRecords.MDSystemRecord(system, mdData.structure),
+                                                          trajectory=lf)
+                md_stages.append(md_stage_record)
+                record.set_value(Fields.md_stages, md_stages)
 
             self.success.emit(record)
 

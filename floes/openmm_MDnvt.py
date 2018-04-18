@@ -8,7 +8,7 @@ job = WorkFloe("NVT Simulation")
 job.description = """
 NVT simulation of an OpenMM-ready System
 
-Ex: python floes/openmm_MDnvt.py --system complex.oeb --ofs-data_out nvt.oeb --picosec 10.0
+Ex: python floes/openmm_MDnvt.py --system complex.oeb --ofs-data_out nvt.oeb --nanoseconds 0.01
 
 Parameters:
 -----------
@@ -32,7 +32,7 @@ ifs.promote_parameter("data_in", promoted_name="system", title='System Input Fil
                       description="System input file")
 
 nvt = OpenMMNvtCube('nvt')
-nvt.promote_parameter('time', promoted_name='picosec', default=10.0)
+nvt.promote_parameter('time', promoted_name='nanoseconds', default=0.01)
 nvt.promote_parameter('temperature', promoted_name='temperature', default=300.0,
                       description='Selected temperature in K')
 # Restraints
@@ -40,11 +40,10 @@ nvt.promote_parameter('restraints', promoted_name='restraints', default='noh (li
 nvt.promote_parameter('restraintWt', promoted_name='restraintWt', default=5.0, description='Restraint weight')
 
 # Trajectory and logging info frequency intervals
-nvt.promote_parameter('trajectory_interval', promoted_name='trajectory_interval', default=0.5,
-                      description='Trajectory saving interval in ps')
-nvt.promote_parameter('reporter_interval', promoted_name='reporter_interval', default=1.0,
-                      description='Reporter saving interval in ps')
-
+nvt.promote_parameter('trajectory_interval', promoted_name='trajectory_interval', default=0.0005,
+                      description='Trajectory saving interval in ns')
+nvt.promote_parameter('reporter_interval', promoted_name='reporter_interval', default=0.001,
+                      description='Reporter saving interval in ns')
 
 ofs = DataSetWriterCube('ofs', title='OFS-Success')
 

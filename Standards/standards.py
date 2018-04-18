@@ -3,7 +3,7 @@ from floe.api.orion import in_orion
 
 from Standards.utils import ParmedData
 
-from cuberecord.oldrecordutil import DEFAULT_MOL_NAME
+from datarecord import OEPrimaryMolField
 
 from datarecord import (Types,
                         Meta,
@@ -12,7 +12,7 @@ from datarecord import (Types,
                         OERecord)
 
 if in_orion():
-    from big_storage import LargeFileDataType
+    from cuberecord import OELargeFileDataType
 
 
 # ------------ Stage Standard Names ------------- #
@@ -38,7 +38,7 @@ class Fields:
     protein = OEField("Protein", Types.Chem.Mol, meta=OEFieldMeta().set_option(Meta.Hints.Chem.Protein))
 
     # Primary Molecule
-    primary_molecule = OEField(DEFAULT_MOL_NAME, Types.Chem.Mol)
+    primary_molecule = OEPrimaryMolField()
 
     # Parmed Structure Field
     structure = OEField('Structure', ParmedData)
@@ -53,19 +53,19 @@ class Fields:
     log_data = OEField('Log_data', Types.String)
 
     # MD System Field
-    md_system = OEField("MDSystem", Types.DataRecord)
+    md_system = OEField("MDSystem", Types.Record)
 
     # Trajectory
     if in_orion():
-        trajectory = OEField("Trajectory", LargeFileDataType)
+        trajectory = OEField("Trajectory", OELargeFileDataType)
     else:
         trajectory = OEField("Trajectory", Types.String)
 
     # Stage list Field
-    md_stages = OEField("MDStages", Types.DataRecordVec)
+    md_stages = OEField("MDStages", Types.RecordVec)
 
     # Stage Field
-    md_stage = OEField("MDStages", Types.DataRecord)
+    md_stage = OEField("MDStages", Types.Record)
 
 
 # ---------------- Record Standards -------------- #
@@ -80,7 +80,6 @@ class MDRecords:
             super().__init__()
             self.set_value(Fields.topology, molecule)
             self.set_value(Fields.structure, structure)
-
 
     class MDStageRecord(OERecord):
 

@@ -99,15 +99,15 @@ job.add_cube(minComplex)
 
 # NVT simulation. Here the assembled system is warmed up to the final selected temperature
 warmupComplex = OpenMMNvtCube('warmupComplex', title='warmupComplex')
-warmupComplex.promote_parameter('time', promoted_name='warm_psec', default=20.0,
-                                description='Length of MD run in picoseconds')
+warmupComplex.promote_parameter('time', promoted_name='warm_ns', default=0.02,
+                                description='Length of MD run in nanoseconds')
 warmupComplex.promote_parameter('restraints', promoted_name='w_restraints', default="noh (ligand or protein)",
                                 description='Select mask to apply restarints')
 warmupComplex.promote_parameter('restraintWt', promoted_name='w_restraintWt', default=2.0, description='Restraint weight')
 warmupComplex.promote_parameter('trajectory_interval', promoted_name='w_trajectory_interval', default=0.0,
-                                description='Trajectory saving interval')
+                                description='Trajectory saving interval in ns')
 warmupComplex.promote_parameter('reporter_interval', promoted_name='w_reporter_interval', default=0.0,
-                                description='Reporter saving interval')
+                                description='Reporter saving interval in ns')
 warmupComplex.promote_parameter('suffix', promoted_name='w_suffix_complex', default='warmup_complex',
                                 description='Equilibration suffix name')
 job.add_cube(warmupComplex)
@@ -119,47 +119,47 @@ job.add_cube(warmupComplex)
 
 # NPT Equilibration stage 1
 equil1Complex = OpenMMNptCube('equil1Complex', title='equil1Complex')
-equil1Complex.promote_parameter('time', promoted_name='eq1_psec', default=20.0,
-                                description='Length of MD run in picoseconds')
+equil1Complex.promote_parameter('time', promoted_name='eq1_ns', default=0.02,
+                                description='Length of MD run in nanoseconds')
 equil1Complex.promote_parameter('restraints', promoted_name='eq1_restraints', default="noh (ligand or protein)",
                                 description='Select mask to apply restarints')
 equil1Complex.promote_parameter('restraintWt', promoted_name='eq1_restraintWt', default=2.0, description='Restraint weight')
 equil1Complex.promote_parameter('trajectory_interval', promoted_name='eq1_trajectory_interval', default=0.0,
-                                description='Trajectory saving interval')
+                                description='Trajectory saving interval in ns')
 equil1Complex.promote_parameter('reporter_interval', promoted_name='eq1_reporter_interval', default=0.0,
-                                description='Reporter saving interval')
+                                description='Reporter saving interval in ns')
 equil1Complex.promote_parameter('suffix', promoted_name='eq1_suffix', default='equil1',
                                 description='Equilibration suffix name')
 job.add_cube(equil1Complex)
 
 # NPT Equilibration stage 2
 equil2Complex = OpenMMNptCube('equil2Complex', title='equil2Complex')
-equil2Complex.promote_parameter('time', promoted_name='eq2_psec', default=20.0,
-                                description='Length of MD run in picoseconds')
+equil2Complex.promote_parameter('time', promoted_name='eq2_ns', default=0.02,
+                                description='Length of MD run in nanoseconds')
 equil2Complex.promote_parameter('restraints', promoted_name='eq2_restraints', default="noh (ligand or protein)",
                                 description='Select mask to apply restarints')
 equil2Complex.promote_parameter('restraintWt', promoted_name='eq2_restraintWt', default=0.5,
                                 description='Restraint weight')
 equil2Complex.promote_parameter('trajectory_interval', promoted_name='eq2_trajectory_interval', default=0.0,
-                                description='Trajectory saving interval')
+                                description='Trajectory saving interval in ns')
 equil2Complex.promote_parameter('reporter_interval', promoted_name='eq2_reporter_interval', default=0.0,
-                                description='Reporter saving interval')
+                                description='Reporter saving interval in ns')
 equil2Complex.promote_parameter('suffix', promoted_name='eq2_suffix', default='equil2',
                                 description='Equilibration suffix name')
 job.add_cube(equil2Complex)
 
 # NPT Equilibration stage 3
 equil3Complex = OpenMMNptCube('equil3Complex', title='equil3Complex')
-equil3Complex.promote_parameter('time', promoted_name='eq3_psec', default=20.0,
-                                description='Length of MD run in picoseconds')
+equil3Complex.promote_parameter('time', promoted_name='eq3_ns', default=0.02,
+                                description='Length of MD run in nanoseconds')
 equil3Complex.promote_parameter('restraints', promoted_name='eq3_restraints', default="ca_protein or (noh ligand)",
                                 description='Select mask to apply restarints')
 equil3Complex.promote_parameter('restraintWt', promoted_name='eq3_restraintWt', default=0.1,
                                 description='Restraint weight')
 equil3Complex.promote_parameter('trajectory_interval', promoted_name='eq3_trajectory_interval', default=0.0,
-                                description='Trajectory saving interval')
+                                description='Trajectory saving interval in ns')
 equil3Complex.promote_parameter('reporter_interval', promoted_name='eq3_reporter_interval', default=0.0,
-                                description='Reporter saving interval')
+                                description='Reporter saving interval in ns')
 equil3Complex.promote_parameter('suffix', promoted_name='eq3_suffix', default='equil3',
                                 description='Equilibration suffix name')
 job.add_cube(equil3Complex)
@@ -190,16 +190,16 @@ job.add_cube(minimizeLigand)
 
 # Ligand NVT Warm-up
 warmupLigand = OpenMMNvtCube('warmupLigand', title='warmupLigand')
-warmupLigand.promote_parameter('time', promoted_name='warm_psec', default=20.0,
-                               description='Length of MD run in picoseconds')
+warmupLigand.promote_parameter('time', promoted_name='warm_ns', default=0.02,
+                               description='Length of MD run in nanoseconds')
 warmupLigand.promote_parameter('restraints', promoted_name='w_restraints', default="noh ligand",
                                description='Select mask to apply restarints')
 warmupLigand.promote_parameter('restraintWt', promoted_name='w_restraintWt', default=2.0,
                                description='Restraint weight in kcal/(mol A^2')
 warmupLigand.promote_parameter('trajectory_interval', promoted_name='w_trajectory_interval', default=0.0,
-                               description='Trajectory saving interval')
+                               description='Trajectory saving interval in ns')
 warmupLigand.promote_parameter('reporter_interval', promoted_name='w_reporter_interval', default=0.0,
-                               description='Reporter saving interval')
+                               description='Reporter saving interval in ns')
 warmupLigand.promote_parameter('suffix', promoted_name='w_suffix_ligand', default='warmup_ligand',
                                description='Equilibration suffix name')
 # warmupLigand.promote_parameter('center', promoted_name='center', default=True)
@@ -207,16 +207,16 @@ job.add_cube(warmupLigand)
 
 # Ligand NPT Equilibration stage
 equilLigand = OpenMMNptCube('equilLigand', title='equilLigand')
-equilLigand.promote_parameter('time', promoted_name='eq_psec', default=20.0,
-                              description='Length of MD run in picoseconds')
+equilLigand.promote_parameter('time', promoted_name='eq_ns', default=0.02,
+                              description='Length of MD run in nanoseconds')
 equilLigand.promote_parameter('restraints', promoted_name='eq_restraints', default="noh ligand",
                               description='Select mask to apply restraints')
 equilLigand.promote_parameter('restraintWt', promoted_name='eq_restraintWt', default=0.1,
                               description='Restraint weight in kcal/(mol A^2')
 equilLigand.promote_parameter('trajectory_interval', promoted_name='eq_trajectory_interval', default=0.0,
-                              description='Trajectory saving interval')
+                              description='Trajectory saving interval in ns')
 equilLigand.promote_parameter('reporter_interval', promoted_name='eq_reporter_interval', default=0.0,
-                              description='Reporter saving interval')
+                              description='Reporter saving interval in ns')
 equilLigand.promote_parameter('suffix', promoted_name='eq_suffix', default='equil',
                               description='Equilibration suffix name')
 job.add_cube(equilLigand)

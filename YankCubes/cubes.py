@@ -10,11 +10,7 @@ from datarecord import (Types,
                         OEField,
                         OERecord)
 
-from cuberecord.oldrecordutil import DEFAULT_MOL_NAME
-
 import MDCubes.OpenMMCubes.utils as omm_utils
-
-from oeommtools import utils as oeommutils
 
 from openeye import oechem
 
@@ -30,7 +26,8 @@ import os
 
 import itertools
 
-from YankCubes.yank_templates import yank_solvation_template, yank_binding_template
+from YankCubes.yank_templates import (yank_solvation_template,
+                                      yank_binding_template)
 
 from yank.experiment import ExperimentBuilder
 
@@ -39,6 +36,10 @@ from YankCubes import utils as yankutils
 from Standards import (MDStageNames,
                        Fields,
                        MDRecords)
+
+import copy
+
+import textwrap
 
 
 class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
@@ -130,15 +131,27 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
             opt = dict(self.opt)
 
             # Logger string
-            str_logger = '------------CUBE PARAMETERS----------'
-            for k, v in opt.items():
-                if isinstance(v, int) or isinstance(v, str) or isinstance(v, float):
-                    str_logger += '\n' + k + ' = ' + str(v)
+            str_logger = '-' * 32 + ' YANK SOLV CUBE PARAMETERS ' + '-' * 32
+            for k, v in sorted(self.parameters().items()):
+                tmp_default = copy.deepcopy(v)
+
+                if v.default is None:
+                    tmp_default.default = 'None'
+                elif isinstance(v, parameter.BooleanParameter):
+                    if v.default:
+                        tmp_default.default = 'True'
+                    else:
+                        tmp_default.default = 'False'
+                else:
+                    tmp_description = textwrap.fill(" ".join(v.description.split()),
+                                                    subsequent_indent=' ' * 39, width=80)
+                    str_logger += "\n{:<25} = {:<10} {}".format(k,
+                                                                getattr(self.args, tmp_default.name),
+                                                                tmp_description)
 
             if not record.has_value(Fields.primary_molecule):
-                self.log.warn("Missing molecule '{}' field".format(Fields.primary_molecule.get_name()))
-                self.failure.emit(record)
-                return
+                self.log.error("Missing molecule '{}' field".format(Fields.primary_molecule.get_name()))
+                raise ValueError("Missing the Primary Molecule")
 
             system = record.get_value(Fields.primary_molecule)
 
@@ -155,8 +168,8 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                 opt.update(new_args)
 
             if not record.has_value(Fields.md_stages):
-                self.log.warn("Missing '{}' field".format(Fields.md_stages.get_name()))
-                self.failure.emit(record)
+                self.log.error("Missing '{}' field".format(Fields.md_stages.get_name()))
+                raise ValueError("The System does not seem to be parametrized by the Force Field")
 
             # Extract the MDStageRecord list
             md_stages = record.get_value(Fields.md_stages)
@@ -290,7 +303,7 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                 # Create Large file object if required
                 lf = omm_utils.upload(tar_fn)
 
-                str_logger += '\n'+'------------ SIMULATION ----------'
+                str_logger += '\n' + '-' * 32 + ' SIMULATION ' + '-' * 32
 
                 with open(os.path.join(output_directory, "experiments/experiments.log"), 'r') as flog:
                     str_logger += '\n'+flog.read()
@@ -365,8 +378,8 @@ class SyncBindingFECube(OERecordComputeCube):
                 complex_solvated = pair[1].get_value(Fields.primary_molecule)
                 new_record.set_value(Fields.primary_molecule, complex_solvated)
 
-                ligand_solvated_field = OEField("ligand_solvated", Types.DataRecord)
-                complex_solvated_field = OEField("complex_solvated", Types.DataRecord)
+                ligand_solvated_field = OEField("ligand_solvated", Types.Record)
+                complex_solvated_field = OEField("complex_solvated", Types.Record)
                 new_record.set_value(ligand_solvated_field, pair[0].get_value(Fields.md_stages)[-1].get_value(Fields.md_system))
                 new_record.set_value(complex_solvated_field, pair[1].get_value(Fields.md_stages)[-1].get_value(Fields.md_system))
 
@@ -481,10 +494,23 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
             opt = dict(self.opt)
 
             # Logger string
-            str_logger = '------------CUBE PARAMETERS----------'
-            for k, v in opt.items():
-                if isinstance(v, int) or isinstance(v, str) or isinstance(v, float):
-                    str_logger += '\n' + k + ' = ' + str(v)
+            str_logger = '-' * 32 + ' YANK BINDING CUBE PARAMETERS ' + '-' * 32
+            for k, v in sorted(self.parameters().items()):
+                tmp_default = copy.deepcopy(v)
+
+                if v.default is None:
+                    tmp_default.default = 'None'
+                elif isinstance(v, parameter.BooleanParameter):
+                    if v.default:
+                        tmp_default.default = 'True'
+                    else:
+                        tmp_default.default = 'False'
+                else:
+                    tmp_description = textwrap.fill(" ".join(v.description.split()),
+                                                    subsequent_indent=' ' * 39, width=80)
+                    str_logger += "\n{:<25} = {:<10} {}".format(k,
+                                                                getattr(self.args, tmp_default.name),
+                                                                tmp_description)
 
             complex = record.get_value(Fields.primary_molecule)
 
@@ -492,9 +518,8 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                 solvated_ligand_record_field = OEField("ligand_solvated", Types.DataRecord)
 
                 if not record.has_value(solvated_ligand_record_field):
-                    self.log.warn("Missing molecule '{}' field".format(solvated_ligand_record_field.get_name()))
-                    self.failure.emit(record)
-                    return
+                    self.log.error("Missing molecule '{}' field".format(solvated_ligand_record_field.get_name()))
+                    raise ValueError("The parametrized solvated ligand is missing")
 
                 solvated_ligand_mdsystem_record = record.get_value(solvated_ligand_record_field)
 
@@ -503,8 +528,8 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                 solvated_complex_record_field = OEField("complex_solvated", Types.DataRecord)
 
                 if not record.has_value(solvated_complex_record_field):
-                    self.log.warn("Missing molecule '{}' field".format(solvated_complex_record_field.get_name()))
-                    self.failure.emit(record)
+                    self.log.error("Missing molecule '{}' field".format(solvated_complex_record_field.get_name()))
+                    raise ValueError("The parametrized solvated complex is missing")
 
                 solvated_complex_mdsystem_record = record.get_value(solvated_complex_record_field)
 
@@ -626,7 +651,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                 # Create Large file object if required
                 lf = omm_utils.upload(tar_fn)
 
-                str_logger += '\n'+'------------ SIMULATION ----------'
+                str_logger += '\n' + '-' * 32 + ' SIMULATION ' + '-' * 32
 
                 with open(os.path.join(output_directory, "experiments/experiments.log"), 'r') as flog:
                     str_logger += '\n' + flog.read()
@@ -635,16 +660,15 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                                                           str_logger,
                                                           MDRecords.MDSystemRecord(complex,
                                                                                    solvated_complex_parmed_structure),
-                                                                                   trajectory=lf)
-
+                                                          trajectory=lf)
                 if opt['rerun']:
                     md_stages.append(md_stage_record)
                     record.set_value(Fields.md_stages, md_stages)
-
                 else:
                     record = OERecord()
-                    record.set_value(Fields.primary_molecule, complex)
                     record.set_value(Fields.md_stages, [md_stage_record])
+
+            record.set_value(Fields.primary_molecule, complex)
 
             self.emit(record)
 

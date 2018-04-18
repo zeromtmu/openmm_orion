@@ -84,16 +84,16 @@ cube_list.append(minimize)
 
 # NVT Warm-up
 warmup = OpenMMNvtCube('warmup', title='warmup')
-warmup.promote_parameter('time', promoted_name='warm_psec', default=20.0,
-                         description='Length of MD run in picoseconds')
+warmup.promote_parameter('time', promoted_name='warm_ns', default=0.02,
+                         description='Length of MD run in nanoseconds')
 warmup.promote_parameter('restraints', promoted_name='w_restraints', default="noh ligand",
                          description='Select mask to apply restarints')
 warmup.promote_parameter('restraintWt', promoted_name='w_restraintWt', default=2.0,
                          description='Restraint weight in kcal/(mol A^2')
 warmup.promote_parameter('trajectory_interval', promoted_name='w_trajectory_interval', default=0.0,
-                         description='Trajectory saving interval in ps')
+                         description='Trajectory saving interval in ns')
 warmup.promote_parameter('reporter_interval', promoted_name='w_reporter_interval', default=0.0,
-                         description='Reporter saving interval in ps')
+                         description='Reporter saving interval in ns')
 warmup.promote_parameter('suffix', promoted_name='w_suffix', default='warmup',
                          description='Equilibration suffix name')
 warmup.promote_parameter('center', promoted_name='center', default=True)
@@ -104,16 +104,16 @@ cube_list.append(warmup)
 
 # NPT Equilibration stage
 equil = OpenMMNptCube('equil', title='equil')
-equil.promote_parameter('time', promoted_name='eq_psec', default=20.0,
-                        description='Length of MD run in picoseconds')
+equil.promote_parameter('time', promoted_name='eq_ns', default=0.02,
+                        description='Length of MD run in nanoseconds')
 equil.promote_parameter('restraints', promoted_name='eq_restraints', default="noh ligand",
                         description='Select mask to apply restraints')
 equil.promote_parameter('restraintWt', promoted_name='eq_restraintWt', default=0.1,
                         description='Restraint weight in kcal/(mol A^2')
 equil.promote_parameter('trajectory_interval', promoted_name='eq_trajectory_interval', default=0.0,
-                        description='Trajectory saving interval in ps')
+                        description='Trajectory saving interval in ns')
 equil.promote_parameter('reporter_interval', promoted_name='eq_reporter_interval', default=0.0,
-                        description='Reporter saving interval in ps')
+                        description='Reporter saving interval in ns')
 equil.promote_parameter('suffix', promoted_name='eq_suffix', default='equil',
                         description='Equilibration suffix name')
 equil.promote_parameter('hmr', promoted_name='hmr', default=False,

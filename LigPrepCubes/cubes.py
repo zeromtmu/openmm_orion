@@ -7,6 +7,7 @@ from oeommtools import utils as oeommutils
 
 from Standards import Fields
 
+
 class LigandChargeCube(ParallelMixin, OERecordComputeCube):
     title = "Ligand Charge Cube"
     version = "0.0.0"
@@ -53,9 +54,8 @@ class LigandChargeCube(ParallelMixin, OERecordComputeCube):
         try:
 
             if not record.has_value(Fields.primary_molecule):
-                self.log.warn("Missing '{}' field".format(Fields.primary_molecule.get_name()))
-                self.failure.emit(record)
-                return
+                self.log.error("Missing '{}' field".format(Fields.primary_molecule.get_name()))
+                raise ValueError("Missing Primary Molecule")
 
             ligand = record.get_value(Fields.primary_molecule)
 
@@ -81,6 +81,6 @@ class LigandChargeCube(ParallelMixin, OERecordComputeCube):
 
         except:
             self.log.error(traceback.format_exc())
-            self.log.warn("Failed to assign ELF10 charges on molecule {}".format(ligand.GetTitle()))
+            self.log.error("Failed to assign ELF10 charges on molecule {}".format(ligand.GetTitle()))
             # Return failed record
             self.failure.emit(record)

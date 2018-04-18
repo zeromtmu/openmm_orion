@@ -1,4 +1,3 @@
-import sys
 import mdtraj
 import numpy as np
 from sys import stdout
@@ -22,11 +21,6 @@ def simulation(mdData, opt):
     opt: python dictionary
         A dictionary containing all the MD setting info
     """
-    
-    if opt['Logger'] is None:
-        printfile = sys.stdout
-    else:
-        printfile = opt['Logger'].file
 
     # MD data extracted from Parmed
     structure = mdData.structure
@@ -181,20 +175,6 @@ def simulation(mdData, opt):
     # restarted from the previous State
     if opt['SimType'] in ['nvt', 'npt']:
 
-        # if opt['trajectory_interval']:
-        #     structure.save(opt['outfname']+'.pdb', overwrite=True)
-        #     # GAC ADDED - TESTING
-        #     # Preserve original pdb file residue numbers
-        #     pdbfname_test = opt['outfname'] + '_ordering_test' + '.pdb'
-        #     ofs = oechem.oemolostream(pdbfname_test)
-        #     flavor = ofs.GetFlavor(oechem.OEFormat_PDB) ^ oechem.OEOFlavor_PDB_OrderAtoms
-        #     ofs.SetFlavor(oechem.OEFormat_PDB, flavor)
-        #
-        #     new_temp_mol = oeommutils.openmmTop_to_oemol(structure.topology, structure.positions, verbose=False)
-        #     new_pos = new_temp_mol.GetCoords()
-        #     opt['molecule'].SetCoords(new_pos)
-        #     oechem.OEWriteConstMolecule(ofs, opt['molecule'])
-
         if velocities is not None:
             opt['Logger'].info('RESTARTING simulation from a previous State')
             simulation.context.setVelocities(velocities)
@@ -204,7 +184,7 @@ def simulation(mdData, opt):
             simulation.context.setVelocitiesToTemperature(opt['temperature']*unit.kelvin)
 
         # Convert simulation time in steps
-        opt['steps'] = int(round(opt['time']/(stepLen.in_units_of(unit.picoseconds)/unit.picoseconds)))
+        opt['steps'] = int(round(opt['time']/(stepLen.in_units_of(unit.nanoseconds)/unit.nanoseconds)))
         
         # Set Reporters
         for rep in getReporters(**opt):
@@ -214,27 +194,52 @@ def simulation(mdData, opt):
     mmver = openmm.version.version
     mmplat = simulation.context.getPlatform()
 
-    str_logger = '\n' + '----------- SIMULATION ------------'
+    str_logger = '\n' + '-' * 32 + ' SIMULATION ' + '-' * 32
+    str_logger += '\n' + '{:<25} = {:<10}'.format('time step', str(opt['timestep']))
+
     # Host information
     for k, v in uname()._asdict().items():
-        str_logger += '\n' + k + ' = ' + v
-        print(k, ':', v, file=printfile)
+        str_logger += "\n{:<25} = {:<10}".format(k, v)
+        opt['Logger'].info("{} : {}".format(k, v))
 
     # Platform properties
     for prop in mmplat.getPropertyNames():
         val = mmplat.getPropertyValue(simulation.context, prop)
-        str_logger += '\n' + prop + ' = ' + val
-        print(prop, ':', val, file=printfile)
+        str_logger += "\n{:<25} = {:<10}".format(prop, val)
+        opt['Logger'].info("{} : {}".format(prop, val))
 
-    info = 'OpenMM({}) simulation generated for {} platform'.format(mmver, mmplat.getName())
-    print(info, file=printfile)
+    info = "{:<25} = {:<10}".format("OpenMM Version", mmver)
+    opt['Logger'].info("OpenMM Version : {}".format(mmver))
+    str_logger += '\n'+info
 
+    info = "{:<25} = {:<10}".format("Platform in use", mmplat.getName())
+    opt['Logger'].info("Platform in use : {}".format(mmplat.getName()))
     str_logger += '\n'+info
 
     if opt['SimType'] in ['nvt', 'npt']:
 
-        opt['Logger'].info('Running {time} ps = {steps} steps of {SimType} at {temperature} K'.format(**opt))
-        
+        if opt['SimType'] == 'nvt':
+            opt['Logger'].info("Running time : {time} ns => {steps} steps of {SimType} at "
+                               "{temperature} K".format(**opt))
+            info = "{:<25} = {time} ns => {steps} steps of {SimType} at " \
+                   "{temperature} K".format("Running time", **opt)
+        else:
+            opt['Logger'].info(
+                "Running time : {time} ns => {steps} steps of {SimType} "
+                "at {temperature} K pressure {pressure} atm".format(**opt))
+            info = "{:<25} = {time} ns => {steps} steps of {SimType} at " \
+                   "{temperature} K pressure {pressure} atm".format("Running time", **opt)
+
+        str_logger += '\n' + info
+
+        if opt['trajectory_interval']:
+
+            total_frames = int(round(opt['time'] / opt['trajectory_interval']))
+
+            opt['Logger'].info('Total trajectory frames : {}'.format(total_frames))
+            info = '{:<25} = {:<10}'.format('Total trajectory frames', total_frames)
+            str_logger += '\n' + info
+
         # Start Simulation
         simulation.step(opt['steps'])
 
@@ -266,7 +271,10 @@ def simulation(mdData, opt):
         state_reference_end = simulation_reference.context.getState(getPositions=True)
 
         # Start minimization on the selected platform
-        opt['Logger'].info('Minimization steps: {steps}'.format(**opt))
+        if opt['steps'] == 0:
+            opt['Logger'].info('Minimization steps: until convergence is found')
+        else:
+            opt['Logger'].info('Minimization steps: {steps}'.format(**opt))
 
         # Set positions after minimization on the Reference Platform
         simulation.context.setPositions(state_reference_end.getPositions())
@@ -275,13 +283,15 @@ def simulation(mdData, opt):
 
         state = simulation.context.getState(getPositions=True, getEnergy=True)
 
-        info = 'Initial Energy = {}\nMinimized energy = {}'.format(
-            state_reference_start.getPotentialEnergy().in_units_of(unit.kilocalorie_per_mole),
-            state.getPotentialEnergy().in_units_of(unit.kilocalorie_per_mole))
+        ie = '{:<25} = {:<10}'.format('Initial Energy', str(state_reference_start.getPotentialEnergy().
+                                                            in_units_of(unit.kilocalorie_per_mole)))
+        fe = '{:<25} = {:<10}'.format('Minimized Energy', str(state.getPotentialEnergy().
+                                                              in_units_of(unit.kilocalorie_per_mole)))
 
-        print(info, file=printfile)
+        opt['Logger'].info(ie)
+        opt['Logger'].info(fe)
 
-        str_logger += '\n' + info
+        str_logger += '\n' + ie + '\n' + fe
 
     # OpenMM Quantity object
     structure.positions = state.getPositions(asNumpy=False)
@@ -335,7 +345,7 @@ def getReporters(totalSteps=None, outfname=None, **opt):
     if opt['reporter_interval']:
 
         reporter_steps = int(round(opt['reporter_interval']/(
-                opt['timestep'].in_units_of(unit.picoseconds)/unit.picoseconds)))
+                opt['timestep'].in_units_of(unit.nanoseconds)/unit.nanoseconds)))
 
         state_reporter = app.StateDataReporter(outfname+'.log', separator="\t",
                                                reportInterval=reporter_steps,
@@ -356,7 +366,7 @@ def getReporters(totalSteps=None, outfname=None, **opt):
     if opt['trajectory_interval']:
 
         trajectory_steps = int(round(opt['trajectory_interval'] / (
-                opt['timestep'].in_units_of(unit.picoseconds) / unit.picoseconds)))
+                opt['timestep'].in_units_of(unit.nanoseconds) / unit.nanoseconds)))
 
         traj_reporter = mdtraj.reporters.HDF5Reporter(outfname+'.h5', trajectory_steps)
 

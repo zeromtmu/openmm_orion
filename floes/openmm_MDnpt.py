@@ -9,7 +9,7 @@ job = WorkFloe("NPT Simulation")
 job.description = """
 NPT simulation of an OpenMM-ready System
 
-Ex: python floes/openmm_MDnpt.py --system complex.oeb --picosec 10
+Ex: python floes/openmm_MDnpt.py --system complex.oeb --nanoseconds 0.01
 
 Parameters:
 -----------
@@ -34,7 +34,7 @@ ifs.promote_parameter("data_in", promoted_name="system", title='System Input Fil
                       description="System input file")
 
 npt = OpenMMNptCube('npt')
-npt.promote_parameter('time', promoted_name='picosec', default=10.0,
+npt.promote_parameter('time', promoted_name='nanoseconds', default=0.01,
                       description='Length of MD run in picoseconds')
 npt.promote_parameter('temperature', promoted_name='temperature', default=300.0,
                       description='Selected temperature in K')
@@ -47,10 +47,10 @@ npt.promote_parameter('restraints', promoted_name='restraints', default="ca_prot
 npt.promote_parameter('restraintWt', promoted_name='restraintWt', default=5.0, description='Restraint weight')
 
 # Trajectory and logging info frequency intervals
-npt.promote_parameter('trajectory_interval', promoted_name='trajectory_interval', default=0.5,
-                      description='Trajectory saving interval in ps')
-npt.promote_parameter('reporter_interval', promoted_name='reporter_interval', default=1.0,
-                      description='Reporter saving interval in ps')
+npt.promote_parameter('trajectory_interval', promoted_name='trajectory_interval', default=0.0005,
+                      description='Trajectory saving interval in ns')
+npt.promote_parameter('reporter_interval', promoted_name='reporter_interval', default=0.001,
+                      description='Reporter saving interval in ns')
 
 ofs = DataSetWriterCube('ofs', title='OFS-Success')
 
