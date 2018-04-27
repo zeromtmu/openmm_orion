@@ -1,11 +1,11 @@
 from __future__ import unicode_literals
 from floe.api import WorkFloe
 
-from cuberecord import DataSetWriterCube
-from LigPrepCubes.ports import LigandReaderCube
+from cuberecord import DataSetWriterCube, DataSetReaderCube
+from LigPrepCubes.cubes import LigandSetting
 from LigPrepCubes.cubes import LigandChargeCube
 
-from ProtPrepCubes.ports import ProteinReaderCube
+from ProtPrepCubes.cubes import ProteinSetting
 
 from ComplexPrepCubes.cubes import (ComplexPrepCube,
                                     HydrationCube,
@@ -36,17 +36,19 @@ job.classification = [['Simulation']]
 job.tags = [tag for lists in job.classification for tag in lists]
 
 # Ligand setting
-iligs = LigandReaderCube("Ligand Reader", title="Ligand Reader")
+iligs = DataSetReaderCube("Ligand Reader", title="Ligand Reader")
 iligs.promote_parameter("data_in", promoted_name="ligands", title="Ligand Input File", description="Ligand file name")
+
+ligset = LigandSetting("LigandSetting")
 
 chargelig = LigandChargeCube("LigCharge")
 chargelig.promote_parameter('max_conformers', promoted_name='max_conformers',
                             description="Set the max number of conformers per ligand", default=800)
 
-iprot = ProteinReaderCube("Protein Reader", title="Protein Reader")
+iprot = DataSetReaderCube("Protein Reader", title="Protein Reader")
 iprot.promote_parameter("data_in", promoted_name="protein", title="Protein Input File", description="Protein file name")
-iprot.promote_parameter("protein_prefix", promoted_name="protein_prefix", default='PRT',
-                        description="Protein Prefix")
+
+protset= ProteinSetting("ProteinSetting")
 
 complx = ComplexPrepCube("Complex")
 
@@ -59,11 +61,13 @@ ofs = DataSetWriterCube('ofs', title='OFS-Success')
 fail = DataSetWriterCube('fail', title='OFS-Failure')
 fail.set_parameters(data_out='fail.oeb.gz')
 
-job.add_cubes(iligs, chargelig, iprot, complx, solvate, ff, ofs, fail)
+job.add_cubes(iligs, ligset, chargelig, iprot, protset, complx, solvate, ff, ofs, fail)
 
-iligs.success.connect(chargelig.intake)
+iligs.success.connect(ligset.intake)
+ligset.success.connect(chargelig.intake)
 chargelig.success.connect(complx.intake)
-iprot.success.connect(complx.protein_port)
+iprot.success.connect(protset.intake)
+protset.success.connect(complx.protein_port)
 complx.success.connect(solvate.intake)
 solvate.success.connect(ff.intake)
 ff.success.connect(ofs.intake)

@@ -15,9 +15,8 @@ from Standards import (Fields,
                        MDRecords,
                        MDStageNames)
 
-from floe.api.orion import in_orion,  upload_file
-
-import tarfile
+# from floe.api.orion import in_orion,  upload_file
+# import tarfile
 
 import copy
 
@@ -183,11 +182,18 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
 
             system = record.get_value(Fields.primary_molecule)
 
-            if not record.has_value(Fields.id):
-                opt['Logger'].warn("Missing molecule ID '{}' column".format(Fields.id.get_name()))
-                system_id = system.GetTitle()
+            if not record.has_value(Fields.title):
+                opt['Logger'].warn("Missing molecule title '{}' column".format(Fields.title.get_name()))
+                system_title = system.GetTitle()[0:12]
             else:
-                system_id = record.get_value(Fields.id)
+                system_title = record.get_value(Fields.title)
+
+            if not record.has_value(Fields.id):
+                opt['Logger'].error("Missing molecule ID {} field".format(Fields.id.get_name()))
+                raise ValueError("Missing the Primary Molecule")
+
+            opt['system_title'] = system_title
+            opt['system_id'] = record.get_value(Fields.id)
 
             if not record.has_value(Fields.md_stages):
                 opt['Logger'].error("Missing '{}' field".format(Fields.md_stages.get_name()))
@@ -225,7 +231,7 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
 
             # The system and the related parmed structure are passed as reference
             # and therefore, they are updated inside the simulation call
-            opt['Logger'].info('MINIMIZING System: {}'.format(system_id))
+            opt['Logger'].info('MINIMIZING System: {}'.format(system_title))
             simtools.simulation(mdData, opt)
 
             record.set_value(Fields.primary_molecule, system)
@@ -345,10 +351,10 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
         default='nvt',
         help_text='Filename suffix for output simulation files')
 
-    upload_ui = parameter.BooleanParameter(
-        'upload_ui',
-        default=False,
-        help_text='Upload the generated files to the Orion UI')
+    # upload_ui = parameter.BooleanParameter(
+    #     'upload_ui',
+    #     default=False,
+    #     help_text='Upload the generated files to the Orion UI')
 
     center = parameter.BooleanParameter(
         'center',
@@ -426,11 +432,19 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
 
             system = record.get_value(Fields.primary_molecule)
 
-            if not record.has_value(Fields.id):
-                opt['Logger'].warn("Missing molecule ID '{}' field".format(Fields.id.get_name()))
-                system_id = system.GetTitle()
+            if not record.has_value(Fields.title):
+                opt['Logger'].warn("Missing molecule {} field".format(Fields.title.get_name()))
+                system_title = system.GetTitle()[0:12]
             else:
-                system_id = record.get_value(Fields.id)
+                system_title = record.get_value(Fields.title)
+
+            if not record.has_value(Fields.id):
+                opt['Logger'].error("Missing molecule ID {} field".format(Fields.id.get_name()))
+                raise ValueError("Missing the Primary Molecule")
+
+            opt['system_title'] = system_title
+
+            opt['system_id'] = record.get_value(Fields.id)
 
             if not record.has_value(Fields.md_stages):
                 opt['Logger'].warn("Missing '{}' field".format(Fields.md_stages.get_name()))
@@ -461,7 +475,7 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
                 opt['Logger'].info("Updating parameters for molecule: {}\n{}".format(system.GetTitle(), new_args))
                 opt.update(new_args)
 
-            opt['outfname'] = '{}-{}'.format(system_id, opt['suffix'])
+            opt['outfname'] = '{}-{}'.format(system_title + '_'+str(opt['system_id']), opt['suffix'])
 
             mdData = utils.MDData(parmed_structure)
 
@@ -470,7 +484,7 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
 
             # The system and the related parmed structure are passed as reference
             # and therefore, they are updated
-            opt['Logger'].info('START NVT SIMULATION: {}'.format(system_id))
+            opt['Logger'].info('START NVT SIMULATION: {}'.format(system_title))
             simtools.simulation(mdData, opt)
 
             # Trajectory
@@ -487,21 +501,21 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
 
                 opt['str_logger'] += '\n'+str_logger
 
-            # If required upload files in the Orion UI
-            if in_orion() and opt['upload_ui']:
-                file_list = []
-                if opt['trajectory_interval']:
-                    file_list.append(opt['outfname']+'.h5')
-                if opt['reporter_interval']:
-                    file_list.append(opt['outfname'] + '.log')
-                if file_list:
-                    tarname = opt['outfname'] + '.tar'
-                    tar = tarfile.open(tarname, "w")
-                    for name in file_list:
-                        opt['Logger'].info('Adding {} to {}'.format(name, tarname))
-                        tar.add(name)
-                    tar.close()
-                    upload_file(tarname, tarname, tags=['TRAJECTORY'])
+            # # If required upload files in the Orion UI
+            # if in_orion() and opt['upload_ui']:
+            #     file_list = []
+            #     if opt['trajectory_interval']:
+            #         file_list.append(opt['outfname']+'.h5')
+            #     if opt['reporter_interval']:
+            #         file_list.append(opt['outfname'] + '.log')
+            #     if file_list:
+            #         tarname = opt['outfname'] + '.tar'
+            #         tar = tarfile.open(tarname, "w")
+            #         for name in file_list:
+            #             opt['Logger'].info('Adding {} to {}'.format(name, tarname))
+            #             tar.add(name)
+            #         tar.close()
+            #         upload_file(tarname, tarname, tags=['TRAJECTORY'])
 
             record.set_value(Fields.primary_molecule, system)
 
@@ -627,10 +641,10 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
         default='npt',
         help_text='Filename suffix for output simulation files')
 
-    upload_ui = parameter.BooleanParameter(
-        'upload_ui',
-        default=False,
-        help_text='Upload the generated files to the Orion UI')
+    # upload_ui = parameter.BooleanParameter(
+    #     'upload_ui',
+    #     default=False,
+    #     help_text='Upload the generated files to the Orion UI')
 
     center = parameter.BooleanParameter(
         'center',
@@ -707,11 +721,19 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
 
             system = record.get_value(Fields.primary_molecule)
 
-            if not record.has_value(Fields.id):
-                opt['Logger'].warn("Missing molecule ID '{}' field".format(Fields.id.get_name()))
-                system_id = system.GetTitle()
+            if not record.has_value(Fields.title):
+                opt['Logger'].warn("Missing molecule title {} field".format(Fields.title.get_name()))
+                system_title = system.GetTitle()[0:12]
             else:
-                system_id = record.get_value(Fields.id)
+                system_title = record.get_value(Fields.title)
+
+            if not record.has_value(Fields.id):
+                opt['Logger'].error("Missing molecule ID {} field".format(Fields.id.get_name()))
+                raise ValueError("Missing the Primary Molecule")
+
+            opt['system_title'] = system_title
+
+            opt['system_id'] = record.get_value(Fields.id)
 
             if not record.has_value(Fields.md_stages):
                 opt['Logger'].warn("Missing '{}' field".format(Fields.md_stages.get_name()))
@@ -744,7 +766,7 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
 
                 opt.update(new_args)
 
-            opt['outfname'] = '{}-{}'.format(system_id, opt['suffix'])
+            opt['outfname'] = '{}-{}'.format(system_title + '_' + str(opt['system_id']), opt['suffix'])
 
             mdData = utils.MDData(parmed_structure)
 
@@ -753,7 +775,7 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
 
             # The system and the related parmed structure are passed as reference
             # and therefore, they are updated
-            opt['Logger'].info('START NPT SIMULATION: {}'.format(system_id))
+            opt['Logger'].info('START NPT SIMULATION: {}'.format(system_title))
             simtools.simulation(mdData, opt)
 
             # Trajectory
@@ -769,21 +791,21 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
 
                 opt['str_logger'] += '\n' + str_logger
 
-            # If required upload files in the Orion UI
-            if in_orion() and opt['upload_ui']:
-                file_list = []
-                if opt['trajectory_interval']:
-                    file_list.append(opt['outfname']+'.h5')
-                if opt['reporter_interval']:
-                    file_list.append(opt['outfname'] + '.log')
-                if file_list:
-                    tarname = opt['outfname'] + '.tar'
-                    tar = tarfile.open(tarname, "w")
-                    for name in file_list:
-                        opt['Logger'].info('Adding {} to {}'.format(name, tarname))
-                        tar.add(name)
-                    tar.close()
-                    upload_file(tarname, tarname, tags=['TRAJECTORY'])
+            # # If required upload files in the Orion UI
+            # if in_orion() and opt['upload_ui']:
+            #     file_list = []
+            #     if opt['trajectory_interval']:
+            #         file_list.append(opt['outfname']+'.h5')
+            #     if opt['reporter_interval']:
+            #         file_list.append(opt['outfname'] + '.log')
+            #     if file_list:
+            #         tarname = opt['outfname'] + '.tar'
+            #         tar = tarfile.open(tarname, "w")
+            #         for name in file_list:
+            #             opt['Logger'].info('Adding {} to {}'.format(name, tarname))
+            #             tar.add(name)
+            #         tar.close()
+            #         upload_file(tarname, tarname, tags=['TRAJECTORY'])
 
             record.set_value(Fields.primary_molecule, system)
 

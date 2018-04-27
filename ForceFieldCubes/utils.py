@@ -54,8 +54,8 @@ def applyffProtein(protein, opt):
         unmatched_residues = forcefield.getUnmatchedResidues(topology)
 
         if unmatched_residues:
-            oechem.OEThrow.Fatal("Error. The following protein residues are not recognized "
-                                 "by the extended force field {}".format(unmatched_residues))
+            raise ValueError("Error. The following protein residues are not recognized "
+                             "by the extended force field {}".format(unmatched_residues))
 
     omm_system = forcefield.createSystem(topology, rigidWater=False)
     protein_structure = parmed.openmm.load_topology(topology, omm_system, xyz=positions)
@@ -87,8 +87,8 @@ def applyffWater(water, opt):
     unmatched_residues = forcefield.getUnmatchedResidues(topology)
 
     if unmatched_residues:
-        oechem.OEThrow.Fatal("The following water molecules are not recognized "
-                             "by the selected force field {}: {}".format(opt['solvent_forcefield'], unmatched_residues))
+        raise ValueError("The following water molecules are not recognized "
+                         "by the selected force field {}: {}".format(opt['solvent_forcefield'], unmatched_residues))
 
     omm_system = forcefield.createSystem(topology, rigidWater=False)
     water_structure = parmed.openmm.load_topology(topology, omm_system, xyz=positions)
@@ -217,7 +217,7 @@ def applyffExcipients(excipients, opt):
                 omm_system = ff_rec.createSystem(top_known, rigidWater=False)
                 rec_struc = parmed.openmm.load_topology(top_known, omm_system, xyz=pos_known)
             except:
-                oechem.OEThrow.Fatal("Error in the recognised excipient parametrization")
+                raise ValueError("Error in the recognised excipient parametrization")
 
         # Unrecognized FF excipients
         bv.NegateBits()
@@ -230,27 +230,6 @@ def applyffExcipients(excipients, opt):
         unrc_coords = np.ndarray(shape=(unrc_excp.NumAtoms(), 3))
         for at_idx in oe_coord_dic:
             unrc_coords[at_idx] = oe_coord_dic[at_idx]
-
-        # It is important the order used to assemble the structures. In order to
-        # avoid mismatch between the coordinates and the structures, it is convenient
-        # to use the unrecognized residue order
-        # unmatched_res_order_count = []
-        # i = 0
-        # while i < len(unmatched_res_order):
-        #     res_name = unmatched_res_order[i]
-        #     for j in range(i+1, len(unmatched_res_order)):
-        #         if unmatched_res_order[j] == res_name:
-        #             continue
-        #         else:
-        #             break
-        #     if i == (len(unmatched_res_order) - 1):
-        #         num = 1
-        #         unmatched_res_order_count.append((res_name, num))
-        #         break
-        #     else:
-        #         num = j - i
-        #         unmatched_res_order_count.append((res_name, num))
-        #         i = j
 
         # It is important the order used to assemble the structures. In order to
         # avoid mismatch between the coordinates and the structures, it is convenient
@@ -310,6 +289,6 @@ def applyffLigand(ligand, opt):
     pmd = ff_utils.ParamLigStructure(ligand, opt['ligand_forcefield'], prefix_name=opt['prefix_name'])
     ligand_structure = pmd.parameterize()
     ligand_structure.residues[0].name = opt['ligand_res_name']
-    opt['Logger'].info("Ligand parametrized by using: {}".format(opt['ligand_forcefield']))
+    oechem.OEThrow.Info("Ligand parametrized by using: {}".format(opt['ligand_forcefield']))
 
     return ligand_structure

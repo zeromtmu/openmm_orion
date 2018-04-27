@@ -26,8 +26,6 @@ ifs.promote_parameter("data_in", promoted_name="system", title="System Input Fil
 
 scube = SSTMapGistCube("SSTMap")
 
-scube.promote_parameter("trj_fn", promoted_name='trj', default='trj.dcd')
-
 ofs = DataSetWriterCube('ofs', title='OFS-Success')
 
 job.add_cubes(ifs, scube, ofs)

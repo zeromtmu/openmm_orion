@@ -1,10 +1,12 @@
 from __future__ import unicode_literals
 from floe.api import WorkFloe
-from cuberecord import DataSetWriterCube
+from cuberecord import (DataSetWriterCube,
+                        DataSetReaderCube)
 from ComplexPrepCubes.cubes import SolvationCube
 from ForceFieldCubes.cubes import ForceFieldCube
-from LigPrepCubes.cubes import LigandChargeCube
-from LigPrepCubes.ports import LigandReaderCube
+from LigPrepCubes.cubes import (LigandChargeCube,
+                                LigandSetting)
+
 from YankCubes.cubes import YankSolvationFECube
 from MDCubes.OpenMMCubes.cubes import (OpenMMminimizeCube,
                                        OpenMMNvtCube,
@@ -38,10 +40,14 @@ job.classification = [['Solvation Free Energy']]
 job.tags = [tag for lists in job.classification for tag in lists]
 
 # Ligand setting
-iligs = LigandReaderCube("Ligands", title="Ligand Reader")
+iligs = DataSetReaderCube("Ligands", title="Ligand Reader")
 iligs.promote_parameter("data_in", promoted_name="ligands", title="Ligand Input File", description="Ligand file name")
 job.add_cube(iligs)
 cube_list.append(iligs)
+
+ligset = LigandSetting("LigandSetting")
+job.add_cube(ligset)
+cube_list.append(ligset)
 
 chargelig = LigandChargeCube("LigCharge")
 chargelig.promote_parameter('max_conformers', promoted_name='max_conformers',
@@ -155,7 +161,6 @@ for i in range(0, len(cube_list)-2):
     cube_list[i].success.connect(cube_list[i + 1].intake)
     if i == len(cube_list) - 3:
         cube_list[i].failure.connect(cube_list[i+2].intake)
-
 
 if __name__ == "__main__":
     job.run()

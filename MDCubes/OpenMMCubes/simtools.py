@@ -6,8 +6,68 @@ from simtk import unit, openmm
 from simtk.openmm import app
 from oeommtools import utils as oeommutils
 from platform import uname
+import os
+import fcntl
+import time
 
 
+# def openeye_cluster(sim):
+#     def wrapper(*args):
+#         if 'LOCAL_FLOE_CLUSTER' in os.environ:
+#             mdData = args[0]
+#             opt = args[1]
+#             opt['Logger'].info("OPENEYE LOCAL FLOE CLUSTER OPTION IN USE")
+#             while True:
+#                 try:
+#                     gpu_id = str(int(opt['system_id'].split('_')[-1]) % 4)
+#                     with open(gpu_id + '.txt', 'a') as myfile:
+#                         fcntl.flock(myfile, fcntl.LOCK_EX | fcntl.LOCK_NB)
+#                         myfile.write("name = {} ID = {}\n".format(opt['system_id'], gpu_id))
+#                         opt['gpu_id'] = gpu_id
+#                         sim(mdData, opt)
+#                         time.sleep(1.0)
+#                         fcntl.flock(myfile, fcntl.LOCK_UN)
+#                         break
+#                 except IOError:
+#                     time.sleep(0.01)
+#         else:
+#             sim(*args)
+#
+#     return wrapper
+
+
+def local_cluster(sim):
+    def wrapper(*args):
+        if 'CUDA_VISIBLE_DEVICES' in os.environ:
+
+            gpus_available_indexes = os.environ["CUDA_VISIBLE_DEVICES"].split(',')
+            mdData = args[0]
+            opt = args[1]
+            opt['Logger'].info("LOCAL FLOE CLUSTER OPTION IN USE")
+            while True:
+
+                gpu_id = gpus_available_indexes[opt['system_id'] % len(gpus_available_indexes)]
+                file = open(gpu_id + '.txt', 'a')
+
+                try:
+                    fcntl.flock(file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except IOError:
+                    time.sleep(0.01)
+
+                file.write("name = {} ID = {}\n".format(opt['system_title'], gpu_id))
+                opt['gpu_id'] = gpu_id
+                sim(mdData, opt)
+                time.sleep(1.0)
+                fcntl.flock(file, fcntl.LOCK_UN)
+                file.close()
+                break
+        else:
+            sim(*args)
+
+    return wrapper
+
+
+@local_cluster
 def simulation(mdData, opt):
     """
     This supporting function performs: OpenMM Minimization, NVT and NPT
@@ -21,7 +81,6 @@ def simulation(mdData, opt):
     opt: python dictionary
         A dictionary containing all the MD setting info
     """
-
     # MD data extracted from Parmed
     structure = mdData.structure
     topology = mdData.topology
@@ -130,6 +189,9 @@ def simulation(mdData, opt):
                 try:
                     # Set platform precision for CUDA or OpenCL
                     properties = {'Precision': precision}
+
+                    if 'gpu_id' in opt and 'CUDA_VISIBLE_DEVICES' in os.environ:
+                        properties['DeviceIndex'] = opt['gpu_id']
 
                     simulation = app.Simulation(topology, system, integrator,
                                                 platform=platform,

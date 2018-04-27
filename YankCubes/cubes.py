@@ -512,6 +512,10 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                                                                 getattr(self.args, tmp_default.name),
                                                                 tmp_description)
 
+            if not record.has_value(Fields.primary_molecule):
+                self.log.error("Missing molecule '{}' field".format(Fields.primary_molecule.get_name()))
+                raise ValueError("The Primary Molecule is missing")
+
             complex = record.get_value(Fields.primary_molecule)
 
             if not opt['rerun']:

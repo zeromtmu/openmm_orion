@@ -8,16 +8,18 @@ from MDCubes.OpenMMCubes.cubes import (OpenMMminimizeCube,
 from ComplexPrepCubes.cubes import (HydrationCube,
                                     ComplexPrepCube)
 
-from ProtPrepCubes.ports import ProteinReaderCube
+from ProtPrepCubes.cubes import ProteinSetting
 
 from ForceFieldCubes.cubes import ForceFieldCube
 
-from LigPrepCubes.ports import LigandReaderCube
-from LigPrepCubes.cubes import LigandChargeCube
+from LigPrepCubes.cubes import (LigandChargeCube,
+                                LigandSetting)
+
 from YankCubes.cubes import (SyncBindingFECube,
                              YankBindingFECube)
 
-from cuberecord import DataSetWriterCube
+from cuberecord import (DataSetWriterCube,
+                        DataSetReaderCube)
 
 
 # *************USER SETTING**************
@@ -51,24 +53,27 @@ job.classification = [['BindingFreeEnergy', 'Yank']]
 job.tags = [tag for lists in job.classification for tag in lists]
 
 # Ligand setting
-iligs = LigandReaderCube("LigandReader", title="Ligand Reader")
+iligs = DataSetReaderCube("LigandReader", title="Ligand Reader")
 iligs.promote_parameter("data_in", promoted_name="ligands", title="Ligand Input File", description="Ligand file name")
 job.add_cube(iligs)
+
+ligset = LigandSetting("LigandSetting")
+job.add_cube(ligset)
 
 chargelig = LigandChargeCube("LigCharge")
 chargelig.promote_parameter('max_conformers', promoted_name='max_conformers',
                             description="Set the max number of conformers per ligand", default=800)
 job.add_cube(chargelig)
 
-
 # Protein Reading cube. The protein prefix parameter is used to select a name for the
 # output system files
-iprot = ProteinReaderCube("ProteinReader")
+iprot = DataSetReaderCube("ProteinReader")
 iprot.promote_parameter("data_in", promoted_name="protein", title='Protein Input File',
                         description="Protein file name")
-iprot.promote_parameter("protein_prefix", promoted_name="protein_prefix",
-                        default='PRT', description="Protein prefix")
 job.add_cube(iprot)
+
+protset = ProteinSetting("ProteinSetting")
+job.add_cube(protset)
 
 # COMPLEX SETTING
 
@@ -258,9 +263,12 @@ job.add_cube(fail)
 cube_list.append(fail)
 
 # Connections
-iprot.success.connect(complx.protein_port)
-iligs.success.connect(chargelig.intake)
+iligs.success.connect(ligset.intake)
+ligset.success.connect(chargelig.intake)
 chargelig.success.connect(complx.intake)
+
+iprot.success.connect(protset.intake)
+protset.success.connect(complx.protein_port)
 
 # Complex Connections
 complx.success.connect(solvateComplex.intake)

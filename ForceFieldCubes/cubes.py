@@ -3,8 +3,6 @@ from floe.api import (ParallelMixin,
                       parameter)
 
 from cuberecord import OERecordComputeCube
-from datarecord import (Types,
-                        OEField)
 
 from oeommtools import utils as oeommutils
 
@@ -14,7 +12,8 @@ import parmed
 
 from openeye import oechem
 
-from MDCubes.OpenMMCubes import utils as pack_utils
+# from MDCubes.OpenMMCubes import utils as pack_utils
+from oeommtools import data_utils as pack_utils
 
 from Standards import (MDStageNames,
                        Fields,
@@ -89,32 +88,37 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
             opt = self.opt
 
             if not record.has_value(Fields.primary_molecule):
-                self.log.warn("Missing molecule '{}' field".format(Fields.primary_molecule.get_name()))
+                self.log.error("Missing molecule '{}' field".format(Fields.primary_molecule.get_name()))
                 self.failure.emit(record)
                 return
 
             system = record.get_value(Fields.primary_molecule)
 
-            system_id_field = OEField("ID", Types.String)
-
-            if not record.has_value(system_id_field):
-                self.log.warn("Missing molecule ID '{}' field".format(system_id_field.get_name()))
-                system_id = system.GetTitle()
+            if not record.has_value(Fields.title):
+                self.log.warn("Missing molecule title '{}' field".format(Fields.title.get_name()))
+                system_title = system.GetTitle()[0:12]
             else:
-                system_id = record.get_value(system_id_field)
+                system_title = record.get_value(Fields.title)
 
             # Split the complex in components in order to apply the FF
             protein, ligand, water, excipients = oeommutils.split(system, ligand_res_name=opt['ligand_res_name'])
 
             self.log.info("\nComplex name: {}\nProtein atom numbers = {}\nLigand atom numbers = {}\n"
-                          "Water atom numbers = {}\nExcipients atom numbers = {}".format(system_id,
+                          "Water atom numbers = {}\nExcipients atom numbers = {}".format(system_title,
                                                                                          protein.NumAtoms(),
                                                                                          ligand.NumAtoms(),
                                                                                          water.NumAtoms(),
                                                                                          excipients.NumAtoms()))
 
+            if not record.has_value(Fields.id):
+                self.log.error("Missing molecule ID '{}' field".format(Fields.ID.get_name()))
+                self.failure.emit(record)
+                return
+
+            sys_id = record.get_value(Fields.id)
+
             # Unique prefix name used to output parametrization files
-            opt['prefix_name'] = system_id
+            opt['prefix_name'] = system_title + '_'+str(sys_id)
 
             oe_mol_list = []
             par_mol_list = []
@@ -165,20 +169,20 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
 
             if not num_atom_system == system_structure.topology.getNumAtoms():
                 raise ValueError("Parmed and OE topologies mismatch atom number "
-                                 "error for system: {}".format(system_id))
+                                 "error for system: {}".format(system_title))
 
-            system_reassembled.SetTitle(system_id)
+            system_reassembled.SetTitle(system_title)
 
             # Set Parmed structure box_vectors
             is_periodic = True
             try:
-                vec_data = pack_utils.PackageOEMol.getData(system_reassembled, tag='box_vectors')
-                vec = pack_utils.PackageOEMol.decodePyObj(vec_data)
+                vec_data = pack_utils.getData(system_reassembled, tag='box_vectors')
+                vec = pack_utils.decodePyObj(vec_data)
                 system_structure.box_vectors = vec
             except:
                 is_periodic = False
                 self.log.warn("System {} has been parametrize without periodic box vectors "
-                              "for vacuum simulation".format(system_id))
+                              "for vacuum simulation".format(system_title))
 
             # Set atom serial numbers, Ligand name and HETATM flag
             for at in system_reassembled.GetAtoms():
@@ -191,7 +195,7 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
 
             if system_reassembled.GetMaxAtomIdx() != system_structure.topology.getNumAtoms():
                 raise ValueError("OEMol system {} and generated Parmed structure "
-                                 "mismatch atom numbers".format(system_id))
+                                 "mismatch atom numbers".format(system_title))
 
             # Check if it is possible to create the OpenMM System
             if is_periodic:
@@ -205,7 +209,7 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
                                               removeCMMotion=False)
 
             record.set_value(Fields.primary_molecule, system_reassembled)
-            record.set_value(system_id_field, system_id)
+            record.set_value(Fields.title, system_title)
 
             md_stage = MDRecords.MDStageRecord(MDStageNames.SETUP, '',
                                                MDRecords.MDSystemRecord(system_reassembled, system_structure))

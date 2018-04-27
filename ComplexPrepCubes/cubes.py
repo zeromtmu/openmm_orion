@@ -64,19 +64,19 @@ class HydrationCube(ParallelMixin, OERecordComputeCube):
 
             system = record.get_value(Fields.primary_molecule)
 
-            if not record.has_value(Fields.id):
-                self.log.warn("Missing molecule ID '{}' field".format(Fields.id.get_name()))
-                system_id = system.GetTitle()
+            if not record.has_value(Fields.title):
+                self.log.warn("Missing molecule title '{}' field".format(Fields.title.get_name()))
+                system_title = system.GetTitle()[0:12]
             else:
-                system_id = record.get_value(Fields.id)
+                system_title = record.get_value(Fields.title)
 
             # Solvate the system. Note that the solvated system is translated to the
             # OpenMM cube cell
             sol_system = utils.hydrate(system, opt)
-            sol_system.SetTitle(system_id)
+            sol_system.SetTitle(system_title)
 
             record.set_value(Fields.primary_molecule, sol_system)
-            record.set_value(Fields.id, system_id)
+            record.set_value(Fields.title, system_title)
 
             self.success.emit(record)
 
@@ -193,11 +193,11 @@ class SolvationCube(ParallelMixin, OERecordComputeCube):
 
             solute = record.get_value(Fields.primary_molecule)
 
-            if not record.has_value(Fields.id):
-                self.log.warn("Missing molecule ID '{}' field".format(Fields.id.get_name()))
-                solute_id = solute.GetTitle()
+            if not record.has_value(Fields.title):
+                self.log.warn("Missing molecule title '{}' field".format(Fields.title.get_name()))
+                solute_title = solute.GetTitle()[0:12]
             else:
-                solute_id = record.get_value(Fields.id)
+                solute_title = record.get_value(Fields.title)
 
             # Update cube simulation parameters with the eventually molecule SD tags
             new_args = {dp.GetTag(): dp.GetValue() for dp in oechem.OEGetSDDataPairs(solute) if dp.GetTag() in
@@ -210,16 +210,16 @@ class SolvationCube(ParallelMixin, OERecordComputeCube):
                         new_args[k] = float(new_args[k])
                     except:
                         pass
-                self.log.info("Updating parameters for molecule: {}\n{}".format(solute_id, new_args))
+                self.log.info("Updating parameters for molecule: {}\n{}".format(solute_title, new_args))
                 opt.update(new_args)
 
             # Solvate the system
             sol_system = packmol.oesolvate(solute, **opt)
             self.log.info("Solvated System atom number: {}".format(sol_system.NumAtoms()))
-            sol_system.SetTitle(solute_id)
+            sol_system.SetTitle(solute_title)
 
             record.set_value(Fields.primary_molecule, sol_system)
-            record.set_value(Fields.id, solute_id)
+            record.set_value(Fields.title, solute_title)
 
             self.success.emit(record)
 
@@ -275,11 +275,13 @@ class ComplexPrepCube(OERecordComputeCube):
 
             protein = record.get_value(Fields.primary_molecule)
 
-            if not record.has_value(Fields.id):
-                self.log.warn("Missing Protein ID '{}' field".format(Fields.id.get_name()))
-                self.protein_id = 'p' + protein.GetTitle()
+            if not record.has_value(Fields.title):
+                self.log.warn("Missing Protein Title '{}' field".format(Fields.title.get_name()))
+                self.protein_title = protein.GetTitle()[0:12]
             else:
-                self.protein_id = record.get_value(Fields.id)
+                self.protein_title = record.get_value(Fields.title)
+
+            self.protein_id = record.get_value(Fields.id)
 
             self.protein = protein
             return
@@ -294,11 +296,11 @@ class ComplexPrepCube(OERecordComputeCube):
 
                 ligand = record.get_value(Fields.primary_molecule)
 
-                if not record.has_value(Fields.id):
-                    self.log.warn("Missing Ligand ID '{}' field".format(Fields.id.get_name()))
-                    lig_id = self.protein_id + '_l' + ligand.GetTitle()[0:12] + '_' + str(self.count)
+                if not record.has_value(Fields.title):
+                    self.log.warn("Missing Ligand ID '{}' field".format(Fields.title.get_name()))
+                    ligand_title = ligand.GetTitle()[0:12]
                 else:
-                    lig_id = self.protein_id + '_' + record.get_value(Fields.id)
+                    ligand_title = record.get_value(Fields.title)
 
                 num_conf = 0
 
@@ -337,12 +339,12 @@ class ComplexPrepCube(OERecordComputeCube):
                     if water.NumAtoms():
                         oechem.OEAddMols(new_complex, water_del)
 
-                    complex_id_c = lig_id
+                    complex_title = 'p'+self.protein_title + '_l'+ligand_title
 
                     if ligand.GetMaxConfIdx() > 1:
-                        complex_id_c = complex_id_c + '_c' + str(num_conf)
+                        complex_title += '_c' + str(num_conf)
 
-                    new_complex.SetTitle(complex_id_c)
+                    new_complex.SetTitle(complex_title)
 
                     new_record = OERecord()
 
@@ -350,13 +352,14 @@ class ComplexPrepCube(OERecordComputeCube):
 
                     new_record.set_value(Fields.ligand, ligand)
                     new_record.set_value(Fields.protein, self.protein)
-                    new_record.set_value(Fields.id, complex_id_c)
+                    new_record.set_value(Fields.title, complex_title)
+                    new_record.set_value(Fields.id, self.count)
 
                     num_conf += 1
 
                     self.success.emit(new_record)
 
-                self.count += 1
+                    self.count += 1
 
         except:
             self.log.error(traceback.format_exc())

@@ -1,7 +1,7 @@
 from __future__ import unicode_literals
 from floe.api import WorkFloe
 from cuberecord import DataSetWriterCube, DataSetReaderCube
-from TrjAnalysis.cubes import SSTMapHSACube
+# from TrjAnalysisCubes.cubes import SSTMapGistCube
 
 job = WorkFloe("Testing SSTMAP HSA")
 

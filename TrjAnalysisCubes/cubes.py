@@ -1,33 +1,42 @@
 import traceback
-from floe.api import (ParallelMixin,
-                      parameter)
 
-from cuberecord import OERecordComputeCube
-
-from datarecord import (Types,
-                        OEField)
-
-from cuberecord.oldrecordutil import DEFAULT_MOL_NAME
-
-from oeommtools.utils import split
+from floe.api import ParallelMixin, parameter
 
 from TrjAnalysisCubes.utils import BoundingBox
 
-from openeye import oechem
+from cuberecord import OERecordComputeCube
 
-from MDCubes.OpenMMCubes.utils import ParmedData
+from datarecord import (OEField,
+                        Types,
+                        OEFieldMeta,
+                        Meta)
+
+from openeye.oegrid import OEScalarGrid, OEWriteGrid
 
 from tempfile import TemporaryDirectory
 
 import os
 
+from oeommtools.utils import split
+
+from Standards import Fields
+
 import mdtraj as md
 
 import numpy as np
 
+from ForceFieldCubes.utils import applyffLigand
+
+from simtk import (unit,
+                   openmm)
+
+from simtk.openmm import app
+
+from ForceFieldCubes.utils import applyffProtein
+
 import sstmap as sm
 
-from openeye.oegrid import OEScalarGrid, OEWriteGrid
+from MDCubes.OpenMMCubes import utils as omm_utils
 
 
 class SSTMapGistCube(ParallelMixin, OERecordComputeCube):
@@ -35,11 +44,11 @@ class SSTMapGistCube(ParallelMixin, OERecordComputeCube):
     title = "Water Thermodynamics by Using Gist in SSTMap"
     description = """
     SSTMap performs Water Thermodynamics analysis.
-    SSTMaps supports hydration site analysis (HSA) 
-    and Grid Inhomogeneous Solvation Theory (GIST). 
-    
-    SSTMap has been developed at Kurtzman Lab Lehman College 
-    For more details, please visit 
+    SSTMaps supports hydration site analysis (HSA)
+    and Grid Inhomogeneous Solvation Theory (GIST).
+
+    SSTMap has been developed at Kurtzman Lab Lehman College
+    For more details, please visit
     sstmap.org @ https://github.com/KurtzmanLab/SSTMap
     """
     classification = ["SSTMap Analysis"]
@@ -61,12 +70,6 @@ class SSTMapGistCube(ParallelMixin, OERecordComputeCube):
 
     )
 
-    trj_fn = parameter.StringParameter(
-        'trj_fn',
-        default='trj.dcd',
-        help_text='Trajectory file name'
-    )
-
     grid_resolution = parameter.DecimalParameter(
         'grid_resolution',
         default=0.5,
@@ -85,14 +88,33 @@ class SSTMapGistCube(ParallelMixin, OERecordComputeCube):
             # the parallel cube processes
             opt = dict(self.opt)
 
-            system_field = OEField(DEFAULT_MOL_NAME, Types.Chem.Mol)
+            if not record.has_value(Fields.md_stages):
+                opt['Logger'].error("Missing '{}' field".format(Fields.md_stages.get_name()))
+                raise ValueError("The System does not seem to be parametrized by the Force Field")
 
-            if not record.has_value(system_field):
-                self.log.warn("Missing molecule '{}' field".format(system_field.get_name()))
-                self.failure.emit(record)
-                return
+            # Extract the MDStageRecord list
+            md_stages = record.get_value(Fields.md_stages)
 
-            system = record.get_value(system_field)
+            # Extract the most recent MDStageRecord
+            md_stage_record = md_stages[-1]
+
+            # Extract the MDSystemRecord
+            md_system_record = md_stage_record.get_value(Fields.md_system)
+
+            # Extract from the MDSystemRecord the topology and the Parmed structure
+            system = md_system_record.get_value(Fields.topology)
+            parmed_structure = md_system_record.get_value(Fields.structure)
+
+            # Extract the trajectory
+            trj_OEFile = md_stage_record.get_value(Fields.trajectory)
+            trj_fn = omm_utils.download(trj_OEFile)
+
+            # ToDo: this is a temporary fix the .h5 format is not well supported by SSTMAP
+            # ToDo: in particular the call to read_as_traj in grid_water_analysis (line 394) is wrong
+            # ToDo when no topology is needed as in .h5 format
+            cmd = "mdconvert {} -o {}".format(trj_fn, trj_fn+'.dcd')
+            trj_fn = trj_fn+'.dcd'
+            os.system(cmd)
 
             # Split the complex in components in order to apply the FF
             protein, ligand, water, excipients = split(system, ligand_res_name='LIG')
@@ -102,21 +124,12 @@ class SSTMapGistCube(ParallelMixin, OERecordComputeCube):
                                                                                          ligand.NumAtoms(),
                                                                                          water.NumAtoms(),
                                                                                          excipients.NumAtoms()))
-
             if opt['center_grid_ligand'] and ligand.NumAtoms():
                 bb = BoundingBox(ligand, save_pdb=False, scale_factor=1.4)
             elif protein.NumAtoms():
                 bb = BoundingBox(protein, save_pdb=False, scale_factor=1.4)
             else:
                 raise ValueError("Protein and Ligand molecules have not been detected")
-
-            parmed_field = OEField("Parmed", ParmedData)
-
-            if not record.has_value(parmed_field):
-                self.log.warn("Missing molecule '{}' field".format(parmed_field.get_name()))
-                self.failure.emit(record)
-
-            parmed_structure = record.get_value(parmed_field)
 
             with TemporaryDirectory() as output_directory:
 
@@ -132,7 +145,7 @@ class SSTMapGistCube(ParallelMixin, OERecordComputeCube):
                 # Grid Center
                 center = (bb[0]+bb[1])*0.5
 
-                trj = md.load(opt['trj_fn'], top=system_fn)
+                trj = md.load(trj_fn, top=system_fn)
 
                 # Number of voxels in each dimension
                 dims = (np.ceil(bb[1]) - np.floor(bb[0]))/opt['grid_resolution'] + 2
@@ -143,7 +156,7 @@ class SSTMapGistCube(ParallelMixin, OERecordComputeCube):
                 # Define the Gist Grid
                 gist = sm.GridWaterAnalysis(
                             system_fn,
-                            opt['trj_fn'],
+                            trj_fn,
                             start_frame=0, num_frames=trj.n_frames,
                             grid_center=center,
                             grid_dimensions=[nx,
@@ -244,122 +257,265 @@ class SSTMapGistCube(ParallelMixin, OERecordComputeCube):
             self.failure.emit(record)
 
         return
+#
+#
+# class SSTMapHSACube(ParallelMixin, OERecordComputeCube):
+#     version = "0.0.0"
+#     title = "Water Thermodynamics by Using HSA in SSTMap"
+#     description = """
+#     SSTMap performs Water Thermodynamics analysis.
+#     SSTMaps supports hydration site analysis (HSA)
+#     and Grid Inhomogeneous Solvation Theory (GIST).
+#
+#     SSTMap has been developed at Kurtzman Lab Lehman College
+#     For more details, please visit
+#     sstmap.org @ https://github.com/KurtzmanLab/SSTMap
+#     """
+#     classification = ["SSTMap Analysis"]
+#     tags = [tag for lists in classification for tag in lists]
+#
+#     # Override defaults for some parameters
+#     parameter_overrides = {
+#         "memory_mb": {"default": 6000},
+#         "spot_policy": {"default": "Allowed"},
+#         "prefetch_count": {"default": 1},  # 1 molecule at a time
+#         "item_timeout": {"default": 43200},  # Default 12 hour limit (units are seconds)
+#         "item_count": {"default": 1}  # 1 molecule at a time
+#     }
+#
+#     trj_fn = parameter.StringParameter(
+#         'trj_fn',
+#         default='trj.dcd',
+#         help_text='Trajectory file name'
+#     )
+#
+#     def begin(self):
+#         self.opt = vars(self.args)
+#         self.opt['Logger'] = self.log
+#
+#     def process(self, record, port):
+#
+#         try:
+#             # The copy of the dictionary option as local variable
+#             # is necessary to avoid filename collisions due to
+#             # the parallel cube processes
+#             opt = dict(self.opt)
+#
+#             system_field = OEField(DEFAULT_MOL_NAME, Types.Chem.Mol)
+#
+#             if not record.has_value(system_field):
+#                 self.log.warn("Missing molecule '{}' field".format(system_field.get_name()))
+#                 self.failure.emit(record)
+#                 return
+#
+#             system = record.get_value(system_field)
+#
+#             # Split the complex in components in order to apply the FF
+#             protein, ligand, water, excipients = split(system, ligand_res_name='LIG')
+#
+#             self.log.info("\nProtein atom numbers = {}\nLigand atom numbers = {}\n"
+#                           "Water atom numbers = {}\nExcipients atom numbers = {}".format(protein.NumAtoms(),
+#                                                                                          ligand.NumAtoms(),
+#                                                                                          water.NumAtoms(),
+#                                                                                          excipients.NumAtoms()))
+#             parmed_field = OEField("Parmed", ParmedData)
+#
+#             if not record.has_value(parmed_field):
+#                 self.log.warn("Missing molecule '{}' field".format(parmed_field.get_name()))
+#                 self.failure.emit(record)
+#
+#             parmed_structure = record.get_value(parmed_field)
+#
+#             # with TemporaryDirectory() as output_directory:
+#
+#                 #opt['Logger'].info("Temporary Output Directory {}".format(output_directory))
+#
+#                 # system_fn = os.path.join(output_directory, "system.gro")
+#
+#             system_fn = "system.gro"
+#
+#             system_top_fn = system_fn.split(".")[0] + '.top'
+#
+#             ligand_fn = "ligand.pdb"
+#
+#             with oechem.oemolostream(ligand_fn) as ofs:
+#                 oechem.OEWriteConstMolecule(ofs, ligand)
+#
+#             parmed_structure.save(system_fn, overwrite=True)
+#             parmed_structure.save(system_top_fn, overwrite=True)
+#
+#             trj = md.load(opt['trj_fn'], top=system_fn)
+#
+#             # Set SSTMap in HSA mode
+#             hsa = sm.SiteWaterAnalysis(system_fn,
+#                                        opt["trj_fn"],
+#                                        start_frame=0, num_frames=trj.n_frames,
+#                                        supporting_file=system_top_fn,
+#                                        hsa_region_radius=5.0,
+#                                        ligand_file=ligand_fn,
+#                                        prefix="system")
+#
+#             # Info HSA
+#             hsa.print_system_summary()
+#
+#             # Run HSA
+#
+#             # Writing starting cluster file
+#             hsa.initialize_hydration_sites()
+#
+#             # Write hydration sites and probable water configuration
+#             hsa.calculate_site_quantities()
+#
+#             # hsa.write_calculation_summary()
+#             # hsa.write_data()
+#
+#         except Exception as e:
+#             # Attach an error message to the molecule that failed
+#             self.log.error(traceback.format_exc())
+#             # Return failed mol
+#             self.failure.emit(record)
+#
+#         return
 
 
-class SSTMapHSACube(ParallelMixin, OERecordComputeCube):
+class EnergyAnalysisCube(ParallelMixin, OERecordComputeCube):
+    title = "Energy Analysis"
     version = "0.0.0"
-    title = "Water Thermodynamics by Using HSA in SSTMap"
+    classification = [["Energy Analysis"]]
+    tags = ['OEChem']
     description = """
-    SSTMap performs Water Thermodynamics analysis.
-    SSTMaps supports hydration site analysis (HSA) 
-    and Grid Inhomogeneous Solvation Theory (GIST). 
+    This cube charges ligands by using the ELF10 charge method. If the ligands
+    are already charged the cube parameter charge_ligand can be used to skip the
+    charging stage
 
-    SSTMap has been developed at Kurtzman Lab Lehman College 
-    For more details, please visit 
-    sstmap.org @ https://github.com/KurtzmanLab/SSTMap
+    Input:
+    -------
+    Data Record with the ligand and Protein molecules. The trajectory frames must be 
+    included as molecule conformers
+
+    Output:
+    -------
+    Data Record - The ligand, Protein and Complex potential energies are attached on the
+    data record as float vectors. The energy units are in kcal/mol
     """
-    classification = ["SSTMap Analysis"]
-    tags = [tag for lists in classification for tag in lists]
 
     # Override defaults for some parameters
     parameter_overrides = {
-        "memory_mb": {"default": 6000},
+        "memory_mb": {"default": 2000},
         "spot_policy": {"default": "Allowed"},
         "prefetch_count": {"default": 1},  # 1 molecule at a time
-        "item_timeout": {"default": 43200},  # Default 12 hour limit (units are seconds)
+        "item_timeout": {"default": 3600},  # Default 1 hour limit (units are seconds)
         "item_count": {"default": 1}  # 1 molecule at a time
     }
 
-    trj_fn = parameter.StringParameter(
-        'trj_fn',
-        default='trj.dcd',
-        help_text='Trajectory file name'
-    )
+    protein_forcefield = parameter.StringParameter(
+        'protein_forcefield',
+        default='amber99sbildn.xml',
+        help_text='Force field parameters for protein')
+
+    ligand_forcefield = parameter.StringParameter(
+        'ligand_forcefield',
+        required=True,
+        default='GAFF2',
+        choices=['GAFF', 'GAFF2', 'SMIRNOFF'],
+        help_text='Force field to parametrize the ligand')
 
     def begin(self):
         self.opt = vars(self.args)
         self.opt['Logger'] = self.log
 
     def process(self, record, port):
-
         try:
-            # The copy of the dictionary option as local variable
-            # is necessary to avoid filename collisions due to
-            # the parallel cube processes
-            opt = dict(self.opt)
+            opt = self.opt
+            if not record.has_value(Fields.primary_molecule):
+                self.log.error("Missing '{}' field".format(Fields.primary_molecule.get_name()))
+                raise ValueError("Missing Primary Molecule")
 
-            system_field = OEField(DEFAULT_MOL_NAME, Types.Chem.Mol)
+            ligand = record.get_value(Fields.primary_molecule)
 
-            if not record.has_value(system_field):
-                self.log.warn("Missing molecule '{}' field".format(system_field.get_name()))
-                self.failure.emit(record)
-                return
+            if not record.has_value(Fields.protein):
+                self.log.error("Missing '{}' field".format(Fields.protein.get_name()))
+                raise ValueError("Missing Protein")
 
-            system = record.get_value(system_field)
+            protein = record.get_value(Fields.protein)
 
-            # Split the complex in components in order to apply the FF
-            protein, ligand, water, excipients = split(system, ligand_res_name='LIG')
+            # TODO Change this! You introduced a dependency from a cube parameter in a function
+            # Create The Ligand OpenMM Simulation
+            opt['prefix_name'] = 'LIG'
+            opt['ligand_res_name'] = 'LIG'
 
-            self.log.info("\nProtein atom numbers = {}\nLigand atom numbers = {}\n"
-                          "Water atom numbers = {}\nExcipients atom numbers = {}".format(protein.NumAtoms(),
-                                                                                         ligand.NumAtoms(),
-                                                                                         water.NumAtoms(),
-                                                                                         excipients.NumAtoms()))
-            parmed_field = OEField("Parmed", ParmedData)
+            ligand_structure = applyffLigand(ligand.GetActive(), opt)
+            ligand_omm_system = ligand_structure.createSystem(nonbondedMethod=app.NoCutoff)
+            ligand_integrator = openmm.LangevinIntegrator(300.0 * unit.kelvin, 1 / unit.picoseconds,
+                                                          0.002 * unit.picoseconds)
+            ligand_omm_simulation = app.Simulation(ligand_structure.topology, ligand_omm_system, ligand_integrator)
 
-            if not record.has_value(parmed_field):
-                self.log.warn("Missing molecule '{}' field".format(parmed_field.get_name()))
-                self.failure.emit(record)
+            # Create the OpenMM Protein Simulation
+            protein_structure = applyffProtein(protein.GetActive(), opt)
+            protein_omm_system = protein_structure.createSystem(nonbondedMethod=app.NoCutoff)
+            protein_integrator = openmm.LangevinIntegrator(300.0 * unit.kelvin, 1 / unit.picoseconds,
+                                                           0.002 * unit.picoseconds)
+            protein_omm_simulation = app.Simulation(protein_structure.topology, protein_omm_system, protein_integrator)
 
-            parmed_structure = record.get_value(parmed_field)
+            # Create the Complex OpenMM Simulation
+            complex_structure = ligand_structure + protein_structure
+            complex_omm_system = complex_structure.createSystem(nonbondedMethod=app.NoCutoff)
+            complex_integrator = openmm.LangevinIntegrator(300.0 * unit.kelvin, 1 / unit.picoseconds,
+                                                           0.002 * unit.picoseconds)
+            complex_omm_simulation = app.Simulation(complex_structure.topology, complex_omm_system, complex_integrator)
 
-            # with TemporaryDirectory() as output_directory:
+            ligand_energy = []
+            protein_energy = []
+            complex_energy = []
 
-                #opt['Logger'].info("Temporary Output Directory {}".format(output_directory))
+            # Compute the energy for the ligand, protein and complex conformers
+            for pair in zip(ligand.GetConfs(), protein.GetConfs()):
+                lig_conf = pair[0]
+                ligand_dic_coords = lig_conf.GetCoords()
+                ligand_positions = [openmm.Vec3(v[0], v[1], v[2]) for k, v in ligand_dic_coords.items()] * unit.angstrom
+                ligand_omm_simulation.context.setPositions(ligand_positions)
+                ligand_state = ligand_omm_simulation.context.getState(getEnergy=True)
+                ligand_energy.append(ligand_state.getPotentialEnergy().
+                                     in_units_of(unit.kilocalorie_per_mole) / unit.kilocalorie_per_mole)
 
-                # system_fn = os.path.join(output_directory, "system.gro")
+                prot_conf = pair[1]
+                protein_dic_coords = prot_conf.GetCoords()
+                protein_positions = [openmm.Vec3(v[0], v[1], v[2]) for k, v in
+                                     protein_dic_coords.items()] * unit.angstrom
+                protein_omm_simulation.context.setPositions(protein_positions)
+                protein_state = protein_omm_simulation.context.getState(getEnergy=True)
+                protein_energy.append(protein_state.getPotentialEnergy().
+                                      in_units_of(unit.kilocalorie_per_mole) / unit.kilocalorie_per_mole)
 
-            system_fn = "system.gro"
+                complex_positions = ligand_positions + protein_positions
+                complex_omm_simulation.context.setPositions(complex_positions)
+                complex_state = complex_omm_simulation.context.getState(getEnergy=True)
+                complex_energy.append(complex_state.getPotentialEnergy().
+                                      in_units_of(unit.kilocalorie_per_mole) / unit.kilocalorie_per_mole)
 
-            system_top_fn = system_fn.split(".")[0] + '.top'
+            # for i in range(0, len(ligand_energy)):
+            #     print("E_Ligand = {:.3f}, E_protein = {:.3f}, E_complex = {:.3f}".format(ligand_energy[i],
+            #                                                                              protein_energy[i],
+            #                                                                              complex_energy[i]))
 
-            ligand_fn = "ligand.pdb"
+            # Units are in kcal/mol
+            ligand_energy_field = OEField("ligand_energy",
+                                          Types.FloatVec,
+                                          meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal))
+            protein_energy_field = OEField("protein_energy",
+                                           Types.FloatVec,
+                                           meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal))
+            complex_energy_field = OEField("complex_energy",
+                                           Types.FloatVec,
+                                           meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal))
 
-            with oechem.oemolostream(ligand_fn) as ofs:
-                oechem.OEWriteConstMolecule(ofs, ligand)
+            record.set_value(ligand_energy_field, ligand_energy)
+            record.set_value(protein_energy_field, protein_energy)
+            record.set_value(complex_energy_field, complex_energy)
 
-            parmed_structure.save(system_fn, overwrite=True)
-            parmed_structure.save(system_top_fn, overwrite=True)
+            self.success.emit(record)
 
-            trj = md.load(opt['trj_fn'], top=system_fn)
-
-            # Set SSTMap in HSA mode
-            hsa = sm.SiteWaterAnalysis(system_fn,
-                                       opt["trj_fn"],
-                                       start_frame=0, num_frames=trj.n_frames,
-                                       supporting_file=system_top_fn,
-                                       hsa_region_radius=5.0,
-                                       ligand_file=ligand_fn,
-                                       prefix="system")
-
-            # Info HSA
-            hsa.print_system_summary()
-
-            # Run HSA
-
-            # Writing starting cluster file
-            hsa.initialize_hydration_sites()
-
-            # Write hydration sites and probable water configuration
-            hsa.calculate_site_quantities()
-
-            # hsa.write_calculation_summary()
-            # hsa.write_data()
-
-        except Exception as e:
-            # Attach an error message to the molecule that failed
+        except:
             self.log.error(traceback.format_exc())
-            # Return failed mol
+            # Return failed record
             self.failure.emit(record)
-
-        return

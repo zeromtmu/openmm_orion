@@ -28,8 +28,11 @@ class MDStageNames:
 
 
 class Fields:
-    # The ID field should be used identification field for ligands, proteins or complexes
-    id = OEField("ID", Types.String, meta=OEFieldMeta().set_option(Meta.Source.ID))
+    # The Title field is used to set the system name
+    title = OEField("Title", Types.String, meta=OEFieldMeta().set_option(Meta.Source.ID))
+
+    # The ID field should be used as identification number for ligands, proteins or complexes
+    id = OEField("ID", Types.Int, meta=OEFieldMeta().set_option(Meta.Source.ID))
 
     # The Ligand field should be used to save in a record a ligand as an OEMolecule
     ligand = OEField("Ligand", Types.Chem.Mol, meta=OEFieldMeta().set_option(Meta.Hints.Chem.Ligand))

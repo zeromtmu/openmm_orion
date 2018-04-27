@@ -119,7 +119,7 @@ def hydrate(system, opt):
 
     # Setting the box vectors
     omm_box_vectors = fixer.topology.getPeriodicBoxVectors()
-    box_vectors = utils.PackageOEMol.encodePyObj(omm_box_vectors)
+    box_vectors = utils.encodePyObj(omm_box_vectors)
     sol_system.SetData(oechem.OEGetTag('box_vectors'), box_vectors)
 
     return sol_system
