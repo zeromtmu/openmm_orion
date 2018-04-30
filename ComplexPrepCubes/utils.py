@@ -1,8 +1,8 @@
 from openeye import oechem
 from simtk.openmm import app
-from MDCubes.OpenMMCubes import utils
 import numpy as np
 from oeommtools import utils as oeommutils
+from oeommtools import data_utils
 from pdbfixer import PDBFixer
 from pkg_resources import resource_filename
 from simtk import unit
@@ -119,7 +119,7 @@ def hydrate(system, opt):
 
     # Setting the box vectors
     omm_box_vectors = fixer.topology.getPeriodicBoxVectors()
-    box_vectors = utils.encodePyObj(omm_box_vectors)
+    box_vectors = data_utils.encodePyObj(omm_box_vectors)
     sol_system.SetData(oechem.OEGetTag('box_vectors'), box_vectors)
 
     return sol_system

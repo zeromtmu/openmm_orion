@@ -46,11 +46,11 @@ job.tags = [tag for lists in job.classification for tag in lists]
 iligs = DataSetReaderCube("LigandReader", title="Ligand Reader")
 iligs.promote_parameter("data_in", promoted_name="ligands", title="Ligand Input File", description="Ligand file name")
 
-ligset = LigandSetting("LigandSetting")
-
 chargelig = LigandChargeCube("LigCharge")
 chargelig.promote_parameter('max_conformers', promoted_name='max_conformers',
                             description="Set the max number of conformers per ligand", default=800)
+
+ligset = LigandSetting("LigandSetting")
 
 # Protein Reading cube. The protein prefix parameter is used to select a name for the
 # output system files
@@ -173,9 +173,9 @@ job.add_cubes(iligs, ligset, iprot, protset, chargelig, complx, solvate, ff,
               minComplex, warmup, equil1, equil2, equil3, prod, ofs, fail)
 
 
-iligs.success.connect(ligset.intake)
-ligset.success.connect(chargelig.intake)
-chargelig.success.connect(complx.intake)
+iligs.success.connect(chargelig.intake)
+chargelig.success.connect(ligset.intake)
+ligset.success.connect(complx.intake)
 iprot.success.connect(protset.intake)
 protset.success.connect(complx.protein_port)
 complx.success.connect(solvate.intake)

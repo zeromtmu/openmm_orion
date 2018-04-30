@@ -39,11 +39,11 @@ job.tags = [tag for lists in job.classification for tag in lists]
 iligs = DataSetReaderCube("Ligand Reader", title="Ligand Reader")
 iligs.promote_parameter("data_in", promoted_name="ligands", title="Ligand Input File", description="Ligand file name")
 
-ligset = LigandSetting("LigandSetting")
-
 chargelig = LigandChargeCube("LigCharge")
 chargelig.promote_parameter('max_conformers', promoted_name='max_conformers',
                             description="Set the max number of conformers per ligand", default=800)
+
+ligset = LigandSetting("LigandSetting")
 
 iprot = DataSetReaderCube("Protein Reader", title="Protein Reader")
 iprot.promote_parameter("data_in", promoted_name="protein", title="Protein Input File", description="Protein file name")
@@ -61,11 +61,11 @@ ofs = DataSetWriterCube('ofs', title='OFS-Success')
 fail = DataSetWriterCube('fail', title='OFS-Failure')
 fail.set_parameters(data_out='fail.oeb.gz')
 
-job.add_cubes(iligs, ligset, chargelig, iprot, protset, complx, solvate, ff, ofs, fail)
+job.add_cubes(iligs, chargelig, ligset, iprot, protset, complx, solvate, ff, ofs, fail)
 
-iligs.success.connect(ligset.intake)
-ligset.success.connect(chargelig.intake)
-chargelig.success.connect(complx.intake)
+iligs.success.connect(chargelig.intake)
+chargelig.success.connect(ligset.intake)
+ligset.success.connect(complx.intake)
 iprot.success.connect(protset.intake)
 protset.success.connect(complx.protein_port)
 complx.success.connect(solvate.intake)

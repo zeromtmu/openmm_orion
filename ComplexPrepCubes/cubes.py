@@ -65,7 +65,7 @@ class HydrationCube(ParallelMixin, OERecordComputeCube):
             system = record.get_value(Fields.primary_molecule)
 
             if not record.has_value(Fields.title):
-                self.log.warn("Missing molecule title '{}' field".format(Fields.title.get_name()))
+                self.log.warn("Missing record '{}' field".format(Fields.title.get_name()))
                 system_title = system.GetTitle()[0:12]
             else:
                 system_title = record.get_value(Fields.title)
@@ -194,7 +194,7 @@ class SolvationCube(ParallelMixin, OERecordComputeCube):
             solute = record.get_value(Fields.primary_molecule)
 
             if not record.has_value(Fields.title):
-                self.log.warn("Missing molecule title '{}' field".format(Fields.title.get_name()))
+                self.log.warn("Missing record '{}' field".format(Fields.title.get_name()))
                 solute_title = solute.GetTitle()[0:12]
             else:
                 solute_title = record.get_value(Fields.title)
@@ -266,7 +266,6 @@ class ComplexPrepCube(OERecordComputeCube):
         for record in self.protein_port:
             self.opt = vars(self.args)
             self.opt['Logger'] = self.log
-            self.count = 0
 
             if not record.has_value(Fields.primary_molecule):
                 self.log.error("Missing Protein '{}' field".format(Fields.primary_molecule.get_name()))
@@ -276,12 +275,10 @@ class ComplexPrepCube(OERecordComputeCube):
             protein = record.get_value(Fields.primary_molecule)
 
             if not record.has_value(Fields.title):
-                self.log.warn("Missing Protein Title '{}' field".format(Fields.title.get_name()))
+                self.log.warn("Missing Protein '{}' field".format(Fields.title.get_name()))
                 self.protein_title = protein.GetTitle()[0:12]
             else:
                 self.protein_title = record.get_value(Fields.title)
-
-            self.protein_id = record.get_value(Fields.id)
 
             self.protein = protein
             return
@@ -296,70 +293,67 @@ class ComplexPrepCube(OERecordComputeCube):
 
                 ligand = record.get_value(Fields.primary_molecule)
 
+                if ligand.NumConfs() > 1:
+                    raise ValueError("The ligand {} has multiple conformers: {}".format(ligand.GetTitle(),
+                                                                                        ligand.GetNumConfs()))
+
                 if not record.has_value(Fields.title):
-                    self.log.warn("Missing Ligand ID '{}' field".format(Fields.title.get_name()))
+                    self.log.warn("Missing Ligand record '{}' field".format(Fields.title.get_name()))
                     ligand_title = ligand.GetTitle()[0:12]
                 else:
                     ligand_title = record.get_value(Fields.title)
 
-                num_conf = 0
+                if not record.has_value(Fields.id):
+                    raise ValueError("Missing Ligand record '{}' field".format(Fields.id.get_name()))
 
-                for conf in ligand.GetConfs():
-                    conf_mol = oechem.OEMol(conf)
-                    complx = self.protein.CreateCopy()
-                    oechem.OEAddMols(complx, conf_mol)
+                ligand_id = record.get_value(Fields.id)
 
-                    # Split the complex in components
-                    protein_split, ligand_split, water, excipients = oeommutils.split(complx)
+                complx = self.protein.CreateCopy()
+                oechem.OEAddMols(complx, ligand)
 
-                    # If the protein does not contain any atom emit a failure
-                    if not protein_split.NumAtoms():  # Error: protein molecule is empty
-                        raise ValueError("The protein molecule does not contains atoms")
+                # Split the complex in components
+                protein_split, ligand_split, water, excipients = oeommutils.split(complx)
 
-                    # If the ligand does not contain any atom emit a failure
-                    if not ligand_split.NumAtoms():  # Error: ligand molecule is empty
-                        raise ValueError("The Ligand molecule does not contains atoms")
+                # If the protein does not contain any atom emit a failure
+                if not protein_split.NumAtoms():  # Error: protein molecule is empty
+                    raise ValueError("The protein molecule does not contains atoms")
 
-                    # Check if the ligand is inside the binding site. Cutoff distance 3A
-                    if not oeommutils.check_shell(ligand_split, protein_split, 3):
-                        raise ValueError("The ligand is probably outside the protein binding site")
+                # If the ligand does not contain any atom emit a failure
+                if not ligand_split.NumAtoms():  # Error: ligand molecule is empty
+                    raise ValueError("The Ligand molecule does not contains atoms")
 
-                    # Removing possible clashes between the ligand and water or excipients
-                    if water.NumAtoms():
-                        water_del = oeommutils.delete_shell(ligand, water, 1.5, in_out='in')
+                # Check if the ligand is inside the binding site. Cutoff distance 3A
+                if not oeommutils.check_shell(ligand_split, protein_split, 3):
+                    raise ValueError("The ligand is probably outside the protein binding site")
 
-                    if excipients.NumAtoms():
-                        excipient_del = oeommutils.delete_shell(ligand, excipients, 1.5, in_out='in')
+                # Removing possible clashes between the ligand and water or excipients
+                if water.NumAtoms():
+                    water_del = oeommutils.delete_shell(ligand, water, 1.5, in_out='in')
 
-                    # Reassemble the complex
-                    new_complex = protein_split.CreateCopy()
-                    oechem.OEAddMols(new_complex, ligand_split)
-                    if excipients.NumAtoms():
-                        oechem.OEAddMols(new_complex, excipient_del)
-                    if water.NumAtoms():
-                        oechem.OEAddMols(new_complex, water_del)
+                if excipients.NumAtoms():
+                    excipient_del = oeommutils.delete_shell(ligand, excipients, 1.5, in_out='in')
 
-                    complex_title = 'p'+self.protein_title + '_l'+ligand_title
+                # Reassemble the complex
+                new_complex = protein_split.CreateCopy()
+                oechem.OEAddMols(new_complex, ligand_split)
+                if excipients.NumAtoms():
+                    oechem.OEAddMols(new_complex, excipient_del)
+                if water.NumAtoms():
+                    oechem.OEAddMols(new_complex, water_del)
 
-                    if ligand.GetMaxConfIdx() > 1:
-                        complex_title += '_c' + str(num_conf)
+                complex_title = 'p' + self.protein_title + '_' + ligand_title
 
-                    new_complex.SetTitle(complex_title)
+                new_complex.SetTitle(complex_title)
 
-                    new_record = OERecord()
+                new_record = OERecord()
 
-                    new_record.set_value(Fields.primary_molecule, new_complex)
+                new_record.set_value(Fields.primary_molecule, new_complex)
+                new_record.set_value(Fields.title, complex_title)
+                new_record.set_value(Fields.ligand, ligand)
+                new_record.set_value(Fields.protein, self.protein)
+                new_record.set_value(Fields.id, ligand_id)
 
-                    new_record.set_value(Fields.ligand, ligand)
-                    new_record.set_value(Fields.protein, self.protein)
-                    new_record.set_value(Fields.title, complex_title)
-                    new_record.set_value(Fields.id, self.count)
-
-                    num_conf += 1
-
-                    self.success.emit(new_record)
-
-                    self.count += 1
+                self.success.emit(new_record)
 
         except:
             self.log.error(traceback.format_exc())

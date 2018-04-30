@@ -183,14 +183,14 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
             system = record.get_value(Fields.primary_molecule)
 
             if not record.has_value(Fields.title):
-                opt['Logger'].warn("Missing molecule title '{}' column".format(Fields.title.get_name()))
+                opt['Logger'].warn("Missing record '{}' field".format(Fields.title.get_name()))
                 system_title = system.GetTitle()[0:12]
             else:
                 system_title = record.get_value(Fields.title)
 
             if not record.has_value(Fields.id):
-                opt['Logger'].error("Missing molecule ID {} field".format(Fields.id.get_name()))
-                raise ValueError("Missing the Primary Molecule")
+                opt['Logger'].error("Missing record {} field".format(Fields.id.get_name()))
+                raise ValueError("Missing ID Field")
 
             opt['system_title'] = system_title
             opt['system_id'] = record.get_value(Fields.id)
@@ -433,14 +433,14 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
             system = record.get_value(Fields.primary_molecule)
 
             if not record.has_value(Fields.title):
-                opt['Logger'].warn("Missing molecule {} field".format(Fields.title.get_name()))
+                opt['Logger'].warn("Missing record {} field".format(Fields.title.get_name()))
                 system_title = system.GetTitle()[0:12]
             else:
                 system_title = record.get_value(Fields.title)
 
             if not record.has_value(Fields.id):
-                opt['Logger'].error("Missing molecule ID {} field".format(Fields.id.get_name()))
-                raise ValueError("Missing the Primary Molecule")
+                opt['Logger'].error("Missing record {} field".format(Fields.id.get_name()))
+                raise ValueError("Missing the ID field")
 
             opt['system_title'] = system_title
 
@@ -722,14 +722,14 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
             system = record.get_value(Fields.primary_molecule)
 
             if not record.has_value(Fields.title):
-                opt['Logger'].warn("Missing molecule title {} field".format(Fields.title.get_name()))
+                opt['Logger'].warn("Missing record {} field".format(Fields.title.get_name()))
                 system_title = system.GetTitle()[0:12]
             else:
                 system_title = record.get_value(Fields.title)
 
             if not record.has_value(Fields.id):
-                opt['Logger'].error("Missing molecule ID {} field".format(Fields.id.get_name()))
-                raise ValueError("Missing the Primary Molecule")
+                opt['Logger'].error("Missing record {} field".format(Fields.id.get_name()))
+                raise ValueError("Missing the ID field")
 
             opt['system_title'] = system_title
 

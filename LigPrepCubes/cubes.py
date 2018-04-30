@@ -142,15 +142,33 @@ class LigandSetting(OERecordComputeCube):
                 residue.SetName(self.args.lig_res_name)
                 oechem.OEAtomSetResidue(at, residue)
 
-            name = ligand.GetTitle()[0:12]
-            record.set_value(Fields.id, self.count)
-            record.set_value(Fields.title, name)
+            num_conf = 0
 
-            self.count += 1
+            for conf in ligand.GetConfs():
 
-            record.set_value(Fields.primary_molecule, ligand)
+                conf_mol = oechem.OEMol(conf)
 
-            self.success.emit(record)
+                name = ligand.GetTitle()[0:12]
+
+                if not name:
+                    name = 'LIG' + str(self.count)
+
+                ligand_title = 'l' + name
+
+                if ligand.GetMaxConfIdx() > 1:
+                    ligand_title += '_c' + str(num_conf)
+
+                conf_mol.SetTitle(ligand_title)
+
+                record.set_value(Fields.id, self.count)
+                record.set_value(Fields.title, ligand_title)
+                record.set_value(Fields.primary_molecule, conf_mol)
+
+                num_conf += 1
+
+                self.count += 1
+
+                self.success.emit(record)
 
         except:
             self.log.error(traceback.format_exc())

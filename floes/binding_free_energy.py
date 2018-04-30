@@ -23,8 +23,8 @@ from cuberecord import (DataSetWriterCube,
 
 
 # *************USER SETTING**************
-yank_iteration_per_chunk = 500
-chunks = 2
+yank_iteration_per_chunk = 1000
+chunks = 1
 # ***************************************
 
 cube_list = []
@@ -57,13 +57,13 @@ iligs = DataSetReaderCube("LigandReader", title="Ligand Reader")
 iligs.promote_parameter("data_in", promoted_name="ligands", title="Ligand Input File", description="Ligand file name")
 job.add_cube(iligs)
 
-ligset = LigandSetting("LigandSetting")
-job.add_cube(ligset)
-
 chargelig = LigandChargeCube("LigCharge")
 chargelig.promote_parameter('max_conformers', promoted_name='max_conformers',
                             description="Set the max number of conformers per ligand", default=800)
 job.add_cube(chargelig)
+
+ligset = LigandSetting("LigandSetting")
+job.add_cube(ligset)
 
 # Protein Reading cube. The protein prefix parameter is used to select a name for the
 # output system files
@@ -263,9 +263,9 @@ job.add_cube(fail)
 cube_list.append(fail)
 
 # Connections
-iligs.success.connect(ligset.intake)
-ligset.success.connect(chargelig.intake)
-chargelig.success.connect(complx.intake)
+iligs.success.connect(chargelig.intake)
+chargelig.success.connect(ligset.intake)
+ligset.success.connect(complx.intake)
 
 iprot.success.connect(protset.intake)
 protset.success.connect(complx.protein_port)
@@ -280,7 +280,7 @@ equil1Complex.success.connect(equil2Complex.intake)
 equil2Complex.success.connect(equil3Complex.intake)
 equil3Complex.success.connect(sync.intake)
 # Ligand Connections
-chargelig.success.connect(solvateLigand.intake)
+ligset.success.connect(solvateLigand.intake)
 solvateLigand.success.connect(ffLigand.intake)
 ffLigand.success.connect(minimizeLigand.intake)
 minimizeLigand.success.connect(warmupLigand.intake)

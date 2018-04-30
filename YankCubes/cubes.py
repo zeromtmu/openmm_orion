@@ -29,8 +29,6 @@ import itertools
 from YankCubes.yank_templates import (yank_solvation_template,
                                       yank_binding_template)
 
-from yank.experiment import ExperimentBuilder
-
 from YankCubes import utils as yankutils
 
 from Standards import (MDStageNames,
@@ -54,7 +52,7 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
 
     See http://getyank.org for more information about YANK.
     """
-    classification = ["Alchemical free energy calculations"]
+    classification = [["Alchemical free energy calculations"]]
     tags = [tag for lists in classification for tag in lists]
 
     # Override defaults for some parameters
@@ -150,10 +148,24 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                                                                 tmp_description)
 
             if not record.has_value(Fields.primary_molecule):
-                self.log.error("Missing molecule '{}' field".format(Fields.primary_molecule.get_name()))
+                self.log.error("Missing record '{}' field".format(Fields.primary_molecule.get_name()))
                 raise ValueError("Missing the Primary Molecule")
 
             system = record.get_value(Fields.primary_molecule)
+
+            if not record.has_value(Fields.title):
+                opt['Logger'].warn("Missing record '{}' field".format(Fields.title.get_name()))
+                system_title = system.GetTitle()[0:12]
+            else:
+                system_title = record.get_value(Fields.title)
+
+            if not record.has_value(Fields.id):
+                opt['Logger'].error("Missing record '{}' field".format(Fields.id.get_name()))
+                raise ValueError("Missing the Primary Molecule")
+
+            opt['system_title'] = system_title
+
+            opt['system_id'] = record.get_value(Fields.id)
 
             # Update cube simulation parameters with the eventually molecule SD tags
             new_args = {dp.GetTag(): dp.GetValue() for dp in oechem.OEGetSDDataPairs(system) if dp.GetTag() in
@@ -242,8 +254,7 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                     with open(solute_omm_sys_serialized_fn, 'w') as solute_f:
                         solute_f.write(solute_omm_sys_serialized)
 
-                # Print Yank Template
-                self.log.warn(yank_solvation_template.format(
+                yank_template = yank_solvation_template.format(
                                                  verbose='yes' if opt['verbose'] else 'no',
                                                  minimize='yes' if opt['minimize'] else 'no',
                                                  output_directory=output_directory,
@@ -259,28 +270,11 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                                                  solvated_xml_fn=solvated_omm_sys_serialized_fn,
                                                  solute_pdb_fn=solute_structure_fn,
                                                  solute_xml_fn=solute_omm_sys_serialized_fn,
-                                                 solvent_dsl=solvent_str_names))
-                # Build the Yank Experiment
-                yaml_builder = ExperimentBuilder(yank_solvation_template.format(
-                                                 verbose='yes' if opt['verbose'] else 'no',
-                                                 minimize='yes' if opt['minimize'] else 'no',
-                                                 output_directory=output_directory,
-                                                 timestep=4.0 if opt['hmr'] else 2.0,
-                                                 nsteps_per_iteration=opt['nsteps_per_iteration'],
-                                                 number_iterations=opt['iterations'],
-                                                 temperature=opt['temperature'],
-                                                 pressure=opt['pressure'],
-                                                 resume_sim='yes' if opt['rerun'] else 'no',
-                                                 resume_setup='yes' if opt['rerun'] else 'no',
-                                                 hydrogen_mass=4.0 if opt['hmr'] else 1.0,
-                                                 solvated_pdb_fn=solvated_structure_fn,
-                                                 solvated_xml_fn=solvated_omm_sys_serialized_fn,
-                                                 solute_pdb_fn=solute_structure_fn,
-                                                 solute_xml_fn=solute_omm_sys_serialized_fn,
-                                                 solvent_dsl=solvent_str_names))
+                                                 solvent_dsl=solvent_str_names)
 
-                # Run Yank
-                yaml_builder.run_experiments()
+                opt['yank_template'] = yank_template
+
+                yankutils.run_yank(opt)
 
                 if opt['analyze']:
 
@@ -335,7 +329,7 @@ class SyncBindingFECube(OERecordComputeCube):
     This cube is used to synchronize the solvated ligands and the related
     solvated complexes
     """
-    classification = ["Synchronization Cube"]
+    classification = [["Synchronization Cube"]]
     tags = [tag for lists in classification for tag in lists]
 
     solvated_ligand_in_port = RecordInputPort("solvated_ligand_in_port")
@@ -367,16 +361,21 @@ class SyncBindingFECube(OERecordComputeCube):
 
             solvated_complex_lig_list = [(i, j) for i, j in
                                          itertools.product(self.solvated_ligand_list, self.solvated_complex_list)
-                                         if i.get_value(Fields.id) in j.get_value(Fields.id)]
+                                         if i.get_value(Fields.id) == j.get_value(Fields.id)]
 
             for pair in solvated_complex_lig_list:
 
                 new_record = OERecord()
 
-                self.log.info("SYNC = ({} , {})".format(pair[0].get_value(Fields.id), pair[1].get_value(Fields.id)))
+                self.log.info("SYNC = ({} - {} , {} - {})".format(pair[0].get_value(Fields.title),
+                                                                  pair[0].get_value(Fields.id),
+                                                                  pair[1].get_value(Fields.title),
+                                                                  pair[1].get_value(Fields.id)))
 
                 complex_solvated = pair[1].get_value(Fields.primary_molecule)
                 new_record.set_value(Fields.primary_molecule, complex_solvated)
+                new_record.set_value(Fields.id, pair[1].get_value(Fields.id))
+                new_record.set_value(Fields.title, pair[1].get_value(Fields.title))
 
                 ligand_solvated_field = OEField("ligand_solvated", Types.Record)
                 complex_solvated_field = OEField("complex_solvated", Types.Record)
@@ -404,7 +403,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
     See http://getyank.org for more information about YANK.
     """
-    classification = ["Alchemical free energy calculations"]
+    classification = [["Alchemical free energy calculations"]]
     tags = [tag for lists in classification for tag in lists]
 
     # Override defaults for some parameters
@@ -513,16 +512,30 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                                                                 tmp_description)
 
             if not record.has_value(Fields.primary_molecule):
-                self.log.error("Missing molecule '{}' field".format(Fields.primary_molecule.get_name()))
+                self.log.error("Missing record '{}' field".format(Fields.primary_molecule.get_name()))
                 raise ValueError("The Primary Molecule is missing")
 
             complex = record.get_value(Fields.primary_molecule)
+
+            if not record.has_value(Fields.title):
+                opt['Logger'].warn("Missing record'{}' field".format(Fields.title.get_name()))
+                system_title = complex.GetTitle()[0:12]
+            else:
+                system_title = record.get_value(Fields.title)
+
+            if not record.has_value(Fields.id):
+                opt['Logger'].error("Missing record '{}' field".format(Fields.id.get_name()))
+                raise ValueError("Missing the ID field")
+
+            opt['system_title'] = system_title
+
+            opt['system_id'] = record.get_value(Fields.id)
 
             if not opt['rerun']:
                 solvated_ligand_record_field = OEField("ligand_solvated", Types.DataRecord)
 
                 if not record.has_value(solvated_ligand_record_field):
-                    self.log.error("Missing molecule '{}' field".format(solvated_ligand_record_field.get_name()))
+                    self.log.error("Missing record '{}' field".format(solvated_ligand_record_field.get_name()))
                     raise ValueError("The parametrized solvated ligand is missing")
 
                 solvated_ligand_mdsystem_record = record.get_value(solvated_ligand_record_field)
@@ -532,7 +545,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                 solvated_complex_record_field = OEField("complex_solvated", Types.DataRecord)
 
                 if not record.has_value(solvated_complex_record_field):
-                    self.log.error("Missing molecule '{}' field".format(solvated_complex_record_field.get_name()))
+                    self.log.error("Missing record'{}' field".format(solvated_complex_record_field.get_name()))
                     raise ValueError("The parametrized solvated complex is missing")
 
                 solvated_complex_mdsystem_record = record.get_value(solvated_complex_record_field)
@@ -595,7 +608,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     with open(solvated_ligand_omm_serialized_fn, 'w') as solvated_ligand_f:
                         solvated_ligand_f.write(solvated_ligand_omm_serialized)
 
-                self.log.warn(yank_binding_template.format(
+                yank_template = yank_binding_template.format(
                     verbose='yes' if opt['verbose'] else 'no',
                     minimize='yes' if opt['minimize'] else 'no',
                     output_directory=output_directory,
@@ -612,30 +625,11 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     solvent_pdb_fn=solvated_ligand_structure_fn,
                     solvent_xml_fn=solvated_ligand_omm_serialized_fn,
                     restraints=opt['restraints'],
-                    ligand_resname=opt['ligand_resname']))
+                    ligand_resname=opt['ligand_resname'])
 
-                # Build the Yank Experiment
-                yaml_builder = ExperimentBuilder(yank_binding_template.format(
-                    verbose='yes' if opt['verbose'] else 'no',
-                    minimize='yes' if opt['minimize'] else 'no',
-                    output_directory=output_directory,
-                    timestep=opt['timestep'],
-                    nsteps_per_iteration=opt['nsteps_per_iteration'],
-                    number_iterations=opt['iterations'],
-                    temperature=opt['temperature'],
-                    pressure=opt['pressure'],
-                    resume_sim='yes' if opt['rerun'] else 'no',
-                    resume_setup='yes' if opt['rerun'] else 'no',
-                    hydrogen_mass=4.0 if opt['hmr'] else 1.0,
-                    complex_pdb_fn=solvated_complex_structure_fn,
-                    complex_xml_fn=solvated_complex_omm_serialized_fn,
-                    solvent_pdb_fn=solvated_ligand_structure_fn,
-                    solvent_xml_fn=solvated_ligand_omm_serialized_fn,
-                    restraints=opt['restraints'],
-                    ligand_resname=opt['ligand_resname']))
+                opt['yank_template'] = yank_template
 
-                # Run Yank
-                yaml_builder.run_experiments()
+                yankutils.run_yank(opt)
 
                 if opt['analyze']:
                     exp_dir = os.path.join(output_directory, "experiments")

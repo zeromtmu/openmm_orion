@@ -42,7 +42,7 @@ class ProteinSetting(OERecordComputeCube):
 
             if self.count > 0:
                 raise ValueError("Multiple Proteins have been Detected "
-                                 "Currently just one Protein as input is supported")
+                                 "Currently just one Protein is supported as input")
 
             if not record.has_value(Fields.primary_molecule):
                 self.log.error("Missing '{}' field".format(Fields.primary_molecule.get_name()))
@@ -51,6 +51,9 @@ class ProteinSetting(OERecordComputeCube):
             protein = record.get_value(Fields.primary_molecule)
 
             name = protein.GetTitle()[0:12]
+            if not name:
+                name = 'PRT'
+
             record.set_value(Fields.title, name)
             self.count += 1
 

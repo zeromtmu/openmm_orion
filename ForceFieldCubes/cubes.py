@@ -95,7 +95,7 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
             system = record.get_value(Fields.primary_molecule)
 
             if not record.has_value(Fields.title):
-                self.log.warn("Missing molecule title '{}' field".format(Fields.title.get_name()))
+                self.log.warn("Missing record '{}' field".format(Fields.title.get_name()))
                 system_title = system.GetTitle()[0:12]
             else:
                 system_title = record.get_value(Fields.title)
@@ -111,7 +111,7 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
                                                                                          excipients.NumAtoms()))
 
             if not record.has_value(Fields.id):
-                self.log.error("Missing molecule ID '{}' field".format(Fields.ID.get_name()))
+                self.log.error("Missing record '{}' field".format(Fields.ID.get_name()))
                 self.failure.emit(record)
                 return
 

@@ -30,8 +30,8 @@ ofs: Output file
 """
 
 # *************USER SETTING**************
-yank_iteration_per_chunk = 500
-chunks = 2
+yank_iteration_per_chunk = 1000
+chunks = 1
 # ***************************************
 
 cube_list = []
@@ -45,15 +45,15 @@ iligs.promote_parameter("data_in", promoted_name="ligands", title="Ligand Input 
 job.add_cube(iligs)
 cube_list.append(iligs)
 
-ligset = LigandSetting("LigandSetting")
-job.add_cube(ligset)
-cube_list.append(ligset)
-
 chargelig = LigandChargeCube("LigCharge")
 chargelig.promote_parameter('max_conformers', promoted_name='max_conformers',
                             description="Set the max number of conformers per ligand", default=800)
 job.add_cube(chargelig)
 cube_list.append(chargelig)
+
+ligset = LigandSetting("LigandSetting")
+job.add_cube(ligset)
+cube_list.append(ligset)
 
 solvate = SolvationCube("Solvation")
 solvate.promote_parameter("density", promoted_name="density", title="Solution density in g/ml", default=1.0,

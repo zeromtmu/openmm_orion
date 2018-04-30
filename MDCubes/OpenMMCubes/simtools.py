@@ -9,6 +9,7 @@ from platform import uname
 import os
 import fcntl
 import time
+from floe.api.orion import in_orion
 
 
 # def openeye_cluster(sim):
@@ -38,7 +39,7 @@ import time
 
 def local_cluster(sim):
     def wrapper(*args):
-        if 'CUDA_VISIBLE_DEVICES' in os.environ:
+        if 'CUDA_VISIBLE_DEVICES' in os.environ and not in_orion():
 
             gpus_available_indexes = os.environ["CUDA_VISIBLE_DEVICES"].split(',')
             mdData = args[0]
@@ -47,20 +48,23 @@ def local_cluster(sim):
             while True:
 
                 gpu_id = gpus_available_indexes[opt['system_id'] % len(gpus_available_indexes)]
-                file = open(gpu_id + '.txt', 'a')
 
                 try:
-                    fcntl.flock(file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    with open(gpu_id + '.txt', 'a') as file:
+                        fcntl.flock(file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                        file.write("name = {} MOL_ID = {} GPU_IDS = {} GPU_ID = {}\n".format(
+                                                                                opt['system_title'],
+                                                                                opt['system_id'],
+                                                                                gpus_available_indexes,
+                                                                                gpu_id))
+                        opt['gpu_id'] = gpu_id
+                        sim(mdData, opt)
+                        time.sleep(1.0)
+                        fcntl.flock(file, fcntl.LOCK_UN)
+                        break
                 except IOError:
                     time.sleep(0.01)
 
-                file.write("name = {} ID = {}\n".format(opt['system_title'], gpu_id))
-                opt['gpu_id'] = gpu_id
-                sim(mdData, opt)
-                time.sleep(1.0)
-                fcntl.flock(file, fcntl.LOCK_UN)
-                file.close()
-                break
         else:
             sim(*args)
 
@@ -190,7 +194,7 @@ def simulation(mdData, opt):
                     # Set platform precision for CUDA or OpenCL
                     properties = {'Precision': precision}
 
-                    if 'gpu_id' in opt and 'CUDA_VISIBLE_DEVICES' in os.environ:
+                    if 'gpu_id' in opt and 'CUDA_VISIBLE_DEVICES' in os.environ and not in_orion():
                         properties['DeviceIndex'] = opt['gpu_id']
 
                     simulation = app.Simulation(topology, system, integrator,
