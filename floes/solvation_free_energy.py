@@ -1,4 +1,4 @@
-from __future__ import unicode_literals
+#!/usr/bin/env python
 from floe.api import WorkFloe
 from cuberecord import (DataSetWriterCube,
                         DataSetReaderCube)

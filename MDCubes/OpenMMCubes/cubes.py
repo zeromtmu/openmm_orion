@@ -22,6 +22,8 @@ import copy
 
 import textwrap
 
+import os
+
 
 class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
     title = 'Minimization Cube'
@@ -48,7 +50,6 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
         "instance_tags": {"default": "cuda8"},
         "spot_policy": {"default": "Allowed"},
         "prefetch_count": {"default": 1},  # 1 molecule at a time
-        "item_timeout": {"default": 43200},  # Default 12 hour limit (units are seconds)
         "item_count": {"default": 1}  # 1 molecule at a time
     }
 
@@ -277,7 +278,6 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
         "instance_tags": {"default": "cuda8"},
         "spot_policy": {"default": "Allowed"},
         "prefetch_count": {"default": 1},  # 1 molecule at a time
-        "item_timeout": {"default": 43200},  # Default 12 hour limit (units are seconds)
         "item_count": {"default": 1}  # 1 molecule at a time
     }
 
@@ -489,7 +489,9 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
 
             # Trajectory
             if opt['trajectory_interval']:
-                lf = utils.upload(opt['outfname']+'.h5')
+                full_path = os.getcwd()
+                filename = os.path.join(full_path, opt['outfname']+'.h5')
+                lf = utils.upload(filename)
             else:  # Empty Trajectory
                 lf = ''
 
@@ -562,7 +564,6 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
         "instance_tags": {"default": "cuda8"},
         "spot_policy": {"default": "Allowed"},
         "prefetch_count": {"default": 1},  # 1 molecule at a time
-        "item_timeout": {"default": 43200},  # Default 12 hour limit (units are seconds)
         "item_count": {"default": 1}  # 1 molecule at a time
     }
 
@@ -780,7 +781,9 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
 
             # Trajectory
             if opt['trajectory_interval']:
-                lf = utils.upload(opt['outfname']+'.h5')
+                full_path = os.getcwd()
+                filename = os.path.join(full_path, opt['outfname']+'.h5')
+                lf = utils.upload(filename)
             else:  # Empty Trajectory
                 lf = ''
 

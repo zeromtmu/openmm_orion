@@ -4,8 +4,11 @@ include requirements.txt
 recursive-include examples *
 recursive-include floes *.py
 recursive-include PlatformTestCubes *.py *.pdb
-recursive-include OpenMMCubes *.py
+recursive-include MDCubes *.py
 recursive-include LigPrepCubes *.py
 recursive-include YankCubes *.py
 recursive-include ComplexPrepCubes *
-recursive-incluse TrjAnalysis *
+recursive-include TrjAnalysis *
+recursive-include Standards *
+recursive-include ProtPrepCubes *
+recursive-include ForceFieldCubes *

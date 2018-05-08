@@ -1,4 +1,4 @@
-from __future__ import unicode_literals
+#!/usr/bin/env python
 from floe.api import WorkFloe
 from MDCubes.OpenMMCubes.cubes import OpenMMNptCube
 from cuberecord import DataSetReaderCube, DataSetWriterCube
@@ -35,7 +35,7 @@ ifs.promote_parameter("data_in", promoted_name="system", title='System Input Fil
 
 npt = OpenMMNptCube('npt')
 npt.promote_parameter('time', promoted_name='nanoseconds', default=0.01,
-                      description='Length of MD run in picoseconds')
+                      description='Length of MD run in nanoseconds')
 npt.promote_parameter('temperature', promoted_name='temperature', default=300.0,
                       description='Selected temperature in K')
 npt.promote_parameter('pressure', promoted_name='pressure', default=1.0,

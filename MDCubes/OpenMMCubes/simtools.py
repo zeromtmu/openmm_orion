@@ -12,31 +12,6 @@ import time
 from floe.api.orion import in_orion
 
 
-# def openeye_cluster(sim):
-#     def wrapper(*args):
-#         if 'LOCAL_FLOE_CLUSTER' in os.environ:
-#             mdData = args[0]
-#             opt = args[1]
-#             opt['Logger'].info("OPENEYE LOCAL FLOE CLUSTER OPTION IN USE")
-#             while True:
-#                 try:
-#                     gpu_id = str(int(opt['system_id'].split('_')[-1]) % 4)
-#                     with open(gpu_id + '.txt', 'a') as myfile:
-#                         fcntl.flock(myfile, fcntl.LOCK_EX | fcntl.LOCK_NB)
-#                         myfile.write("name = {} ID = {}\n".format(opt['system_id'], gpu_id))
-#                         opt['gpu_id'] = gpu_id
-#                         sim(mdData, opt)
-#                         time.sleep(1.0)
-#                         fcntl.flock(myfile, fcntl.LOCK_UN)
-#                         break
-#                 except IOError:
-#                     time.sleep(0.01)
-#         else:
-#             sim(*args)
-#
-#     return wrapper
-
-
 def local_cluster(sim):
     def wrapper(*args):
         if 'CUDA_VISIBLE_DEVICES' in os.environ and not in_orion():
@@ -50,7 +25,8 @@ def local_cluster(sim):
                 gpu_id = gpus_available_indexes[opt['system_id'] % len(gpus_available_indexes)]
 
                 try:
-                    with open(gpu_id + '.txt', 'a') as file:
+                    fn = os.path.join('/tmp/', gpu_id + '.txt')
+                    with open(fn, 'a') as file:
                         fcntl.flock(file, fcntl.LOCK_EX | fcntl.LOCK_NB)
                         file.write("name = {} MOL_ID = {} GPU_IDS = {} GPU_ID = {}\n".format(
                                                                                 opt['system_title'],
@@ -59,11 +35,11 @@ def local_cluster(sim):
                                                                                 gpu_id))
                         opt['gpu_id'] = gpu_id
                         sim(mdData, opt)
-                        time.sleep(1.0)
+                        time.sleep(2.0)
                         fcntl.flock(file, fcntl.LOCK_UN)
                         break
                 except IOError:
-                    time.sleep(0.01)
+                    time.sleep(0.1)
 
         else:
             sim(*args)

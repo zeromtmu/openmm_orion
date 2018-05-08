@@ -59,7 +59,6 @@ class SSTMapGistCube(ParallelMixin, OERecordComputeCube):
         "memory_mb": {"default": 6000},
         "spot_policy": {"default": "Allowed"},
         "prefetch_count": {"default": 1},  # 1 molecule at a time
-        "item_timeout": {"default": 43200},  # Default 12 hour limit (units are seconds)
         "item_count": {"default": 1}  # 1 molecule at a time
     }
 
@@ -404,7 +403,6 @@ class EnergyAnalysisCube(ParallelMixin, OERecordComputeCube):
         "memory_mb": {"default": 2000},
         "spot_policy": {"default": "Allowed"},
         "prefetch_count": {"default": 1},  # 1 molecule at a time
-        "item_timeout": {"default": 3600},  # Default 1 hour limit (units are seconds)
         "item_count": {"default": 1}  # 1 molecule at a time
     }
 

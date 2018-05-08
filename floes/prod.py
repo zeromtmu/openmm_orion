@@ -1,4 +1,4 @@
-from __future__ import unicode_literals
+#!/usr/bin/env python
 from floe.api import WorkFloe
 from MDCubes.OpenMMCubes.cubes import OpenMMNptCube
 from cuberecord import DataSetReaderCube, DataSetWriterCube
@@ -33,20 +33,15 @@ ifs.promote_parameter("data_in", promoted_name="system", title='System Input Fil
                       description="System input file")
 
 npt = OpenMMNptCube('npt')
-npt.promote_parameter('time', promoted_name='nanoseconds', default=0.2,
-                      description='Length of MD run in picoseconds')
+npt.promote_parameter('time', promoted_name='nanoseconds', default=2.0,
+                      description='Length of MD run in nanoseconds')
 npt.promote_parameter('temperature', promoted_name='temperature', default=300.0,
                       description='Selected temperature in K')
 npt.promote_parameter('pressure', promoted_name='pressure', default=1.0,
                       description='Selected pressure in atm')
 
-# Restraints
-npt.promote_parameter('restraints', promoted_name='restraints', default="noh ligand",
-                      description='Select mask to apply restraints')
-npt.promote_parameter('restraintWt', promoted_name='restraintWt', default=1.0, description='Restraint weight')
-
 # Trajectory and logging info frequency intervals
-npt.promote_parameter('trajectory_interval', promoted_name='trajectory_interval', default=0.0005,
+npt.promote_parameter('trajectory_interval', promoted_name='trajectory_interval', default=0.001,
                       description='Trajectory saving interval in ns')
 npt.promote_parameter('reporter_interval', promoted_name='reporter_interval', default=0.001,
                       description='Reporter saving interval in ns')

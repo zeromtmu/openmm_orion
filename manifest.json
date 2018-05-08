@@ -23,6 +23,7 @@
                             "pdbfixer==1.4",
                             "pymbar==3.0.3",
                             "pyparsing==2.1.1",
+                            "seaborn==0.8.1",
                             "smirnoff99frosst=1.0.5",
                             "sstmap==1.1.0",
                             "yank==0.20.1" ],
@@ -30,5 +31,5 @@
   "build_requirements": {"gpu": 1, "instance_tags": ["cuda8"]},
 
   "name": "MD Orion Package",
- "version": "0.3.9"
+ "version": "0.4.1"
 }

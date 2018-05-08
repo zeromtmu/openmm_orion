@@ -1,4 +1,4 @@
-from __future__ import unicode_literals
+#!/usr/bin/env python
 from floe.api import WorkFloe
 
 from cuberecord import (DataSetWriterCube,
@@ -49,6 +49,8 @@ iligs.promote_parameter("data_in", promoted_name="ligands", title="Ligand Input 
 chargelig = LigandChargeCube("LigCharge")
 chargelig.promote_parameter('max_conformers', promoted_name='max_conformers',
                             description="Set the max number of conformers per ligand", default=800)
+chargelig.promote_parameter('charge_ligands', promoted_name='charge_ligands',
+                            description="Charge the ligand or not", default=True)
 
 ligset = LigandSetting("LigandSetting")
 

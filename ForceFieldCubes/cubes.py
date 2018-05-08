@@ -45,7 +45,6 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
         "memory_mb": {"default": 2000},
         "spot_policy": {"default": "Allowed"},
         "prefetch_count": {"default": 1},  # 1 molecule at a time
-        "item_timeout": {"default": 3600},  # Default 1 hour limit (units are seconds)
         "item_count": {"default": 1}  # 1 molecule at a time
     }
 

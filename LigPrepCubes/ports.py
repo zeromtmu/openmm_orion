@@ -21,117 +21,117 @@ from time import time
 from Standards import Fields
 
 
-class LigandReaderCube(OERecordSourceCube):
-    title = "Data Set Reader"
-
-    data_in = DataSourceParameter('data_in',
-                                  required=True,
-                                  title='Data to read from',
-                                  description='The data to read from')
-
-    limit = IntegerParameter('limit',
-                             required=False,
-                             description='Maximum number of records to read with this cube',
-                             level=ADVANCED)
-
-    log_timer = BooleanParameter('log_timer',
-                                 title="Enable timing log",
-                                 default=False,
-                                 description="Log timing of the reader to the log")
-
-    # Enable molecule unique identifier generation
-    ID = BooleanParameter('ID',
-                          default=True,
-                          required=False,
-                          help_text='If True/Checked ligands are enumerated by sequentially integers.'
-                                    'An OEField is added to the data record with field: ID',
-                          level=ADVANCED)
-
-    # Ligand Residue Name
-    lig_res_name = StringParameter('lig_res_name',
-                                   default='LIG',
-                                   required=True,
-                                   help_text='The ligand residue name',
-                                   level=ADVANCED)
-
-    def __init__(self, name, **kwargs):
-        super(LigandReaderCube, self).__init__(name, kwargs)
-        self._begin_time = None
-        self._count = None
-        self._record_ids = None
-        self._data_set_ids = None
-
-    def begin(self):
-        self._count = 0
-
-        if self.data_in.data_set_key in self.args.data_in:
-            self._data_set_ids = self.args.data_in[self.data_in.data_set_key]
-        else:
-            self._data_set_ids = []
-
-        if self.data_in.record_key in self.args.data_in:
-            self._record_ids = self.args.data_in[self.data_in.record_key]
-        else:
-            self._record_ids = []
-
-        if len(self._record_ids) + len(self._data_set_ids) <= 0:
-            raise ValueError("No input specified")
-
-        if len(self._record_ids) != 0:
-            raise ValueError("Reading record by record ID not supported outside of orion")
-
-        if self.args.log_timer:
-            self._begin_time = time()
-        else:
-            self._begin_time = None
-
-    def __iter__(self):
-        if in_orion():
-            session = OrionSession()
-            for data_set_id in self._data_set_ids:
-                ifs = session.get_resource(Dataset, data_set_id)
-                for record in ifs.records():
-                    if self.args.limit is None or self._count < self.args.limit:
-                        self._count += 1
-                        yield record
-                    else:
-                        break
-                ifs.finalize()
-            if self.data_in.record_key in self.args.data_in:
-                if len(self.args.data_in[self.data_in.record_key]) == 0:
-                    raise RuntimeError("Reading of individual records by id not supported yet")
-        else:
-            for data_set_id in self._data_set_ids:
-                ifs = OEMolRecordStream(data_set_id)
-                for record in ifs:
-                    #mol = record.get_value(Fields.primary_molecule)
-
-                    mol = oe_data_record_to_mol(record)
-
-                    for at in mol.GetAtoms():
-                        residue = oechem.OEAtomGetResidue(at)
-                        residue.SetName(self.args.lig_res_name)
-                        oechem.OEAtomSetResidue(at, residue)
-
-                    if self.args.ID:
-                        name = 'l' + mol.GetTitle()[0:12] + '_' + str(self._count)
-                        record.set_value(Fields.id, name)
-
-                    record.set_value(Fields.primary_molecule, mol)
-
-                    if self.args.limit is None or self._count < self.args.limit:
-                        self._count += 1
-                        yield record
-                    else:
-                        break
-
-    def end(self):
-        if self._begin_time is not None:
-            run_time = time() - self._begin_time
-            self.log.info("Read {0} records in {1} second.  {2}records/second".format(self._count,
-                                                                                      run_time,
-                                                                                      self._count/run_time))
-
+# class LigandReaderCube(OERecordSourceCube):
+#     title = "Data Set Reader"
+#
+#     data_in = DataSourceParameter('data_in',
+#                                   required=True,
+#                                   title='Data to read from',
+#                                   description='The data to read from')
+#
+#     limit = IntegerParameter('limit',
+#                              required=False,
+#                              description='Maximum number of records to read with this cube',
+#                              level=ADVANCED)
+#
+#     log_timer = BooleanParameter('log_timer',
+#                                  title="Enable timing log",
+#                                  default=False,
+#                                  description="Log timing of the reader to the log")
+#
+#     # Enable molecule unique identifier generation
+#     ID = BooleanParameter('ID',
+#                           default=True,
+#                           required=False,
+#                           help_text='If True/Checked ligands are enumerated by sequentially integers.'
+#                                     'An OEField is added to the data record with field: ID',
+#                           level=ADVANCED)
+#
+#     # Ligand Residue Name
+#     lig_res_name = StringParameter('lig_res_name',
+#                                    default='LIG',
+#                                    required=True,
+#                                    help_text='The ligand residue name',
+#                                    level=ADVANCED)
+#
+#     def __init__(self, name, **kwargs):
+#         super(LigandReaderCube, self).__init__(name, kwargs)
+#         self._begin_time = None
+#         self._count = None
+#         self._record_ids = None
+#         self._data_set_ids = None
+#
+#     def begin(self):
+#         self._count = 0
+#
+#         if self.data_in.data_set_key in self.args.data_in:
+#             self._data_set_ids = self.args.data_in[self.data_in.data_set_key]
+#         else:
+#             self._data_set_ids = []
+#
+#         if self.data_in.record_key in self.args.data_in:
+#             self._record_ids = self.args.data_in[self.data_in.record_key]
+#         else:
+#             self._record_ids = []
+#
+#         if len(self._record_ids) + len(self._data_set_ids) <= 0:
+#             raise ValueError("No input specified")
+#
+#         if len(self._record_ids) != 0:
+#             raise ValueError("Reading record by record ID not supported outside of orion")
+#
+#         if self.args.log_timer:
+#             self._begin_time = time()
+#         else:
+#             self._begin_time = None
+#
+#     def __iter__(self):
+#         if in_orion():
+#             session = OrionSession()
+#             for data_set_id in self._data_set_ids:
+#                 ifs = session.get_resource(Dataset, data_set_id)
+#                 for record in ifs.records():
+#                     if self.args.limit is None or self._count < self.args.limit:
+#                         self._count += 1
+#                         yield record
+#                     else:
+#                         break
+#                 ifs.finalize()
+#             if self.data_in.record_key in self.args.data_in:
+#                 if len(self.args.data_in[self.data_in.record_key]) == 0:
+#                     raise RuntimeError("Reading of individual records by id not supported yet")
+#         else:
+#             for data_set_id in self._data_set_ids:
+#                 ifs = OEMolRecordStream(data_set_id)
+#                 for record in ifs:
+#                     #mol = record.get_value(Fields.primary_molecule)
+#
+#                     mol = oe_data_record_to_mol(record)
+#
+#                     for at in mol.GetAtoms():
+#                         residue = oechem.OEAtomGetResidue(at)
+#                         residue.SetName(self.args.lig_res_name)
+#                         oechem.OEAtomSetResidue(at, residue)
+#
+#                     if self.args.ID:
+#                         name = 'l' + mol.GetTitle()[0:12] + '_' + str(self._count)
+#                         record.set_value(Fields.id, name)
+#
+#                     record.set_value(Fields.primary_molecule, mol)
+#
+#                     if self.args.limit is None or self._count < self.args.limit:
+#                         self._count += 1
+#                         yield record
+#                     else:
+#                         break
+#
+#     def end(self):
+#         if self._begin_time is not None:
+#             run_time = time() - self._begin_time
+#             self.log.info("Read {0} records in {1} second.  {2}records/second".format(self._count,
+#                                                                                       run_time,
+#                                                                                       self._count/run_time))
+#
 
 # class LigandReaderCube(SourceCube):
 #     success = RecordOutputPort('success')

@@ -7,8 +7,10 @@ from cuberecord import OERecordComputeCube
 from cuberecord.ports import RecordInputPort
 
 from datarecord import (Types,
+                        Meta,
                         OEField,
-                        OERecord)
+                        OERecord,
+                        OEFieldMeta)
 
 import MDCubes.OpenMMCubes.utils as omm_utils
 
@@ -39,6 +41,8 @@ import copy
 
 import textwrap
 
+import subprocess
+
 
 class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
     version = "0.0.0"
@@ -62,7 +66,6 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
         "instance_tags": {"default": "cuda8"},
         "spot_policy": {"default": "Allowed"},
         "prefetch_count": {"default": 1},  # 1 molecule at a time
-        "item_timeout": {"default": 43200},  # Default 12 hour limit (units are seconds)
         "item_count": {"default": 1}  # 1 molecule at a time
     }
 
@@ -283,11 +286,34 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                     # Calculate solvation free energy, solvation Enthalpy and their errors
                     DeltaG_solvation, dDeltaG_solvation, DeltaH, dDeltaH = yankutils.analyze_directory(exp_dir)
 
-                    # # Add result to the original molecule in kcal/mol
-                    oechem.OESetSDData(system, 'DG_yank_solv', str(DeltaG_solvation))
-                    oechem.OESetSDData(system, 'dG_yank_solv', str(dDeltaG_solvation))
+                    # Create OE Field to save the Solvation Free Energy in kcal/mol
+                    DG_Field = OEField('DG', Types.Float,
+                                       meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal_per_mol))
+                    dG_Field = OEField('dG', Types.Float,
+                                       meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal_per_mol))
 
-                    record.set_value(Fields.primary_molecule, system)
+                    record.set_value(DG_Field, DeltaG_solvation)
+                    record.set_value(dG_Field, dDeltaG_solvation)
+
+                    opt_1 = '--store={}'.format(exp_dir)
+
+                    result_fn = os.path.join(output_directory, 'results.html')
+                    opt_2 = '--output={}'.format(result_fn)
+
+                    self.log.warn(opt_1)
+                    self.log.warn(opt_2)
+
+                    try:
+                        subprocess.check_call(['yank', 'analyze', 'report', opt_1, opt_2])
+
+                        with open(result_fn, 'r') as f:
+                            result_str = f.read()
+
+                        result_field = OEField('Analysis', Types.String)
+                        record.set_value(result_field, result_str)
+
+                    except subprocess.SubprocessError:
+                        opt['Logger'].warn("The result file have not been generated")
 
                 # Tar the Yank temp dir with its content:
                 tar_fn = os.path.basename(output_directory) + '.tar.gz'
@@ -309,6 +335,8 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                 md_stages.append(md_stage_record)
 
                 record.set_value(Fields.md_stages, md_stages)
+
+                record.set_value(Fields.primary_molecule, system)
 
                 # Emit the ligand
                 self.success.emit(record)
@@ -413,7 +441,6 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
         "instance_tags": {"default": "cuda8"},
         "spot_policy": {"default": "Allowed"},
         "prefetch_count": {"default": 1},  # 1 molecule at a time
-        "item_timeout": {"default": 43200},  # Default 12 hour limit (units are seconds)
         "item_count": {"default": 1}  # 1 molecule at a time
     }
 
@@ -532,7 +559,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
             opt['system_id'] = record.get_value(Fields.id)
 
             if not opt['rerun']:
-                solvated_ligand_record_field = OEField("ligand_solvated", Types.DataRecord)
+                solvated_ligand_record_field = OEField("ligand_solvated", Types.Record)
 
                 if not record.has_value(solvated_ligand_record_field):
                     self.log.error("Missing record '{}' field".format(solvated_ligand_record_field.get_name()))
@@ -542,7 +569,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
                 solvated_ligand_parmed_structure = solvated_ligand_mdsystem_record.get_value(Fields.structure)
 
-                solvated_complex_record_field = OEField("complex_solvated", Types.DataRecord)
+                solvated_complex_record_field = OEField("complex_solvated", Types.Record)
 
                 if not record.has_value(solvated_complex_record_field):
                     self.log.error("Missing record'{}' field".format(solvated_complex_record_field.get_name()))
@@ -637,9 +664,31 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     # Calculate solvation free energy, solvation Enthalpy and their errors
                     DeltaG_solvation, dDeltaG_solvation, DeltaH, dDeltaH = yankutils.analyze_directory(exp_dir)
 
-                    # # Add result to the original molecule in kcal/mol
-                    oechem.OESetSDData(complex, 'DG_yank_solv', str(DeltaG_solvation))
-                    oechem.OESetSDData(complex, 'dG_yank_solv', str(dDeltaG_solvation))
+                    # Create OE Field to save the Solvation Free Energy in kcal/mol
+                    DG_Field = OEField('DG', Types.Float,
+                                       meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal_per_mol))
+                    dG_Field = OEField('dG', Types.Float,
+                                       meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal_per_mol))
+
+                    record.set_value(DG_Field, DeltaG_solvation)
+                    record.set_value(dG_Field, dDeltaG_solvation)
+
+                    opt_1 = '--store={}'.format(exp_dir)
+
+                    result_fn = os.path.join(output_directory, 'results.html')
+                    opt_2 = '--output={}'.format(result_fn)
+
+                    try:
+                        subprocess.check_call(['yank', 'analyze', 'report', opt_1, opt_2])
+
+                        with open(result_fn, 'r') as f:
+                            result_str = f.read()
+
+                        result_field =OEField('Result', Types.String)
+                        record.set_value(result_field, result_str)
+
+                    except subprocess.SubprocessError:
+                        opt['Logger'].warn("The result file have not been generated")
 
                 # Tar the Yank temp dir with its content:
                 tar_fn = os.path.basename(output_directory) + '.tar.gz'
