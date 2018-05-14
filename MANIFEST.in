@@ -3,7 +3,6 @@ include manifest.json
 include requirements.txt
 recursive-include examples *
 recursive-include floes *.py
-recursive-include PlatformTestCubes *.py *.pdb
 recursive-include MDCubes *.py
 recursive-include LigPrepCubes *.py
 recursive-include YankCubes *.py

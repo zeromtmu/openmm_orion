@@ -295,25 +295,25 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                     record.set_value(DG_Field, DeltaG_solvation)
                     record.set_value(dG_Field, dDeltaG_solvation)
 
-                    opt_1 = '--store={}'.format(exp_dir)
+                    # opt_1 = '--store={}'.format(exp_dir)
 
-                    result_fn = os.path.join(output_directory, 'results.html')
-                    opt_2 = '--output={}'.format(result_fn)
+                    # result_fn = os.path.join(output_directory, 'results.html')
+                    # opt_2 = '--output={}'.format(result_fn)
+                    #
+                    # self.log.warn(opt_1)
+                    # self.log.warn(opt_2)
 
-                    self.log.warn(opt_1)
-                    self.log.warn(opt_2)
+                    # try:
+                    #     subprocess.check_call(['yank', 'analyze', 'report', opt_1, opt_2])
+                    #
+                    #     with open(result_fn, 'r') as f:
+                    #         result_str = f.read()
+                    #
+                    #     result_field = OEField('Analysis', Types.String)
+                    #     record.set_value(result_field, result_str)
 
-                    try:
-                        subprocess.check_call(['yank', 'analyze', 'report', opt_1, opt_2])
-
-                        with open(result_fn, 'r') as f:
-                            result_str = f.read()
-
-                        result_field = OEField('Analysis', Types.String)
-                        record.set_value(result_field, result_str)
-
-                    except subprocess.SubprocessError:
-                        opt['Logger'].warn("The result file have not been generated")
+                    # except subprocess.SubprocessError:
+                    #     opt['Logger'].warn("The result file have not been generated")
 
                 # Tar the Yank temp dir with its content:
                 tar_fn = os.path.basename(output_directory) + '.tar.gz'
@@ -673,22 +673,22 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     record.set_value(DG_Field, DeltaG_solvation)
                     record.set_value(dG_Field, dDeltaG_solvation)
 
-                    opt_1 = '--store={}'.format(exp_dir)
-
-                    result_fn = os.path.join(output_directory, 'results.html')
-                    opt_2 = '--output={}'.format(result_fn)
-
-                    try:
-                        subprocess.check_call(['yank', 'analyze', 'report', opt_1, opt_2])
-
-                        with open(result_fn, 'r') as f:
-                            result_str = f.read()
-
-                        result_field =OEField('Result', Types.String)
-                        record.set_value(result_field, result_str)
-
-                    except subprocess.SubprocessError:
-                        opt['Logger'].warn("The result file have not been generated")
+                    # opt_1 = '--store={}'.format(exp_dir)
+                    #
+                    # result_fn = os.path.join(output_directory, 'results.html')
+                    # opt_2 = '--output={}'.format(result_fn)
+                    #
+                    # try:
+                    #     subprocess.check_call(['yank', 'analyze', 'report', opt_1, opt_2])
+                    #
+                    #     with open(result_fn, 'r') as f:
+                    #         result_str = f.read()
+                    #
+                    #     result_field =OEField('Result', Types.String)
+                    #     record.set_value(result_field, result_str)
+                    #
+                    # except subprocess.SubprocessError:
+                    #     opt['Logger'].warn("The result file have not been generated")
 
                 # Tar the Yank temp dir with its content:
                 tar_fn = os.path.basename(output_directory) + '.tar.gz'

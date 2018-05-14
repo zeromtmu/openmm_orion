@@ -1,15 +1,15 @@
-import unittest
-import pytest
-from floe.test import CubeTestRunner
-from openeye import oechem
-import OpenMMCubes.utils as utils
-from OpenMMCubes.cubes import OpenMMminimizeSetCube, OpenMMnvtSetCube, OpenMMnptSetCube
-from simtk import unit, openmm
-from simtk.openmm import app
-
-from cuberecord import OEField, OERecord
-from cuberecord.constants import DEFAULT_MOL_NAME
-from datarecord import Types
+# import unittest
+# import pytest
+# from floe.test import CubeTestRunner
+# from openeye import oechem
+# import OpenMMCubes.utils as utils
+# from OpenMMCubes.cubes import OpenMMminimizeSetCube, OpenMMnvtSetCube, OpenMMnptSetCube
+# from simtk import unit, openmm
+# from simtk.openmm import app
+#
+# from cuberecord import OEField, OERecord
+# from cuberecord.constants import DEFAULT_MOL_NAME
+# from datarecord import Types
 
 
 # class MinimizationCubeTester(unittest.TestCase):
@@ -336,6 +336,6 @@ from datarecord import Types
 #     def tearDown(self):
 #         self.runner.finalize()
 
-
-if __name__ == "__main__":
-        unittest.main()
+#
+# if __name__ == "__main__":
+#         unittest.main()

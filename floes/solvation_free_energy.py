@@ -30,8 +30,8 @@ ofs: Output file
 """
 
 # *************USER SETTING**************
-yank_iteration_per_chunk = 1000
-chunks = 1
+yank_iteration_per_chunk = 500
+chunks = 2
 # ***************************************
 
 cube_list = []

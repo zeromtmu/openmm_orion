@@ -1,7 +1,6 @@
 import mdtraj
 import numpy as np
 from sys import stdout
-from openeye import oechem
 from simtk import unit, openmm
 from simtk.openmm import app
 from oeommtools import utils as oeommutils
@@ -10,6 +9,7 @@ import os
 import fcntl
 import time
 from floe.api.orion import in_orion
+import errno
 
 
 def local_cluster(sim):
@@ -19,7 +19,7 @@ def local_cluster(sim):
             gpus_available_indexes = os.environ["CUDA_VISIBLE_DEVICES"].split(',')
             mdData = args[0]
             opt = args[1]
-            opt['Logger'].info("LOCAL FLOE CLUSTER OPTION IN USE")
+            opt['Logger'].warn("LOCAL FLOE CLUSTER OPTION IN USE")
             while True:
 
                 gpu_id = gpus_available_indexes[opt['system_id'] % len(gpus_available_indexes)]
@@ -38,9 +38,15 @@ def local_cluster(sim):
                         time.sleep(2.0)
                         fcntl.flock(file, fcntl.LOCK_UN)
                         break
-                except IOError:
-                    time.sleep(0.1)
-
+                except IOError as e:
+                    if e.errno == errno.EACCES:  # wait to acquire the lock
+                        time.sleep(0.1)
+                    else:  # If the IO Error is generated from the simulation
+                        fcntl.flock(file, fcntl.LOCK_UN)
+                        raise ValueError("IO Error: Simulation Failed")
+                except Exception as e:  # If the simulation fails for other reasons
+                    fcntl.flock(file, fcntl.LOCK_UN)
+                    raise ValueError("{} Simulation Failed".format(e.message))
         else:
             sim(*args)
 
@@ -110,7 +116,7 @@ def simulation(mdData, opt):
 
     if opt['SimType'] == 'npt':
         if box is None:
-            oechem.OEThrow.Fatal("NPT simulation without box vector")
+            raise ValueError("NPT simulation without box vector")
 
         # Add Force Barostat to the system
         system.addForce(openmm.MonteCarloBarostat(opt['pressure']*unit.atmospheres, opt['temperature']*unit.kelvin, 25))
