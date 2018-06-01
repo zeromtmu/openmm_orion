@@ -71,7 +71,7 @@ def upload(filename):
     file_id = filename
 
     if in_orion():
-        file_id = OELargeFile(filename)
+        file_id = OELargeFile.create(filename)
 
     return file_id
 

@@ -10,7 +10,6 @@ from LigPrepCubes.cubes import (LigandChargeCube,
 from ProtPrepCubes.cubes import ProteinSetting
 
 from ComplexPrepCubes.cubes import (ComplexPrepCube,
-                                    HydrationCube,
                                     SolvationCube)
 
 from ForceFieldCubes.cubes import ForceFieldCube
@@ -56,14 +55,21 @@ protset = ProteinSetting("ProteinSetting")
 
 complx = ComplexPrepCube("Complex")
 
-solvate = HydrationCube("Hydration")
+solvate = SolvationCube("Hydration")
+solvate.promote_parameter('density', promoted_name='density', default=1.03,
+                          description="Solution density in g/ml")
+solvate.promote_parameter('close_solvent', promoted_name='close_solvent', default=True,
+                          description='The solvent molecules will be placed very close to the solute')
+solvate.promote_parameter('salt_concentration', promoted_name='salt_concentration', default=50.0,
+                          description='Salt concentration (Na+, Cl-) in millimolar')
 
 ff = ForceFieldCube("ForceField")
 
 # Minimization
 minimize = OpenMMminimizeCube('minComplex')
 minimize.promote_parameter('steps', promoted_name='steps', default=0)
-# minComplex.promote_parameter('center', promoted_name='center', default=True)
+# minimize.promote_parameter('center', promoted_name='center', default=True)
+minimize.promote_parameter('save_md_stage', promoted_name='save_md_stage', default=False)
 
 ofs = DataSetWriterCube('ofs', title='OFS-Success')
 

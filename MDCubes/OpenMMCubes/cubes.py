@@ -15,8 +15,13 @@ from Standards import (Fields,
                        MDRecords,
                        MDStageNames)
 
-# from floe.api.orion import in_orion,  upload_file
+
 # import tarfile
+# from orionclient.session import APISession
+# from orionclient.types import File
+# Example
+# session = APISession
+# File.upload(APISession, "THIS IS A NAME", )
 
 import copy
 
@@ -110,7 +115,7 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
 
     center = parameter.BooleanParameter(
         'center',
-        default=False,
+        default=True,
         description='Center the system to the OpenMM unit cell')
 
     verbose = parameter.BooleanParameter(
@@ -237,7 +242,8 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
 
             record.set_value(Fields.primary_molecule, system)
 
-            if['save_md_stage']:
+            if opt['save_md_stage']:
+                opt['Logger'].info("Saving MD stage: {}".format(opt['SimType']))
                 md_stage_record = MDRecords.MDStageRecord(MDStageNames.MINIMIZATION, opt['str_logger'],
                                                           MDRecords.MDSystemRecord(system, mdData.structure))
                 md_stages.append(md_stage_record)
@@ -358,7 +364,7 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
 
     center = parameter.BooleanParameter(
         'center',
-        default=False,
+        default=True,
         help_text='Center the system to the OpenMM unit cell')
 
     verbose = parameter.BooleanParameter(
@@ -522,6 +528,7 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
             record.set_value(Fields.primary_molecule, system)
 
             if opt['save_md_stage']:
+                opt['Logger'].info("Saving MD stage: {}".format(opt['SimType']))
                 md_stage_record = MDRecords.MDStageRecord(MDStageNames.NVT, opt['str_logger'],
                                                           MDRecords.MDSystemRecord(system, mdData.structure),
                                                           trajectory=lf)
@@ -649,7 +656,7 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
 
     center = parameter.BooleanParameter(
         'center',
-        default=False,
+        default=True,
         help_text='Center the system to the OpenMM unit cell')
 
     verbose = parameter.BooleanParameter(
@@ -813,6 +820,7 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
             record.set_value(Fields.primary_molecule, system)
 
             if opt['save_md_stage']:
+                opt['Logger'].info("Saving MD stage: {}".format(opt['SimType']))
                 md_stage_record = MDRecords.MDStageRecord(MDStageNames.NPT,  opt['str_logger'],
                                                           MDRecords.MDSystemRecord(system, mdData.structure),
                                                           trajectory=lf)

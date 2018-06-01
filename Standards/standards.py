@@ -91,7 +91,7 @@ class MDRecords:
             self.set_value(Fields.stage_name, name)
             self.set_value(Fields.log_data, log)
             self.set_value(Fields.md_system, system_record)
-            if not trajectory:
-                self.set_value(OEField("Trajectory_OPLMD", Types.String), '')
+            if trajectory is None:
+                self.set_value(OEField("Trajectory_OPLMD", Types.String), ' ')
             else:
                 self.set_value(Fields.trajectory, trajectory)

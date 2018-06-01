@@ -1,6 +1,10 @@
 # OE Stack
 openeye-toolkits==2018.2.1
-OpenEye-datarecord==0.11.1
-OpenEye-cuberecord==0.10.9
-OpenEye-orionclient==0.2.3a3
-OpenEye-floe==0.5.9
+OpenEye-datarecord==0.11.4
+OpenEye-cuberecord==0.11.2
+OpenEye-orionclient==0.3.0a1
+OpenEye-floe==0.5.10
+OpenEye-Artemis==0.2.1a5
+
+# install self
+-e .

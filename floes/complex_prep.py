@@ -8,7 +8,6 @@ from LigPrepCubes.cubes import LigandChargeCube
 from ProtPrepCubes.cubes import ProteinSetting
 
 from ComplexPrepCubes.cubes import (ComplexPrepCube,
-                                    HydrationCube,
                                     SolvationCube)
 
 from ForceFieldCubes.cubes import ForceFieldCube
@@ -53,10 +52,15 @@ protset= ProteinSetting("ProteinSetting")
 complx = ComplexPrepCube("Complex")
 
 solvate = SolvationCube("Hydration")
+solvate.promote_parameter('density', promoted_name='density', default=1.03,
+                          description="Solution density in g/ml")
+solvate.promote_parameter('close_solvent', promoted_name='close_solvent', default=True,
+                          description='The solvent molecules will be placed very close to the solute')
 
 ff = ForceFieldCube("ForceField")
 
 ofs = DataSetWriterCube('ofs', title='OFS-Success')
+ofs.promote_parameter("data_out", promoted_name="out")
 
 fail = DataSetWriterCube('fail', title='OFS-Failure')
 fail.set_parameters(data_out='fail.oeb.gz')

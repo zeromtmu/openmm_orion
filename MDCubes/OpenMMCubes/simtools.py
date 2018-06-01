@@ -25,7 +25,8 @@ def local_cluster(sim):
                 gpu_id = gpus_available_indexes[opt['system_id'] % len(gpus_available_indexes)]
 
                 try:
-                    fn = os.path.join('/tmp/', gpu_id + '.txt')
+                    # fn = os.path.join('/tmp/', gpu_id + '.txt')
+                    fn = gpu_id + '.txt'
                     with open(fn, 'a') as file:
                         fcntl.flock(file, fcntl.LOCK_EX | fcntl.LOCK_NB)
                         file.write("name = {} MOL_ID = {} GPU_IDS = {} GPU_ID = {}\n".format(
@@ -38,14 +39,13 @@ def local_cluster(sim):
                         time.sleep(2.0)
                         fcntl.flock(file, fcntl.LOCK_UN)
                         break
-                except IOError as e:
-                    if e.errno == errno.EACCES:  # wait to acquire the lock
-                        time.sleep(0.1)
-                    else:  # If the IO Error is generated from the simulation
-                        fcntl.flock(file, fcntl.LOCK_UN)
-                        raise ValueError("IO Error: Simulation Failed")
+                except BlockingIOError:
+                    time.sleep(0.1)
                 except Exception as e:  # If the simulation fails for other reasons
-                    fcntl.flock(file, fcntl.LOCK_UN)
+                    try:
+                        fcntl.flock(file, fcntl.LOCK_UN)
+                    except:
+                        pass
                     raise ValueError("{} Simulation Failed".format(e.message))
         else:
             sim(*args)

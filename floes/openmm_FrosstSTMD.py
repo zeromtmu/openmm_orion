@@ -8,8 +8,7 @@ from MDCubes.OpenMMCubes.cubes import (OpenMMminimizeCube,
                                        OpenMMNvtCube,
                                        OpenMMNptCube)
 
-from ComplexPrepCubes.cubes import (HydrationCube,
-                                    ComplexPrepCube,
+from ComplexPrepCubes.cubes import (ComplexPrepCube,
                                     SolvationCube)
 
 from ForceFieldCubes.cubes import ForceFieldCube
@@ -56,7 +55,7 @@ ligset = LigandSetting("LigandSetting")
 
 # Protein Reading cube. The protein prefix parameter is used to select a name for the
 # output system files
-iprot = DataSetReaderCube("ProteinReader")
+iprot = DataSetReaderCube("ProteinReader", title="Protein Reader")
 iprot.promote_parameter("data_in", promoted_name="protein", title='Protein Input File',
                         description="Protein file name")
 
@@ -91,6 +90,7 @@ minComplex.promote_parameter('restraintWt', promoted_name='m_restraintWt', defau
                              description='Restraint weight')
 minComplex.promote_parameter('steps', promoted_name='steps', default=1000)
 minComplex.promote_parameter('center', promoted_name='center', default=True)
+
 
 # NVT simulation. Here the assembled system is warmed up to the final selected temperature
 warmup = OpenMMNvtCube('warmup', title='warmup')
@@ -155,7 +155,7 @@ equil3.promote_parameter('reporter_interval', promoted_name='eq3_reporter_interv
 equil3.promote_parameter('suffix', promoted_name='eq3_outfname', default='equil3',
                          description='Equilibration suffix name')
 
-prod = OpenMMNptCube("Production")
+prod = OpenMMNptCube("Production", title="Production")
 prod.promote_parameter('time', promoted_name='prod_ns', default=2.0,
                        description='Length of MD run in nanoseconds')
 
