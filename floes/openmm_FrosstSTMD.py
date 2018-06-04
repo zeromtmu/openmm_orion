@@ -167,6 +167,7 @@ prod.promote_parameter('suffix', promoted_name='prod_outfname', default='prod',
                        description='Equilibration suffix name')
 
 ofs = DataSetWriterCube('ofs', title='OFS-Success')
+ofs.promote_parameter("data_out", promoted_name="out")
 
 fail = DataSetWriterCube('fail', title='OFS-Failure')
 fail.set_parameters(data_out='fail.oeb.gz')

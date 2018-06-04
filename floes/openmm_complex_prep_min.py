@@ -72,6 +72,7 @@ minimize.promote_parameter('steps', promoted_name='steps', default=0)
 minimize.promote_parameter('save_md_stage', promoted_name='save_md_stage', default=False)
 
 ofs = DataSetWriterCube('ofs', title='OFS-Success')
+ofs.promote_parameter("data_out", promoted_name="out")
 
 fail = DataSetWriterCube('fail', title='OFS-Failure')
 fail.set_parameters(data_out='fail.oeb.gz')

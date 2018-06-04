@@ -6,5 +6,3 @@ OpenEye-orionclient==0.3.0a1
 OpenEye-floe==0.5.10
 OpenEye-Artemis==0.2.1a5
 
-# install self
--e .

@@ -35,6 +35,7 @@ min.promote_parameter('steps', promoted_name='steps')
 
 # fs = DataSetWriterCubeStripCustom('ofs', title='OFS-Success')
 ofs = DataSetWriterCube('ofs', title='OFS-Success')
+ofs.promote_parameter("data_out", promoted_name="out")
 
 fail = DataSetWriterCube('fail', title='OFS-Failure')
 fail.set_parameters(data_out='fail.oeb.gz')

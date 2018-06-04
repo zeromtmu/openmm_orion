@@ -51,6 +51,7 @@ class MDData(object):
         elif attrname == "topology":
             return self.__parmed_structure__.topology
         elif attrname == "positions":
+            # The returned object is an openmm Quantity with units
             return self.__parmed_structure__.positions
         elif attrname == "velocities":
             if self.__parmed_structure__.velocities is None:
@@ -59,6 +60,7 @@ class MDData(object):
                 # Parmed stores the velocities as a numpy array in unit of angstrom/picoseconds
                 return self.__parmed_structure__.velocities * unit.angstrom/unit.picosecond
         elif attrname == "box":
+            # The returned object is an openmm Quantity with units
             return self.__parmed_structure__.box_vectors
         elif attrname == "parameters":
             return parmed.ParameterSet.from_structure(self.__parmed_structure__)

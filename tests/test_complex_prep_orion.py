@@ -16,14 +16,13 @@
 # or its use.
 
 import os
-from orionclient.session import OrionSession, in_orion
+from orionclient.session import OrionSession
 from artemis.wrappers import WorkFloeWrapper, DatasetWrapper, OutputDatasetWrapper
 from artemis.test import FloeTestCase
 from artemis.decorators import package
 
 from openeye.oechem import oeifstream
 from datarecord import read_mol_record
-from datarecord import Types
 
 import MDOrion
 from Standards import Fields
@@ -138,3 +137,7 @@ class TestMDOrionFloes(FloeTestCase):
 
             top_mol = md_system.get_value(Fields.topology)
             self.assertEqual(top_mol.NumAtoms(), complx.NumAtoms())
+
+            # TODO Missing Parmed tests
+
+

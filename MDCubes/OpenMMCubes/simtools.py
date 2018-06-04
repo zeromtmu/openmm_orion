@@ -9,14 +9,13 @@ import os
 import fcntl
 import time
 from floe.api.orion import in_orion
-import errno
 
 
 def local_cluster(sim):
     def wrapper(*args):
-        if 'CUDA_VISIBLE_DEVICES' in os.environ and not in_orion():
+        if 'OE_VISIBLE_DEVICES' in os.environ and not in_orion():
 
-            gpus_available_indexes = os.environ["CUDA_VISIBLE_DEVICES"].split(',')
+            gpus_available_indexes = os.environ["OE_VISIBLE_DEVICES"].split(',')
             mdData = args[0]
             opt = args[1]
             opt['Logger'].warn("LOCAL FLOE CLUSTER OPTION IN USE")
@@ -176,7 +175,7 @@ def simulation(mdData, opt):
                     # Set platform precision for CUDA or OpenCL
                     properties = {'Precision': precision}
 
-                    if 'gpu_id' in opt and 'CUDA_VISIBLE_DEVICES' in os.environ and not in_orion():
+                    if 'gpu_id' in opt and 'OE_VISIBLE_DEVICES' in os.environ and not in_orion():
                         properties['DeviceIndex'] = opt['gpu_id']
 
                     simulation = app.Simulation(topology, system, integrator,
@@ -398,7 +397,7 @@ def getReporters(totalSteps=None, outfname=None, **opt):
         state_reporter = app.StateDataReporter(outfname+'.log', separator="\t",
                                                reportInterval=reporter_steps,
                                                step=True,
-                                               potentialEnergy=True, totalEnergy=True,
+                                               potentialEnergy=True, kineticEnergy=True, totalEnergy=True,
                                                volume=True, density=True, temperature=True)
 
         reporters.append(state_reporter)

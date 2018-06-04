@@ -49,6 +49,7 @@ npt.promote_parameter('suffix', promoted_name='suffix', default='prod',
                       description='Equilibration suffix name')
 
 ofs = DataSetWriterCube('ofs', title='OFS-Success')
+ofs.promote_parameter("data_out", promoted_name="out")
 
 job.add_cubes(ifs, npt, ofs)
 ifs.success.connect(npt.intake)

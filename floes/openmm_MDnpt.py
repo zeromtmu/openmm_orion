@@ -53,6 +53,7 @@ npt.promote_parameter('reporter_interval', promoted_name='reporter_interval', de
                       description='Reporter saving interval in ns')
 
 ofs = DataSetWriterCube('ofs', title='OFS-Success')
+ofs.promote_parameter("data_out", promoted_name="out")
 
 fail = DataSetWriterCube('fail', title='OFS-Failure')
 fail.set_parameters(data_out='fail.oeb.gz')

@@ -259,6 +259,7 @@ for i in range(0, chunks):
 
 
 ofs = DataSetWriterCube('ofs', title='OFS-Success')
+ofs.promote_parameter("data_out", promoted_name="out")
 job.add_cube(ofs)
 cube_list.append(ofs)
 
