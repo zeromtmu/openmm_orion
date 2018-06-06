@@ -33,38 +33,17 @@ def find_package_data(data_root, package_root):
             files.append(relpath(join(root, fn), package_root))
     return files
 
+
 def get_version():
     _version_re = re.compile(r'__version__\s+=\s+(.*)')
     with open('OpenMMCubes/__init__.py', 'rb') as f:
         version = str(ast.literal_eval(_version_re.search(f.read().decode('utf-8')).group(1)))
         return version
 
-# Copyright (C) 2018 OpenEye Scientific Software, Inc.
-#
-# THIS CODE IS PROPRIETARY TO OPENEYE SCIENTIFIC SOFTWARE INC AND IS SUBJECT
-# TO THE FULL PROTECTION OF COPYRIGHT AND TRADESECRET LAW.  IT MAY BE USED
-# ONLY PURSUANT TO A VALID AND CURRENT LICENSE FROM OPENEYE AND SUBJECT TO
-# THE TERMS AND CONDITIONS THEREIN.  ALL OTHER USE IS STRICTLY PROHIBITED.
-# PLEASE CONTACT OPENEYE AT LEGAL@EYESOPEN.COM IF YOU HAVE ANY QUESTIONS
-# ABOUT THIS WARNING.
-
-# # import os
-# import re
-# import ast
-# # import sys
-#
-# from setuptools import setup, find_packages, convert_path
-
-# _version_re = re.compile(r'__version__\s+=\s+(.*)')
-# version_file = convert_path("MDOrion/__init__.py")
-# with open(version_file, 'rb') as f:
-#     version = str(ast.literal_eval(_version_re.search(f.read().decode(
-#         'utf-8')).group(1)))
-
 
 setup(
     name="MDOrion",
-    version='0.4.5',
+    version='0.4.7',
     packages=find_packages(include=['examples'], exclude=['tests*']),
     include_package_data=True,
     package_data={'examples': find_package_data('examples/data', 'examples')},

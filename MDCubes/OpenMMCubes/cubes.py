@@ -142,11 +142,10 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
 
     save_md_stage = parameter.BooleanParameter(
         'save_md_stage',
-        default=True,
-        help_text="""Save the md simulation stage. If False all 
-        the MD simulation data will be discharged i.e. trajectory, 
-        logs etc. and just the final MD state will be updated""")
-
+        default=False,
+        help_text="""Save the MD simulation stage. If True the MD,
+        simulation data will be appended to the md simulation stages 
+        otherwise the last MD stage will be overwritten""")
 
     def begin(self):
         self.opt = vars(self.args)
@@ -242,12 +241,18 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
 
             record.set_value(Fields.primary_molecule, system)
 
+            md_stage_record = MDRecords.MDStageRecord(MDStageNames.MINIMIZATION,
+                                                      MDRecords.MDSystemRecord(system, mdData.structure),
+                                                      log=opt['str_logger'])
+
             if opt['save_md_stage']:
                 opt['Logger'].info("Saving MD stage: {}".format(opt['SimType']))
-                md_stage_record = MDRecords.MDStageRecord(MDStageNames.MINIMIZATION, opt['str_logger'],
-                                                          MDRecords.MDSystemRecord(system, mdData.structure))
+
                 md_stages.append(md_stage_record)
-                record.set_value(Fields.md_stages, md_stages)
+            else:
+                md_stages[-1] = md_stage_record
+
+            record.set_value(Fields.md_stages, md_stages)
 
             self.success.emit(record)
 
@@ -391,10 +396,10 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
 
     save_md_stage = parameter.BooleanParameter(
         'save_md_stage',
-        default=True,
-        help_text="""Save the md simulation stage. If False all 
-        the MD simulation data will be discharged i.e. trajectory, 
-        logs etc. and just the final MD state will be updated""")
+        default=False,
+        help_text="""Save the MD simulation stage. If True the MD,
+        simulation data will be appended to the md simulation stages 
+        otherwise the last MD stage will be overwritten""")
 
     def begin(self):
         self.opt = vars(self.args)
@@ -499,7 +504,7 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
                 filename = os.path.join(full_path, opt['outfname']+'.h5')
                 lf = utils.upload(filename)
             else:  # Empty Trajectory
-                lf = ''
+                lf = None
 
             # Read in logging file if any
             if opt['reporter_interval']:
@@ -527,13 +532,18 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
 
             record.set_value(Fields.primary_molecule, system)
 
+            md_stage_record = MDRecords.MDStageRecord(MDStageNames.MINIMIZATION,
+                                                      MDRecords.MDSystemRecord(system, mdData.structure),
+                                                      log=opt['str_logger'])
+
             if opt['save_md_stage']:
                 opt['Logger'].info("Saving MD stage: {}".format(opt['SimType']))
-                md_stage_record = MDRecords.MDStageRecord(MDStageNames.NVT, opt['str_logger'],
-                                                          MDRecords.MDSystemRecord(system, mdData.structure),
-                                                          trajectory=lf)
+
                 md_stages.append(md_stage_record)
-                record.set_value(Fields.md_stages, md_stages)
+            else:
+                md_stages[-1] = md_stage_record
+
+            record.set_value(Fields.md_stages, md_stages)
 
             self.success.emit(record)
 
@@ -683,10 +693,10 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
 
     save_md_stage = parameter.BooleanParameter(
         'save_md_stage',
-        default=True,
-        help_text="""Save the md simulation stage. If False all 
-        the MD simulation data will be discharged i.e. trajectory, 
-        logs etc. and just the final MD state will be updated""")
+        default=False,
+        help_text="""Save the MD simulation stage. If True the MD,
+        simulation data will be appended to the md simulation stages 
+        otherwise the last MD stage will be overwritten""")
 
     def begin(self):
         self.opt = vars(self.args)
@@ -792,7 +802,7 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
                 filename = os.path.join(full_path, opt['outfname']+'.h5')
                 lf = utils.upload(filename)
             else:  # Empty Trajectory
-                lf = ''
+                lf = None
 
             # Read in logging file if any
             if opt['reporter_interval']:
@@ -819,13 +829,18 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
 
             record.set_value(Fields.primary_molecule, system)
 
+            md_stage_record = MDRecords.MDStageRecord(MDStageNames.MINIMIZATION,
+                                                      MDRecords.MDSystemRecord(system, mdData.structure),
+                                                      log=opt['str_logger'])
+
             if opt['save_md_stage']:
                 opt['Logger'].info("Saving MD stage: {}".format(opt['SimType']))
-                md_stage_record = MDRecords.MDStageRecord(MDStageNames.NPT,  opt['str_logger'],
-                                                          MDRecords.MDSystemRecord(system, mdData.structure),
-                                                          trajectory=lf)
+
                 md_stages.append(md_stage_record)
-                record.set_value(Fields.md_stages, md_stages)
+            else:
+                md_stages[-1] = md_stage_record
+
+            record.set_value(Fields.md_stages, md_stages)
 
             self.success.emit(record)
 

@@ -210,7 +210,7 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
             record.set_value(Fields.primary_molecule, system_reassembled)
             record.set_value(Fields.title, system_title)
 
-            md_stage = MDRecords.MDStageRecord(MDStageNames.SETUP, ' ',
+            md_stage = MDRecords.MDStageRecord(MDStageNames.SETUP,
                                                MDRecords.MDSystemRecord(system_reassembled, system_structure))
 
             record.set_value(Fields.md_stages, [md_stage])

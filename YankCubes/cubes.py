@@ -328,8 +328,9 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                 with open(os.path.join(output_directory, "experiments/experiments.log"), 'r') as flog:
                     str_logger += '\n'+flog.read()
 
-                md_stage_record = MDRecords.MDStageRecord(MDStageNames.FEC, str_logger,
+                md_stage_record = MDRecords.MDStageRecord(MDStageNames.FEC,
                                                           MDRecords.MDSystemRecord(system, mdData.structure),
+                                                          log=str_logger,
                                                           trajectory=lf)
 
                 md_stages.append(md_stage_record)
@@ -704,9 +705,9 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     str_logger += '\n' + flog.read()
 
                 md_stage_record = MDRecords.MDStageRecord(MDStageNames.FEC,
-                                                          str_logger,
                                                           MDRecords.MDSystemRecord(complex,
                                                                                    solvated_complex_parmed_structure),
+                                                          log=str_logger,
                                                           trajectory=lf)
                 if opt['rerun']:
                     md_stages.append(md_stage_record)

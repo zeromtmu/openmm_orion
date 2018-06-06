@@ -18,7 +18,7 @@ from ProtPrepCubes.cubes import ProteinSetting
 from LigPrepCubes.cubes import (LigandChargeCube,
                                 LigandSetting)
 
-job = WorkFloe('Merk Frosst MD Protocol')
+job = WorkFloe('Merck Frosst MD Protocol')
 
 job.description = """
 Set up an OpenMM complex then minimize, warm up and equilibrate a system by using three equilibration stages

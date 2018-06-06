@@ -58,6 +58,8 @@ class Fields:
     # MD System Field
     md_system = OEField("MDSystem_OPLMD", Types.Record)
 
+    md_system.get_type()
+
     # Trajectory
     if in_orion():
         trajectory = OEField("Trajectory_OPLMD", OELargeFileHandler)
@@ -86,12 +88,11 @@ class MDRecords:
 
     class MDStageRecord(OERecord):
 
-        def __init__(self, name, log, system_record, trajectory=None):
+        def __init__(self, name, system_record, log=None, trajectory=None):
             super().__init__()
             self.set_value(Fields.stage_name, name)
-            self.set_value(Fields.log_data, log)
             self.set_value(Fields.md_system, system_record)
-            if trajectory is None:
-                self.set_value(OEField("Trajectory_OPLMD", Types.String), ' ')
-            else:
+            if log is not None:
+                self.set_value(Fields.log_data, log)
+            if trajectory is not None:
                 self.set_value(Fields.trajectory, trajectory)

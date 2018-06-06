@@ -122,13 +122,13 @@ class TestMDOrionFloes(FloeTestCase):
             stage = stages[0]
 
             self.assertTrue(stage.has_value(Fields.stage_name))
-            self.assertTrue(stage.has_value(Fields.log_data))
-            self.assertTrue(stage.has_value(Fields.trajectory))
+            # self.assertTrue(stage.has_value(Fields.log_data))
+            # self.assertTrue(stage.has_value(Fields.trajectory))
             self.assertTrue(stage.has_value(Fields.md_system))
 
             self.assertEqual(stage.get_value(Fields.stage_name), "SETUP")
-            self.assertEqual(stage.get_value(Fields.log_data), " ")
-            self.assertEqual(stage.get_value(Fields.trajectory), " ")
+            # self.assertEqual(stage.get_value(Fields.log_data), " ")
+            # self.assertEqual(stage.get_value(Fields.trajectory), " ")
 
             md_system = stage.get_value(Fields.md_system)
 

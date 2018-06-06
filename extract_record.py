@@ -4,7 +4,7 @@ from datarecord import OEField, Types
 from cuberecord.cube_testing import OEMolRecordStream
 from datarecord import OEWriteRecord
 
-ifs = OEMolRecordStream("prep.oeb")
+ifs = OEMolRecordStream("npt.oeb")
 
 # for record in ifs:
 #     OEWriteRecord()
@@ -16,10 +16,13 @@ for record in ifs:
     #     print(field.get_name())
 #     #print(record.get_value(OEField("DG", Types.Float)))
     stages = record.get_value(Fields.md_stages)
+    print("Len stages = {}".format(len(stages)))
     stage = stages[-1]
     #print(stage.get_value(Fields.trajectory))
     print(stage.has_value(Fields.log_data))
     print(stage.get_value(Fields.log_data))
+    print(stage.has_value(Fields.trajectory))
+    print(stage.get_value(Fields.trajectory))
     # mdsystem = stage.get_value(OEField("MDSystem", Types.Record))
     # complex = mdsystem.get_value(OEField('Topology_OEMol', Types.Chem.Mol))
     # ofs = oechem.oemolostream("complex.oeb")

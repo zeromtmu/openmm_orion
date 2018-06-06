@@ -68,8 +68,6 @@ ff = ForceFieldCube("ForceField")
 # Minimization
 minimize = OpenMMminimizeCube('minComplex')
 minimize.promote_parameter('steps', promoted_name='steps', default=0)
-# minimize.promote_parameter('center', promoted_name='center', default=True)
-minimize.promote_parameter('save_md_stage', promoted_name='save_md_stage', default=False)
 
 ofs = DataSetWriterCube('ofs', title='OFS-Success')
 ofs.promote_parameter("data_out", promoted_name="out")
