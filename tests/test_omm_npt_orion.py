@@ -129,6 +129,12 @@ class TestMDOrionFloes(FloeTestCase):
                     "trajectory_interval": 0.0,
                     "reporter_interval": 0.0,
                     "out": output_file.identifier
+                },
+
+                "cube": {
+                    "npt": {
+                        "save_md_stage": True
+                    }
                 }
             }
         )
@@ -159,7 +165,7 @@ class TestMDOrionFloes(FloeTestCase):
         for record in records:
             stages = record.get_value(Fields.md_stages)
 
-            stage = stages[0]
+            stage = stages[-1]
 
             md_system = stage.get_value(Fields.md_system)
 

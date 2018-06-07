@@ -31,5 +31,5 @@
   "build_requirements": {"gpu": 1, "instance_tags": ["cuda8"]},
 
   "name": "MD Orion Package",
- "version": "0.4.7"
+ "version": "0.4.8"
 }

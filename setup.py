@@ -43,7 +43,7 @@ def get_version():
 
 setup(
     name="MDOrion",
-    version='0.4.7',
+    version='0.4.8',
     packages=find_packages(include=['examples'], exclude=['tests*']),
     include_package_data=True,
     package_data={'examples': find_package_data('examples/data', 'examples')},
