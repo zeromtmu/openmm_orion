@@ -114,12 +114,23 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
             opt['Logger'].info('{} #atoms, #confs in ligand traj OEMol: {}, {}'
                 .format( system_title, ltraj.NumAtoms(), ltraj.NumConfs()) )
 
+            # Generate average and median protein and ligand OEMols from ptraj, ltraj
+            opt['Logger'].info('{} Generating protein and ligand median and average OEMols'
+                .format( system_title))
+            ligMedian, protMedian, ligAverage, protAverage = trjutl.AnalyseProteinLigandTrajectoryOEMols( ltraj, ptraj)
+
+            # Overwrite MDStages with only first (setup) and last (production) stages
             newMDStages = [ md_stage0_record, md_stageLast_record]
             record.set_value( OEField( 'MDStages', Types.RecordVec), newMDStages)
 
+            # Create new record with OETraj results
             oetrajRecord = OERecord()
             oetrajRecord.set_value( OEField( 'ProtTraj', Types.Chem.Mol), ptraj)
             oetrajRecord.set_value( OEField( 'LigTraj', Types.Chem.Mol), ltraj)
+            oetrajRecord.set_value( OEField( 'LigMedian', Types.Chem.Mol), ligMedian)
+            oetrajRecord.set_value( OEField( 'ProtMedian', Types.Chem.Mol), protMedian)
+            oetrajRecord.set_value( OEField( 'LigAverage', Types.Chem.Mol), ligAverage)
+            oetrajRecord.set_value( OEField( 'ProtAverage', Types.Chem.Mol), protAverage)
             record.set_value( OEField( 'OETraj', Types.Record), oetrajRecord)
 
             analysesDone = None

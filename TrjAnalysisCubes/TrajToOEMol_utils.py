@@ -175,8 +175,10 @@ def AnalyseProteinLigandTrajectoryOEMols( ligTraj, protTraj):
         ligTraj: the multiconformer trajectory OEMol for the ligand.
         protTraj: the multiconformer trajectory OEMol for the protein.
       Output:
-        ligMedian: a single conformer OEMol for the ligand.
-        protForMedianLig: a single conformer OEMol for the protein.
+        ligMedian: a single conformer OEMol for the median ligand.
+        protForMedianLig: a single conformer OEMol for the lig-median protein.
+        ligAverage: a single conformer OEMol for the average ligand.
+        protForMedianLig: a single conformer OEMol for the average protein.
     The analyses are B-Factor-like rms fluctuations around the mean and
     dihedral fluctuations on ligand heavy-atom rotors. The results are returned
     on a single configuration OEMol for the ligand and protein. The single
@@ -231,7 +233,7 @@ def AnalyseProteinLigandTrajectoryOEMols( ligTraj, protTraj):
     else:
         protForMedianLig = protMedian
 
-    return ligMedian, protForMedianLig
+    return ligMedian, protForMedianLig, ligAvg, protAvg
 
 
 def RotorConfFluctuationStats( mol):
