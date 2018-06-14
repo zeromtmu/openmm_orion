@@ -23,8 +23,8 @@ from cuberecord import (DataSetWriterCube,
 
 
 # *************USER SETTING**************
-yank_iteration_per_chunk = 1000
-chunks = 1
+yank_iteration_per_chunk = 200
+chunks = 5
 # ***************************************
 
 cube_list = []

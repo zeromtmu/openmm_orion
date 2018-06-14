@@ -57,8 +57,7 @@ class LigandChargeCube(ParallelMixin, OERecordComputeCube):
         try:
 
             if not record.has_value(Fields.primary_molecule):
-                self.log.error("Missing '{}' field".format(Fields.primary_molecule.get_name()))
-                raise ValueError("Missing Primary Molecule")
+                raise ValueError("Missing Primary Molecule field")
 
             ligand = record.get_value(Fields.primary_molecule)
 

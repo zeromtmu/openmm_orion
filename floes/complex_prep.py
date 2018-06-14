@@ -48,7 +48,7 @@ ligset = LigandSetting("LigandSetting")
 iprot = DataSetReaderCube("Protein Reader", title="Protein Reader")
 iprot.promote_parameter("data_in", promoted_name="protein", title="Protein Input File", description="Protein file name")
 
-protset= ProteinSetting("ProteinSetting")
+protset = ProteinSetting("ProteinSetting")
 
 complx = ComplexPrepCube("Complex")
 
@@ -68,6 +68,7 @@ ofs.promote_parameter("data_out", promoted_name="out")
 
 fail = DataSetWriterCube('fail', title='OFS-Failure')
 fail.set_parameters(data_out='fail.oeb.gz')
+
 
 job.add_cubes(iligs, chargelig, ligset, iprot, protset, complx, solvate, ff, ofs, fail)
 

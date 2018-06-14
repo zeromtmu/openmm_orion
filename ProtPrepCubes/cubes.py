@@ -4,6 +4,8 @@ from cuberecord import OERecordComputeCube
 
 from Standards import Fields
 
+from floe.api import parameter
+
 
 class ProteinSetting(OERecordComputeCube):
     title = "Protein Setting"
@@ -31,6 +33,11 @@ class ProteinSetting(OERecordComputeCube):
         "item_count": {"default": 1}  # 1 molecule at a time
     }
 
+    multiple_protein = parameter.BooleanParameter(
+        'multiple_protein',
+        default=False,
+        help_text="If Checked/True multiple protein will be allowed")
+
     def begin(self):
         self.opt = vars(self.args)
         self.opt['Logger'] = self.log
@@ -39,13 +46,11 @@ class ProteinSetting(OERecordComputeCube):
     def process(self, record, port):
         try:
 
-            if self.count > 0:
-                raise ValueError("Multiple Proteins have been Detected "
-                                 "Currently just one Protein is supported as input")
+            if self.count > 0 and not self.opt['multiple_protein']:
+                raise ValueError("Multiple Proteins have been Detected")
 
             if not record.has_value(Fields.primary_molecule):
-                self.log.error("Missing '{}' field".format(Fields.primary_molecule.get_name()))
-                raise ValueError("Missing Primary Molecule")
+                raise ValueError("Missing Primary Molecule field")
 
             protein = record.get_value(Fields.primary_molecule)
 
@@ -54,6 +59,7 @@ class ProteinSetting(OERecordComputeCube):
                 name = 'PRT'
 
             record.set_value(Fields.title, name)
+            record.set_value(Fields.id, self.count)
             self.count += 1
 
             self.success.emit(record)

@@ -11,3 +11,4 @@ recursive-include TrjAnalysis *
 recursive-include Standards *
 recursive-include ProtPrepCubes *
 recursive-include ForceFieldCubes *
+recursive-include tests *

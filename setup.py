@@ -10,9 +10,12 @@
 # !/usr/bin/env python
 import re, ast, os
 from os.path import relpath, join
-from pip.req import parse_requirements
 from setuptools import setup, find_packages
 
+try: # for pip >= 10
+    from pip._internal.req import parse_requirements
+except ImportError: # for pip <= 9.0.3
+    from pip.req import parse_requirements
 
 def get_reqs(reqs):
     return [str(ir.req) for ir in reqs]
@@ -20,7 +23,10 @@ def get_reqs(reqs):
 try:
     install_reqs = get_reqs(parse_requirements("requirements.txt"))
 except TypeError:
-    from pip.download import PipSession
+    try: #for pip >= 10
+        from pip._internal.download import PipSession
+    except ImportError: # for pip <= 9.0.3
+        from pip.download import PipSesion
     install_reqs = get_reqs(
         parse_requirements("requirements.txt", session=PipSession())
     )
@@ -43,7 +49,7 @@ def get_version():
 
 setup(
     name="MDOrion",
-    version='0.4.8',
+    version='0.4.9',
     packages=find_packages(include=['examples'], exclude=['tests*']),
     include_package_data=True,
     package_data={'examples': find_package_data('examples/data', 'examples')},

@@ -151,20 +151,18 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                                                                 tmp_description)
 
             if not record.has_value(Fields.primary_molecule):
-                self.log.error("Missing record '{}' field".format(Fields.primary_molecule.get_name()))
-                raise ValueError("Missing the Primary Molecule")
+                raise ValueError("Missing the Primary Molecule field")
 
             system = record.get_value(Fields.primary_molecule)
 
             if not record.has_value(Fields.title):
-                opt['Logger'].warn("Missing record '{}' field".format(Fields.title.get_name()))
+                opt['Logger'].warn("Missing record Title field")
                 system_title = system.GetTitle()[0:12]
             else:
                 system_title = record.get_value(Fields.title)
 
             if not record.has_value(Fields.id):
-                opt['Logger'].error("Missing record '{}' field".format(Fields.id.get_name()))
-                raise ValueError("Missing the Primary Molecule")
+                raise ValueError("Missing the Primary Molecule field")
 
             opt['system_title'] = system_title
 
@@ -183,7 +181,6 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                 opt.update(new_args)
 
             if not record.has_value(Fields.md_stages):
-                self.log.error("Missing '{}' field".format(Fields.md_stages.get_name()))
                 raise ValueError("The System does not seem to be parametrized by the Force Field")
 
             # Extract the MDStageRecord list
@@ -333,7 +330,8 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                                                           log=str_logger,
                                                           trajectory=lf)
 
-                md_stages.append(md_stage_record)
+                # md_stages.append(md_stage_record)
+                md_stages[-1] = md_stage_record
 
                 record.set_value(Fields.md_stages, md_stages)
 
@@ -540,19 +538,17 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                                                                 tmp_description)
 
             if not record.has_value(Fields.primary_molecule):
-                self.log.error("Missing record '{}' field".format(Fields.primary_molecule.get_name()))
-                raise ValueError("The Primary Molecule is missing")
+                raise ValueError("The Primary Molecule is missing field")
 
             complex = record.get_value(Fields.primary_molecule)
 
             if not record.has_value(Fields.title):
-                opt['Logger'].warn("Missing record'{}' field".format(Fields.title.get_name()))
+                opt['Logger'].warn("Missing record Title field")
                 system_title = complex.GetTitle()[0:12]
             else:
                 system_title = record.get_value(Fields.title)
 
             if not record.has_value(Fields.id):
-                opt['Logger'].error("Missing record '{}' field".format(Fields.id.get_name()))
                 raise ValueError("Missing the ID field")
 
             opt['system_title'] = system_title
@@ -563,7 +559,6 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                 solvated_ligand_record_field = OEField("ligand_solvated", Types.Record)
 
                 if not record.has_value(solvated_ligand_record_field):
-                    self.log.error("Missing record '{}' field".format(solvated_ligand_record_field.get_name()))
                     raise ValueError("The parametrized solvated ligand is missing")
 
                 solvated_ligand_mdsystem_record = record.get_value(solvated_ligand_record_field)
@@ -573,7 +568,6 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                 solvated_complex_record_field = OEField("complex_solvated", Types.Record)
 
                 if not record.has_value(solvated_complex_record_field):
-                    self.log.error("Missing record'{}' field".format(solvated_complex_record_field.get_name()))
                     raise ValueError("The parametrized solvated complex is missing")
 
                 solvated_complex_mdsystem_record = record.get_value(solvated_complex_record_field)
@@ -710,7 +704,8 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                                                           log=str_logger,
                                                           trajectory=lf)
                 if opt['rerun']:
-                    md_stages.append(md_stage_record)
+                    # md_stages.append(md_stage_record)
+                    md_stages[-1] = md_stage_record
                     record.set_value(Fields.md_stages, md_stages)
                 else:
                     record = OERecord()

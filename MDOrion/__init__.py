@@ -15,7 +15,7 @@
 # liable for any damages or liability in connection with the Sample Code
 # or its use.
 
-__version__ = '0.4.4'
+__version__ = '0.4.9'
 import Standards
 import ComplexPrepCubes
 import ForceFieldCubes

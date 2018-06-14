@@ -90,6 +90,7 @@ minComplex.promote_parameter('restraintWt', promoted_name='m_restraintWt', defau
                              description='Restraint weight')
 minComplex.promote_parameter('steps', promoted_name='steps', default=1000)
 minComplex.promote_parameter('center', promoted_name='center', default=True)
+minComplex.promote_parameter('save_md_stage', promoted_name='save_md_stage', default=True)
 
 
 # NVT simulation. Here the assembled system is warmed up to the final selected temperature
@@ -165,6 +166,7 @@ prod.promote_parameter('reporter_interval', promoted_name='prod_reporter_interva
                        description='Reporter saving interval is ns')
 prod.promote_parameter('suffix', promoted_name='prod_outfname', default='prod',
                        description='Equilibration suffix name')
+prod.promote_parameter('save_md_stage', promoted_name='save_md_stage', default=True)
 
 ofs = DataSetWriterCube('ofs', title='OFS-Success')
 ofs.promote_parameter("data_out", promoted_name="out")

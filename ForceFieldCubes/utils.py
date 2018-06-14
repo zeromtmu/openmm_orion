@@ -1,12 +1,13 @@
 from openeye import oechem
 from oeommtools import utils as oeommutils
-from MDCubes.OpenMMCubes import utils
+import MDOrion
 from simtk.openmm import app
 import parmed
 from openeye import oequacpac
 from LigPrepCubes import ff_utils
 import numpy as np
 import itertools
+import os
 
 
 proteinResidues = ['ALA', 'ASN', 'CYS', 'GLU', 'HIS',
@@ -47,7 +48,10 @@ def applyffProtein(protein, opt):
                             "by the selected FF: {} - {}"
                             "\n...Extended FF is in use".format(opt['protein_forcefield'], unmatched_residues))
 
-        ffext_fname = utils.get_data_filename('ForceFieldCubes', 'ffext/amber99SBildn_ext.xml')
+        PACKAGE_DIR = os.path.dirname(os.path.dirname(MDOrion.__file__))
+        FILE_DIR = os.path.join(PACKAGE_DIR, "ForceFieldCubes", "ffext")
+
+        ffext_fname = os.path.join(FILE_DIR, 'amber99SBildn_ext.xml')
         forcefield = app.ForceField()
         forcefield.loadFile(ffext_fname)
 

@@ -13,6 +13,8 @@ from ComplexPrepCubes import utils
 
 from Standards import Fields
 
+from floe.constants import ADVANCED
+
 
 class HydrationCube(ParallelMixin, OERecordComputeCube):
     title = "Hydration Cube"
@@ -58,13 +60,12 @@ class HydrationCube(ParallelMixin, OERecordComputeCube):
             opt = self.opt
 
             if not record.has_value(Fields.primary_molecule):
-                self.log.error("Missing molecule '{}' field".format(Fields.primary_molecule.get_name()))
-                raise ValueError("Missing the Primary Molecule")
+                raise ValueError("Missing the Primary Molecule field")
 
             system = record.get_value(Fields.primary_molecule)
 
             if not record.has_value(Fields.title):
-                self.log.warn("Missing record '{}' field".format(Fields.title.get_name()))
+                self.log.warn("Missing record Title field")
                 system_title = system.GetTitle()[0:12]
             else:
                 system_title = record.get_value(Fields.title)
@@ -186,13 +187,12 @@ class SolvationCube(ParallelMixin, OERecordComputeCube):
             opt = self.opt
 
             if not record.has_value(Fields.primary_molecule):
-                self.log.error("Missing molecule '{}' field".format(Fields.primary_molecule.get_name()))
-                raise ValueError("Missing the Primary Molecule")
+                raise ValueError("Missing the Primary Molecule Field")
 
             solute = record.get_value(Fields.primary_molecule)
 
             if not record.has_value(Fields.title):
-                self.log.warn("Missing record '{}' field".format(Fields.title.get_name()))
+                self.log.warn("Missing Title field")
                 solute_title = solute.GetTitle()[0:12]
             else:
                 solute_title = record.get_value(Fields.title)
@@ -257,6 +257,13 @@ class ComplexPrepCube(OERecordComputeCube):
         "item_count": {"default": 1}  # 1 molecule at a time
     }
 
+    # Ligand Residue Name
+    lig_res_name = parameter.StringParameter('lig_res_name',
+                                             default='LIG',
+                                             required=True,
+                                             help_text='The ligand residue name',
+                                             level=ADVANCED)
+
     protein_port = RecordInputPort("protein_port", initializer=True)
 
     def begin(self):
@@ -265,14 +272,14 @@ class ComplexPrepCube(OERecordComputeCube):
             self.opt['Logger'] = self.log
 
             if not record.has_value(Fields.primary_molecule):
-                self.log.error("Missing Protein '{}' field".format(Fields.primary_molecule.get_name()))
+                self.log.error("Missing Protein field")
                 self.failure.emit(record)
                 return
 
             protein = record.get_value(Fields.primary_molecule)
 
             if not record.has_value(Fields.title):
-                self.log.warn("Missing Protein '{}' field".format(Fields.title.get_name()))
+                self.log.warn("Missing Protein Title field")
                 self.protein_title = protein.GetTitle()[0:12]
             else:
                 self.protein_title = record.get_value(Fields.title)
@@ -285,8 +292,7 @@ class ComplexPrepCube(OERecordComputeCube):
             if port == 'intake':
 
                 if not record.has_value(Fields.primary_molecule):
-                    self.log.error("Missing Ligand '{}' field".format(Fields.primary_molecule.get_name()))
-                    raise ValueError("Missing the Primary Molecule")
+                    raise ValueError("Missing the Primary Molecule field")
 
                 ligand = record.get_value(Fields.primary_molecule)
 
@@ -309,7 +315,8 @@ class ComplexPrepCube(OERecordComputeCube):
                 oechem.OEAddMols(complx, ligand)
 
                 # Split the complex in components
-                protein_split, ligand_split, water, excipients = oeommutils.split(complx)
+                protein_split, ligand_split, water, excipients = oeommutils.split(complx,
+                                                                                  ligand_res_name=self.opt['lig_res_name'])
 
                 # If the protein does not contain any atom emit a failure
                 if not protein_split.NumAtoms():  # Error: protein molecule is empty
@@ -358,8 +365,3 @@ class ComplexPrepCube(OERecordComputeCube):
             self.failure.emit(record)
 
         return
-
-
-
-
-
