@@ -13,9 +13,9 @@ from simtk import openmm
 
 def local_cluster(sim):
     def wrapper(*args):
-        if 'CUDA_VISIBLE_DEVICES' in os.environ and not in_orion():
+        if 'OE_VISIBLE_DEVICES' in os.environ and not in_orion():
 
-            gpus_available_indexes = os.environ["CUDA_VISIBLE_DEVICES"].split(',')
+            gpus_available_indexes = os.environ["OE_VISIBLE_DEVICES"].split(',')
             opt = args[0]
             opt['Logger'].info("LOCAL FLOE CLUSTER OPTION IN USE")
             while True:

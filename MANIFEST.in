@@ -7,8 +7,9 @@ recursive-include MDCubes *.py
 recursive-include LigPrepCubes *.py
 recursive-include YankCubes *.py
 recursive-include ComplexPrepCubes *
-recursive-include TrjAnalysis *
+recursive-include TrjAnalysisCubes *
 recursive-include Standards *
 recursive-include ProtPrepCubes *
 recursive-include ForceFieldCubes *
 recursive-include tests *
+recursive-include MDOrion *

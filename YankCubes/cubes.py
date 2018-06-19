@@ -43,6 +43,8 @@ import textwrap
 
 import subprocess
 
+from oeommtools import utils as oeommutils
+
 
 class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
     version = "0.0.0"
@@ -542,6 +544,28 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
             complex = record.get_value(Fields.primary_molecule)
 
+            # Split the complex in components
+            protein_split, ligand_split, water, excipients = oeommutils.split(complex,
+                                                                              ligand_res_name=self.opt['lig_res_name'])
+
+            # Total ligand formal charge
+            lig_chg = 0
+            for at in ligand_split.GetAtoms():
+                lig_chg += at.GetFormalCharge()
+
+            #  Excipient names and total formal charges
+            exc_chg = dict()
+            hv = oechem.OEHierView(excipients)
+            for chain in hv.GetChains():
+                for frag in chain.GetFragments():
+                    for hres in frag.GetResidues():
+                        r_name = hres.GetOEResidue().GetName()
+                        atms = hres.GetAtoms()
+                        chg = 0
+                        for at in atms:
+                            chg += at.GetFormalCharge()
+                        exc_chg[r_name] = chg
+
             if not record.has_value(Fields.title):
                 opt['Logger'].warn("Missing record Title field")
                 system_title = complex.GetTitle()[0:12]
@@ -686,7 +710,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     #     opt['Logger'].warn("The result file have not been generated")
 
                 # Tar the Yank temp dir with its content:
-                tar_fn = os.path.basename(output_directory) + '.tar.gz'
+                tar_fn = os.path.basename(output_directory+"_"+opt['system_title']) + '.tar.gz'
                 with tarfile.open(tar_fn, mode='w:gz') as archive:
                     archive.add(output_directory, arcname='.', recursive=True)
 
@@ -710,6 +734,8 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                 else:
                     record = OERecord()
                     record.set_value(Fields.md_stages, [md_stage_record])
+                    record.set_value(Fields.id, opt['system_id'])
+                    record.set_value(Fields.title, opt['system_title'])
 
             record.set_value(Fields.primary_molecule, complex)
 
