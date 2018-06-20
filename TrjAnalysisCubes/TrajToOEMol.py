@@ -15,7 +15,8 @@ from Standards import (Fields,
 
 from openeye import oechem
 
-import TrjAnalysisCubes.TrajToOEMol_utils as trjutl
+import TrjAnalysisCubes.utils as trjutl
+import TrjAnalysisCubes.OETrajBasicAnalysis as oetrjutl
 
 def CheckAndGetValue( record, field, rType):
     if not record.has_value(OEField(field,rType)):
@@ -117,7 +118,7 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
             # Generate average and median protein and ligand OEMols from ptraj, ltraj
             opt['Logger'].info('{} Generating protein and ligand median and average OEMols'
                 .format( system_title))
-            ligMedian, protMedian, ligAverage, protAverage = trjutl.AnalyseProteinLigandTrajectoryOEMols( ltraj, ptraj)
+            ligMedian, protMedian, ligAverage, protAverage = oetrjutl.AnalyseProteinLigandTrajectoryOEMols( ltraj, ptraj)
 
             # Overwrite MDStages with only first (setup) and last (production) stages
             newMDStages = [ md_stage0_record, md_stageLast_record]

@@ -5,7 +5,11 @@ from floe.api import (ParallelMixin,
                       parameter)
 
 # Just for old orion testing
-from datarecord import OEField, Types, OERecord
+from datarecord import (Types,
+                        Meta,
+                        OEFieldMeta,
+                        OEField,
+                        OERecord)
 
 
 from cuberecord import OERecordComputeCube
@@ -66,19 +70,60 @@ class ClusterOETrajCube(ParallelMixin, OERecordComputeCube):
             # Logger string
             opt['Logger'].info(' ')
             system_title = CheckAndGetValue( record, 'Title_PLMD', Types.String)
-            opt['Logger'].info('{}: Attempting to cluster MD Traj conversion protein-ligand OEMols'
+            opt['Logger'].info('{} Attempting to cluster MD Traj'
                 .format(system_title) )
             floeID = CheckAndGetValue( record, 'ID_PLMD', Types.Int)
             opt['Logger'].info('{} floe ID: {}'.format(system_title, floeID) )
 
-            # Extract the MDStageRecord list
+            # Check that the OETraj analysis has been done
             analysesDone = CheckAndGetValue( record, 'AnalysesDone', Types.StringVec)
             if 'OETraj' not in analysesDone:
                 raise ValueError('{} does not have OETraj analyses done'.format(system_title) )
             else:
                 opt['Logger'].info('{} found OETraj analyses'.format(system_title) )
 
-            # Extract and verify the traj filename for the last MD stage
+            # Extract the relevant traj OEMols from the OETraj record
+            oetrajRecord = CheckAndGetValue( record, 'OETraj', Types.Record)
+            opt['Logger'].info('{} found OETraj record'.format(system_title) )
+            ligTraj = CheckAndGetValue( oetrajRecord, 'LigTraj', Types.Chem.Mol)
+            opt['Logger'].info('{} #atoms, #confs in ligand traj OEMol: {}, {}'
+                .format( system_title, ligTraj.NumAtoms(), ligTraj.NumConfs()) )
+
+            # Cluster ligand traj into cluster OEMols with matching protein OEMols
+            opt['Logger'].info('{} starting clustering'.format(system_title) )
+            clusResults = clusutl.ClusterLigTraj( ligTraj)
+            opt['Logger'].info('{} plotting RMSD histogram'.format(system_title) )
+            trajHistRMSD_svg = clusutl.ClusterLigTrajHistRMSD(clusResults)
+            opt['Logger'].info('{} plotting RMSD heat map'.format(system_title) )
+            trajHeatRMSD_png = clusutl.ClusterLigTrajHeatRMSD(clusResults)
+            opt['Logger'].info('{} plotting cluster strip plot'.format(system_title) )
+            trajClus_svg = clusutl.ClusterLigTrajClusPlot(clusResults)
+
+            # Create new record with trajClus results
+            opt['Logger'].info('{} writing trajClus OERecord'.format(system_title) )
+            ClusterMethod_field = OEField( 'ClusterMethod', Types.String)
+            HDBSCAN_alpha_field = OEField( 'HDBSCAN_alpha', Types.Float)
+            nFrames_field = OEField( 'nFrames', Types.Int)
+            nClusters_field = OEField( 'nClusters', Types.Int)
+            Clusters_field = OEField( 'Clusters', Types.IntVec)
+            HistSVG_field = OEField( 'HistSVG', Types.String, meta=OEFieldMeta().set_option(Meta.Hints.Image_SVG))
+            HeatPNG_field = OEField( 'HeatPNG', Types.Blob, meta=OEFieldMeta().set_option(Meta.Hints.Image_PNG))
+            ClusSVG_field = OEField( 'ClusSVG', Types.String, meta=OEFieldMeta().set_option(Meta.Hints.Image_SVG))
+
+            trajClus = OERecord()
+            trajClus.set_value( ClusterMethod_field, clusResults['ClusterMethod'])
+            trajClus.set_value( HDBSCAN_alpha_field, clusResults['HDBSCAN_alpha'])
+            trajClus.set_value( nFrames_field, clusResults['nFrames'])
+            trajClus.set_value( nClusters_field, clusResults['nClusters'])
+            trajClus.set_value( Clusters_field, clusResults['ClusterVec'])
+            trajClus.set_value( HistSVG_field, trajHistRMSD_svg)
+            trajClus.set_value( HeatPNG_field, trajHeatRMSD_png)
+            trajClus.set_value( ClusSVG_field, trajClus_svg)
+
+            record.set_value( OEField( 'TrajClus', Types.Record), trajClus)
+            analysesDone.append( 'TrajClus')
+            record.set_value( OEField( 'AnalysesDone', Types.StringVec), analysesDone)
+            opt['Logger'].info('{} finished writing trajClus OERecord'.format(system_title) )
 
             self.success.emit(record)
 
