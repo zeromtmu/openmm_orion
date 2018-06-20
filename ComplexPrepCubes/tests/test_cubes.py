@@ -13,8 +13,7 @@
 # # NOT LIMITED TO, WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
 # # PARTICULAR PURPOSE AND NONINFRINGEMENT. In no event shall OpenEye be
 # # liable for any damages or liability in connection with the Sample Code
-#
-#
+
 # import unittest
 # from ComplexPrepCubes.cubes import ComplexPrepCube
 # from openeye import oechem

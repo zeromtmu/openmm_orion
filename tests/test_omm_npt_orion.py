@@ -16,7 +16,7 @@
 # or its use.
 
 import os
-from orionclient.session import OrionSession, in_orion
+from orionclient.session import OrionSession
 from artemis.wrappers import WorkFloeWrapper, DatasetWrapper, OutputDatasetWrapper
 from artemis.test import FloeTestCase
 from artemis.decorators import package
@@ -125,7 +125,6 @@ class TestMDOrionFloes(FloeTestCase):
                     "temperature": 300.0,
                     "pressure": 1.0,
                     "nonbondedCutoff": 10.0,
-                    "constraints": "HBonds",
                     "trajectory_interval": 0.0,
                     "reporter_interval": 0.0,
                     "out": output_file.identifier
@@ -133,7 +132,8 @@ class TestMDOrionFloes(FloeTestCase):
 
                 "cube": {
                     "npt": {
-                        "save_md_stage": True
+                        "save_md_stage": True,
+                        "constraints": "HBonds"
                     }
                 }
             }
