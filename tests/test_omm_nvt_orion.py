@@ -16,7 +16,7 @@
 # or its use.
 
 import os
-from orionclient.session import OrionSession, in_orion
+from orionclient.session import OrionSession
 from artemis.wrappers import WorkFloeWrapper, DatasetWrapper, OutputDatasetWrapper
 from artemis.test import FloeTestCase
 from artemis.decorators import package
@@ -125,22 +125,21 @@ class TestMDOrionFloes(FloeTestCase):
                     "nonbondedMethod": "PME",
                     "temperature": 300.0,
                     "nonbondedCutoff": 10.0,
-                    "constraints": "HBonds",
                     "trajectory_interval": 0.0,
                     "reporter_interval": 0.0,
                     "out": output_file.identifier
+                },
+
+                "cube": {
+                    "nvt": {
+                        "save_md_stage": True,
+                        "constraints": "HBonds"
+                    }
                 }
             }
         )
 
-        # Faked locally
-        self.assertEqual(workfloe.state, "complete")
-        # Also faked
-        self.assertEqual(
-            len(workfloe.reason),
-            0,
-            "Failed with reason {}".format(workfloe.reason)
-        )
+        self.assertWorkFloeComplete(workfloe)
 
         ifs = oeifstream(output_file.path)
         records = []
@@ -159,7 +158,7 @@ class TestMDOrionFloes(FloeTestCase):
         for record in records:
             stages = record.get_value(Fields.md_stages)
 
-            stage = stages[0]
+            stage = stages[-1]
 
             md_system = stage.get_value(Fields.md_system)
 

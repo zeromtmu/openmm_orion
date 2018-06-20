@@ -8,22 +8,31 @@
 # ABOUT THIS WARNING.
 
 # !/usr/bin/env python
-import re, ast, os
+import re
+import ast
+import os
+
 from os.path import relpath, join
-from pip.req import parse_requirements
 from setuptools import setup, find_packages
+
+try:  # for pip >= 10
+    from pip._internal.req import parse_requirements
+except ImportError:  # for pip <= 9.0.3
+    from pip.req import parse_requirements
 
 
 def get_reqs(reqs):
     return [str(ir.req) for ir in reqs]
 
+
 try:
     install_reqs = get_reqs(parse_requirements("requirements.txt"))
 except TypeError:
-    from pip.download import PipSession
-    install_reqs = get_reqs(
-        parse_requirements("requirements.txt", session=PipSession())
-    )
+    try:  # For pip >= 10
+        from pip._internal.download import PipSession
+    except ImportError:  # For pip <= 9.0.3
+        from pip.download import PipSession
+    install_reqs = get_reqs(parse_requirements("requirements.txt", session=PipSession()))
 
 
 def find_package_data(data_root, package_root):
@@ -36,14 +45,14 @@ def find_package_data(data_root, package_root):
 
 def get_version():
     _version_re = re.compile(r'__version__\s+=\s+(.*)')
-    with open('OpenMMCubes/__init__.py', 'rb') as f:
+    with open('MDOrion/__init__.py', 'rb') as f:
         version = str(ast.literal_eval(_version_re.search(f.read().decode('utf-8')).group(1)))
         return version
 
 
 setup(
     name="MDOrion",
-    version='0.4.7.1',
+    version='0.5.1.1',
     packages=find_packages(include=['examples'], exclude=['tests*']),
     include_package_data=True,
     package_data={'examples': find_package_data('examples/data', 'examples')},

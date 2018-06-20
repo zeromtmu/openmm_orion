@@ -1,4 +1,23 @@
 #!/usr/bin/env python
+
+# (C) 2018 OpenEye Scientific Software Inc. All rights reserved.
+#
+# TERMS FOR USE OF SAMPLE CODE The software below ("Sample Code") is
+# provided to current licensees or subscribers of OpenEye products or
+# SaaS offerings (each a "Customer").
+# Customer is hereby permitted to use, copy, and modify the Sample Code,
+# subject to these terms. OpenEye claims no rights to Customer's
+# modifications. Modification of Sample Code is at Customer's sole and
+# exclusive risk. Sample Code may require Customer to have a then
+# current license or subscription to the applicable OpenEye offering.
+# THE SAMPLE CODE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED.  OPENEYE DISCLAIMS ALL WARRANTIES, INCLUDING, BUT
+# NOT LIMITED TO, WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+# PARTICULAR PURPOSE AND NONINFRINGEMENT. In no event shall OpenEye be
+# liable for any damages or liability in connection with the Sample Code
+# or its use.
+
+
 from floe.api import WorkFloe
 
 from cuberecord import (DataSetWriterCube,
@@ -21,13 +40,29 @@ from LigPrepCubes.cubes import (LigandChargeCube,
 job = WorkFloe('Merck Frosst MD Protocol')
 
 job.description = """
-Set up an OpenMM complex then minimize, warm up and equilibrate a system by using three equilibration stages
 
-Ex: python floes/openmm_MDprep.py --ligands ligands.oeb --protein protein.oeb --ofs-data_out prep.oeb
+The Merck Frosst MD Protocol performs MD simulations providing a set of prepared ligands and a 
+prepared protein. The ligands need to have coordinates and correct chemistry, each ligand can have
+multiple conformers but each conformers will be treated as a different ligand and prepared to run MD.
+The protein needs to be prepared at MD preparation standard. This includes capping the protein, 
+resolve missing atoms in protein residues and resolve missing protein loops. The parametrization of
+some "known unknown" protein residues is partially supported. The Merck Frosst floe requires as inputs 
+the protein and a set of ligands correctly posed in the protein binding site. A complex is formed, 
+solvated and parametrized accordingly to the selected force fields. A minimization is preformed on the 
+system followed by a warm up (NVT ensemble) and three equilibration stages (NPT ensemble). In the 
+minimization, warm up and equilibration stages positional harmonic restraints are applied on the ligand
+and protein with different force constants. At the end of the equilibration stages a 2ns production run
+is performed on the system without any restraints. The MD floe parameters have been chose and tested 
+to minimize MD failures.          
+ 
+
+Locally the floe can be invoked by running the terminal command:
+
+python floes/openmm_FrosstMD.py --ligands ligands.oeb --protein protein.oeb --out prod.oeb
 
 Parameters:
 -----------
-ligands (file): oeb file of ligand posed in the protein active site.
+ligands (file): oeb file of ligands posed in the protein active site.
 protein (file): oeb file of the protein structure, assumed to be pre-prepared
 
 Optionals:
@@ -35,7 +70,7 @@ Optionals:
 
 Outputs:
 --------
-ofs: Outputs a ready system to MD production run
+out: Outputs of the MD floe
 """
 
 job.classification = [['Complex Setup', 'FrosstMD']]
@@ -45,13 +80,13 @@ job.tags = [tag for lists in job.classification for tag in lists]
 iligs = DataSetReaderCube("LigandReader", title="Ligand Reader")
 iligs.promote_parameter("data_in", promoted_name="ligands", title="Ligand Input File", description="Ligand file name")
 
-chargelig = LigandChargeCube("LigCharge")
+chargelig = LigandChargeCube("LigCharge", title="Ligand Charge")
 chargelig.promote_parameter('max_conformers', promoted_name='max_conformers',
                             description="Set the max number of conformers per ligand", default=800)
 chargelig.promote_parameter('charge_ligands', promoted_name='charge_ligands',
                             description="Charge the ligand or not", default=True)
 
-ligset = LigandSetting("LigandSetting")
+ligset = LigandSetting("LigandSetting", title="Ligand Setting")
 
 # Protein Reading cube. The protein prefix parameter is used to select a name for the
 # output system files
@@ -59,7 +94,7 @@ iprot = DataSetReaderCube("ProteinReader", title="Protein Reader")
 iprot.promote_parameter("data_in", promoted_name="protein", title='Protein Input File',
                         description="Protein file name")
 
-protset = ProteinSetting("ProteinSetting")
+protset = ProteinSetting("ProteinSetting", title="Protein Setting")
 
 # Complex cube used to assemble the ligands and the solvated protein
 complx = ComplexPrepCube("Complex")
@@ -67,7 +102,7 @@ complx = ComplexPrepCube("Complex")
 # The solvation cube is used to solvate the system and define the ionic strength of the solution
 # solvate = HydrationCube("Hydration")
 
-solvate = SolvationCube("Hydration")
+solvate = SolvationCube("Hydration", title="Hydration")
 solvate.promote_parameter('density', promoted_name='density', default=1.03,
                           description="Solution density in g/ml")
 solvate.promote_parameter('close_solvent', promoted_name='close_solvent', default=True,
@@ -76,7 +111,7 @@ solvate.promote_parameter('salt_concentration', promoted_name='salt_concentratio
                           description='Salt concentration (Na+, Cl-) in millimolar')
 
 # Force Field Application
-ff = ForceFieldCube("ForceField")
+ff = ForceFieldCube("ForceField", title="Force Field")
 ff.promote_parameter('protein_forcefield', promoted_name='protein_ff', default='amber99sbildn.xml')
 ff.promote_parameter('solvent_forcefield', promoted_name='solvent_ff', default='tip3p.xml')
 ff.promote_parameter('ligand_forcefield', promoted_name='ligand_ff', default='GAFF2')
@@ -90,6 +125,7 @@ minComplex.promote_parameter('restraintWt', promoted_name='m_restraintWt', defau
                              description='Restraint weight')
 minComplex.promote_parameter('steps', promoted_name='steps', default=1000)
 minComplex.promote_parameter('center', promoted_name='center', default=True)
+minComplex.promote_parameter('save_md_stage', promoted_name='save_md_stage', default=True)
 
 
 # NVT simulation. Here the assembled system is warmed up to the final selected temperature
@@ -165,6 +201,7 @@ prod.promote_parameter('reporter_interval', promoted_name='prod_reporter_interva
                        description='Reporter saving interval is ns')
 prod.promote_parameter('suffix', promoted_name='prod_outfname', default='prod',
                        description='Equilibration suffix name')
+prod.promote_parameter('save_md_stage', promoted_name='save_md_stage', default=True)
 
 ofs = DataSetWriterCube('ofs', title='OFS-Success')
 ofs.promote_parameter("data_out", promoted_name="out")

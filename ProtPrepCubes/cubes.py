@@ -1,8 +1,27 @@
+# (C) 2018 OpenEye Scientific Software Inc. All rights reserved.
+#
+# TERMS FOR USE OF SAMPLE CODE The software below ("Sample Code") is
+# provided to current licensees or subscribers of OpenEye products or
+# SaaS offerings (each a "Customer").
+# Customer is hereby permitted to use, copy, and modify the Sample Code,
+# subject to these terms. OpenEye claims no rights to Customer's
+# modifications. Modification of Sample Code is at Customer's sole and
+# exclusive risk. Sample Code may require Customer to have a then
+# current license or subscription to the applicable OpenEye offering.
+# THE SAMPLE CODE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED.  OPENEYE DISCLAIMS ALL WARRANTIES, INCLUDING, BUT
+# NOT LIMITED TO, WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+# PARTICULAR PURPOSE AND NONINFRINGEMENT. In no event shall OpenEye be
+# liable for any damages or liability in connection with the Sample Code
+# or its use.
+
 import traceback
 
 from cuberecord import OERecordComputeCube
 
 from Standards import Fields
+
+from floe.api import parameter
 
 
 class ProteinSetting(OERecordComputeCube):
@@ -31,6 +50,11 @@ class ProteinSetting(OERecordComputeCube):
         "item_count": {"default": 1}  # 1 molecule at a time
     }
 
+    multiple_protein = parameter.BooleanParameter(
+        'multiple_protein',
+        default=False,
+        help_text="If Checked/True multiple protein will be allowed")
+
     def begin(self):
         self.opt = vars(self.args)
         self.opt['Logger'] = self.log
@@ -39,13 +63,11 @@ class ProteinSetting(OERecordComputeCube):
     def process(self, record, port):
         try:
 
-            if self.count > 0:
-                raise ValueError("Multiple Proteins have been Detected "
-                                 "Currently just one Protein is supported as input")
+            if self.count > 0 and not self.opt['multiple_protein']:
+                raise ValueError("Multiple Proteins have been Detected")
 
             if not record.has_value(Fields.primary_molecule):
-                self.log.error("Missing '{}' field".format(Fields.primary_molecule.get_name()))
-                raise ValueError("Missing Primary Molecule")
+                raise ValueError("Missing Primary Molecule field")
 
             protein = record.get_value(Fields.primary_molecule)
 
@@ -54,6 +76,7 @@ class ProteinSetting(OERecordComputeCube):
                 name = 'PRT'
 
             record.set_value(Fields.title, name)
+            record.set_value(Fields.id, self.count)
             self.count += 1
 
             self.success.emit(record)

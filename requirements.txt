@@ -1,8 +1,16 @@
+# PIP
+pip==10.0.1
+prompt_toolkit==1.0.15
+six==1.11.0
+wcwidth==0.1.7
+pytest==3.6.1
+invoke==1.0.0
+
 # OE Stack
 openeye-toolkits==2018.2.1
 OpenEye-datarecord==0.12.2
-OpenEye-cuberecord==0.11.2
-OpenEye-orionclient==0.3.0
+OpenEye-cuberecord==0.11.4
+OpenEye-orionclient==0.3.1a2
 OpenEye-floe==0.5.10
 OpenEye-Artemis==0.2.1a5
-
+OpenEye-ensemble2img==0.1.0

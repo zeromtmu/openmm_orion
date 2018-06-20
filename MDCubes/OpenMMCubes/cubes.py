@@ -1,3 +1,21 @@
+# (C) 2018 OpenEye Scientific Software Inc. All rights reserved.
+#
+# TERMS FOR USE OF SAMPLE CODE The software below ("Sample Code") is
+# provided to current licensees or subscribers of OpenEye products or
+# SaaS offerings (each a "Customer").
+# Customer is hereby permitted to use, copy, and modify the Sample Code,
+# subject to these terms. OpenEye claims no rights to Customer's
+# modifications. Modification of Sample Code is at Customer's sole and
+# exclusive risk. Sample Code may require Customer to have a then
+# current license or subscription to the applicable OpenEye offering.
+# THE SAMPLE CODE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED.  OPENEYE DISCLAIMS ALL WARRANTIES, INCLUDING, BUT
+# NOT LIMITED TO, WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+# PARTICULAR PURPOSE AND NONINFRINGEMENT. In no event shall OpenEye be
+# liable for any damages or liability in connection with the Sample Code
+# or its use.
+
+
 import traceback
 
 from floe.api import (ParallelMixin,
@@ -182,26 +200,23 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
             str_logger += "\n{:<25} = {:<10}".format("Simulation Type", opt['SimType'])
 
             if not record.has_value(Fields.primary_molecule):
-                opt['Logger'].error("Missing molecule '{}' field".format(Fields.primary_molecule.get_name()))
-                raise ValueError("Missing the Primary Molecule")
+                raise ValueError("Missing the Primary Molecule field")
 
             system = record.get_value(Fields.primary_molecule)
 
             if not record.has_value(Fields.title):
-                opt['Logger'].warn("Missing record '{}' field".format(Fields.title.get_name()))
+                opt['Logger'].warn("Missing record Title field")
                 system_title = system.GetTitle()[0:12]
             else:
                 system_title = record.get_value(Fields.title)
 
             if not record.has_value(Fields.id):
-                opt['Logger'].error("Missing record {} field".format(Fields.id.get_name()))
                 raise ValueError("Missing ID Field")
 
             opt['system_title'] = system_title
             opt['system_id'] = record.get_value(Fields.id)
 
             if not record.has_value(Fields.md_stages):
-                opt['Logger'].error("Missing '{}' field".format(Fields.md_stages.get_name()))
                 raise ValueError("The System does not seem to be parametrized by the Force Field")
 
             # Extract the MDStageRecord list
@@ -438,19 +453,17 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
             str_logger += "\n{:<25} = {:<10}".format("Simulation Type", opt['SimType'])
 
             if not record.has_value(Fields.primary_molecule):
-                opt['Logger'].error("Missing molecule '{}' field".format(Fields.primary_molecule.get_name()))
-                raise ValueError("Missing the Primary Molecule")
+                raise ValueError("Missing the Primary Molecule field")
 
             system = record.get_value(Fields.primary_molecule)
 
             if not record.has_value(Fields.title):
-                opt['Logger'].warn("Missing record {} field".format(Fields.title.get_name()))
+                opt['Logger'].warn("Missing record Title field")
                 system_title = system.GetTitle()[0:12]
             else:
                 system_title = record.get_value(Fields.title)
 
             if not record.has_value(Fields.id):
-                opt['Logger'].error("Missing record {} field".format(Fields.id.get_name()))
                 raise ValueError("Missing the ID field")
 
             opt['system_title'] = system_title
@@ -458,7 +471,6 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
             opt['system_id'] = record.get_value(Fields.id)
 
             if not record.has_value(Fields.md_stages):
-                opt['Logger'].warn("Missing '{}' field".format(Fields.md_stages.get_name()))
                 raise ValueError("The System does not seem to be parametrized by the Force Field")
 
             # Extract the MDStageRecord list
@@ -532,9 +544,9 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
 
             record.set_value(Fields.primary_molecule, system)
 
-            md_stage_record = MDRecords.MDStageRecord(MDStageNames.MINIMIZATION,
+            md_stage_record = MDRecords.MDStageRecord(MDStageNames.NVT,
                                                       MDRecords.MDSystemRecord(system, mdData.structure),
-                                                      log=opt['str_logger'])
+                                                      log=opt['str_logger'], trajectory=lf)
 
             if opt['save_md_stage']:
                 opt['Logger'].info("Saving MD stage: {}".format(opt['SimType']))
@@ -734,19 +746,17 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
             str_logger += "\n{:<25} = {:<10}".format("Simulation Type", opt['SimType'])
 
             if not record.has_value(Fields.primary_molecule):
-                opt['Logger'].error("Missing molecule '{}' field".format(Fields.primary_molecule.get_name()))
-                raise ValueError("Missing the Primary Molecule")
+                raise ValueError("Missing the Primary Molecule field")
 
             system = record.get_value(Fields.primary_molecule)
 
             if not record.has_value(Fields.title):
-                opt['Logger'].warn("Missing record {} field".format(Fields.title.get_name()))
+                opt['Logger'].warn("Missing record Title field")
                 system_title = system.GetTitle()[0:12]
             else:
                 system_title = record.get_value(Fields.title)
 
             if not record.has_value(Fields.id):
-                opt['Logger'].error("Missing record {} field".format(Fields.id.get_name()))
                 raise ValueError("Missing the ID field")
 
             opt['system_title'] = system_title
@@ -754,7 +764,6 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
             opt['system_id'] = record.get_value(Fields.id)
 
             if not record.has_value(Fields.md_stages):
-                opt['Logger'].warn("Missing '{}' field".format(Fields.md_stages.get_name()))
                 raise ValueError("The System does not seem to be parametrized by the Force Field")
 
             # Extract the MDStageRecord list
@@ -829,9 +838,9 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
 
             record.set_value(Fields.primary_molecule, system)
 
-            md_stage_record = MDRecords.MDStageRecord(MDStageNames.MINIMIZATION,
+            md_stage_record = MDRecords.MDStageRecord(MDStageNames.NPT,
                                                       MDRecords.MDSystemRecord(system, mdData.structure),
-                                                      log=opt['str_logger'])
+                                                      log=opt['str_logger'], trajectory=lf)
 
             if opt['save_md_stage']:
                 opt['Logger'].info("Saving MD stage: {}".format(opt['SimType']))

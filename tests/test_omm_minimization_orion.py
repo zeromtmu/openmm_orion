@@ -134,18 +134,17 @@ class TestMDOrionFloes(FloeTestCase):
                 "promoted": {
                     "system": system.identifier,
                     "out": output_file.identifier
+                },
+
+                "cube": {
+                    "Minimize": {
+                        "save_md_stage": True
+                    }
                 }
             }
         )
 
-        # Faked locally
-        self.assertEqual(workfloe.state, "complete")
-        # Also faked
-        self.assertEqual(
-            len(workfloe.reason),
-            0,
-            "Failed with reason {}".format(workfloe.reason)
-        )
+        self.assertWorkFloeComplete(workfloe)
 
         # Read output record
         ifs = oeifstream(output_file.path)
@@ -169,7 +168,7 @@ class TestMDOrionFloes(FloeTestCase):
 
             self.assertEqual(len(stages), 2)
 
-            stage = stages[0]
+            stage = stages[-1]
 
             md_system = stage.get_value(Fields.md_system)
 
@@ -177,7 +176,7 @@ class TestMDOrionFloes(FloeTestCase):
 
             mdData = utils.MDData(parmed_structure)
 
-            # Calculate starting potential energy
+            # Calculate final potential energy
             eng_f = calculate_eng(mdData)
 
         self.assertLess(eng_f.in_units_of(unit.kilojoule_per_mole)/unit.kilojoule_per_mole,

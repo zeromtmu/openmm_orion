@@ -71,16 +71,8 @@ class TestMDOrionFloes(FloeTestCase):
                 }
             }
         )
-
-        # Faked locally
-        self.assertEqual(workfloe.state, "complete")
-        # Also faked
-        self.assertEqual(
-            len(workfloe.reason),
-            0,
-            "Failed with reason {}".format(workfloe.reason)
-        )
-
+        self.assertWorkFloeComplete(workfloe)
+        
         ifs = oeifstream(output_file.path)
         records = []
 

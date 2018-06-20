@@ -1,3 +1,20 @@
+# (C) 2018 OpenEye Scientific Software Inc. All rights reserved.
+#
+# TERMS FOR USE OF SAMPLE CODE The software below ("Sample Code") is
+# provided to current licensees or subscribers of OpenEye products or
+# SaaS offerings (each a "Customer").
+# Customer is hereby permitted to use, copy, and modify the Sample Code,
+# subject to these terms. OpenEye claims no rights to Customer's
+# modifications. Modification of Sample Code is at Customer's sole and
+# exclusive risk. Sample Code may require Customer to have a then
+# current license or subscription to the applicable OpenEye offering.
+# THE SAMPLE CODE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED.  OPENEYE DISCLAIMS ALL WARRANTIES, INCLUDING, BUT
+# NOT LIMITED TO, WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+# PARTICULAR PURPOSE AND NONINFRINGEMENT. In no event shall OpenEye be
+# liable for any damages or liability in connection with the Sample Code
+# or its use.
+
 import traceback
 from floe.api import (ParallelMixin,
                       parameter)
@@ -42,6 +59,8 @@ import copy
 import textwrap
 
 import subprocess
+
+from oeommtools import utils as oeommutils
 
 
 class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
@@ -151,20 +170,18 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                                                                 tmp_description)
 
             if not record.has_value(Fields.primary_molecule):
-                self.log.error("Missing record '{}' field".format(Fields.primary_molecule.get_name()))
-                raise ValueError("Missing the Primary Molecule")
+                raise ValueError("Missing the Primary Molecule field")
 
             system = record.get_value(Fields.primary_molecule)
 
             if not record.has_value(Fields.title):
-                opt['Logger'].warn("Missing record '{}' field".format(Fields.title.get_name()))
+                opt['Logger'].warn("Missing record Title field")
                 system_title = system.GetTitle()[0:12]
             else:
                 system_title = record.get_value(Fields.title)
 
             if not record.has_value(Fields.id):
-                opt['Logger'].error("Missing record '{}' field".format(Fields.id.get_name()))
-                raise ValueError("Missing the Primary Molecule")
+                raise ValueError("Missing the Primary Molecule field")
 
             opt['system_title'] = system_title
 
@@ -183,7 +200,6 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                 opt.update(new_args)
 
             if not record.has_value(Fields.md_stages):
-                self.log.error("Missing '{}' field".format(Fields.md_stages.get_name()))
                 raise ValueError("The System does not seem to be parametrized by the Force Field")
 
             # Extract the MDStageRecord list
@@ -333,7 +349,8 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                                                           log=str_logger,
                                                           trajectory=lf)
 
-                md_stages.append(md_stage_record)
+                # md_stages.append(md_stage_record)
+                md_stages[-1] = md_stage_record
 
                 record.set_value(Fields.md_stages, md_stages)
 
@@ -414,7 +431,6 @@ class SyncBindingFECube(OERecordComputeCube):
                 self.emit(new_record)
 
         except:
-            # Attach an error message to the molecule that failed
             self.log.error(traceback.format_exc())
 
         return
@@ -540,19 +556,39 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                                                                 tmp_description)
 
             if not record.has_value(Fields.primary_molecule):
-                self.log.error("Missing record '{}' field".format(Fields.primary_molecule.get_name()))
-                raise ValueError("The Primary Molecule is missing")
+                raise ValueError("The Primary Molecule is missing field")
 
             complex = record.get_value(Fields.primary_molecule)
 
+            # Split the complex in components
+            protein_split, ligand_split, water, excipients = oeommutils.split(complex,
+                                                                              ligand_res_name=self.opt['lig_res_name'])
+
+            # Total ligand formal charge
+            lig_chg = 0
+            for at in ligand_split.GetAtoms():
+                lig_chg += at.GetFormalCharge()
+
+            #  Excipient names and total formal charges
+            exc_chg = dict()
+            hv = oechem.OEHierView(excipients)
+            for chain in hv.GetChains():
+                for frag in chain.GetFragments():
+                    for hres in frag.GetResidues():
+                        r_name = hres.GetOEResidue().GetName()
+                        atms = hres.GetAtoms()
+                        chg = 0
+                        for at in atms:
+                            chg += at.GetFormalCharge()
+                        exc_chg[r_name] = chg
+
             if not record.has_value(Fields.title):
-                opt['Logger'].warn("Missing record'{}' field".format(Fields.title.get_name()))
+                opt['Logger'].warn("Missing record Title field")
                 system_title = complex.GetTitle()[0:12]
             else:
                 system_title = record.get_value(Fields.title)
 
             if not record.has_value(Fields.id):
-                opt['Logger'].error("Missing record '{}' field".format(Fields.id.get_name()))
                 raise ValueError("Missing the ID field")
 
             opt['system_title'] = system_title
@@ -563,7 +599,6 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                 solvated_ligand_record_field = OEField("ligand_solvated", Types.Record)
 
                 if not record.has_value(solvated_ligand_record_field):
-                    self.log.error("Missing record '{}' field".format(solvated_ligand_record_field.get_name()))
                     raise ValueError("The parametrized solvated ligand is missing")
 
                 solvated_ligand_mdsystem_record = record.get_value(solvated_ligand_record_field)
@@ -573,7 +608,6 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                 solvated_complex_record_field = OEField("complex_solvated", Types.Record)
 
                 if not record.has_value(solvated_complex_record_field):
-                    self.log.error("Missing record'{}' field".format(solvated_complex_record_field.get_name()))
                     raise ValueError("The parametrized solvated complex is missing")
 
                 solvated_complex_mdsystem_record = record.get_value(solvated_complex_record_field)
@@ -692,7 +726,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     #     opt['Logger'].warn("The result file have not been generated")
 
                 # Tar the Yank temp dir with its content:
-                tar_fn = os.path.basename(output_directory) + '.tar.gz'
+                tar_fn = os.path.basename(output_directory+"_"+opt['system_title']) + '.tar.gz'
                 with tarfile.open(tar_fn, mode='w:gz') as archive:
                     archive.add(output_directory, arcname='.', recursive=True)
 
@@ -710,11 +744,14 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                                                           log=str_logger,
                                                           trajectory=lf)
                 if opt['rerun']:
-                    md_stages.append(md_stage_record)
+                    # md_stages.append(md_stage_record)
+                    md_stages[-1] = md_stage_record
                     record.set_value(Fields.md_stages, md_stages)
                 else:
                     record = OERecord()
                     record.set_value(Fields.md_stages, [md_stage_record])
+                    record.set_value(Fields.id, opt['system_id'])
+                    record.set_value(Fields.title, opt['system_title'])
 
             record.set_value(Fields.primary_molecule, complex)
 
