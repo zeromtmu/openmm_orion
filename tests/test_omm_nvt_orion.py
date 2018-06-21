@@ -102,7 +102,7 @@ class TestMDOrionFloes(FloeTestCase):
 
     def test_omm_nvt_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
-            os.path.join(FLOES_DIR, "openmm_MDnvt.py"),
+            os.path.join(FLOES_DIR, "MDnvt.py"),
             run_timeout=1200,
             queue_timeout=600
         )
@@ -110,7 +110,7 @@ class TestMDOrionFloes(FloeTestCase):
         system = DatasetWrapper.get_dataset(
             os.path.join(
                 FILE_DIR,
-                "p38_l38_a_2n_nvt_5ns.oeb.gz"
+                "p38_l38_a_2n_nvt_5ns.oedb"
             )
         )
 
@@ -130,7 +130,6 @@ class TestMDOrionFloes(FloeTestCase):
 
                 "cube": {
                     "nvt": {
-                        "save_md_stage": True,
                         "constraints": "HBonds",
                         "nonbondedMethod": "PME",
                         "nonbondedCutoff": 10.0

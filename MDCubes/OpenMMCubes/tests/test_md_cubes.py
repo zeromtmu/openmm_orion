@@ -230,7 +230,7 @@ class NVTCubeTester(unittest.TestCase):
         record = self.runner.outputs["success"].get()
 
         stages = record.get_value(Fields.md_stages)
-        self.assertEqual(len(stages), 1)
+        self.assertEqual(len(stages), 2)
 
         stage = stages[-1]
 
@@ -313,7 +313,7 @@ class NPTCubeTester(unittest.TestCase):
         record = self.runner.outputs["success"].get()
 
         stages = record.get_value(Fields.md_stages)
-        self.assertEqual(len(stages), 1)
+        self.assertEqual(len(stages), 2)
 
         stage = stages[-1]
 

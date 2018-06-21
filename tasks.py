@@ -176,6 +176,7 @@ def clean(ctx):
         os.remove(egg_path)
     elif os.path.isdir(egg_path):
         shutil.rmtree(egg_path)
+    shutil.rmtree(".pytest_cache", ignore_errors=True)
 
 
 @task
@@ -201,6 +202,8 @@ def clean_pycache(ctx):
             if dir == '__pycache__':
                 del_dir = os.path.join(dirpath, dir)
                 shutil.rmtree(del_dir)
+
+
 @task
 def clean_docs(ctx):
     doc_dir = "docs/build/html"

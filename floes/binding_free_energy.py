@@ -29,7 +29,7 @@ chunks = 5
 
 cube_list = []
 
-job = WorkFloe('Yank Binding Affinity')
+job = WorkFloe('Binding Affinity')
 
 job.description = """
 Set up an OpenMM complex then minimize, warm up and equilibrate a system by using three equilibration stages

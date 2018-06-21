@@ -33,7 +33,7 @@ FILE_DIR = os.path.join(PACKAGE_DIR, "tests", "data")
 
 class ForceFieldPrepTester(unittest.TestCase):
     """
-    Test the Complex Preparation  cube
+    Test the Complex Preparation cube
     """
 
     def setUp(self):
@@ -44,7 +44,7 @@ class ForceFieldPrepTester(unittest.TestCase):
     def test_excipient_successGaff2(self):
         print('Testing cube:', self.cube.name)
         # File name
-        ifs = OEMolRecordStream(os.path.join(FILE_DIR, "pbace_lcat13a_solvated_complex.oeb.gz"))
+        ifs = OEMolRecordStream(os.path.join(FILE_DIR, "pbace_lcat13a_solvated_complex.oedb"))
 
         for record in ifs:
             pass
@@ -66,7 +66,7 @@ class ForceFieldPrepTester(unittest.TestCase):
     def test_excipient_successSmirnoff(self):
         print('Testing cube:', self.cube.name)
 
-        ifs = OEMolRecordStream(os.path.join(FILE_DIR, "pbace_lcat13a_solvated_complex.oeb.gz"))
+        ifs = OEMolRecordStream(os.path.join(FILE_DIR, "pbace_lcat13a_solvated_complex.oedb"))
 
         for record in ifs:
             pass
@@ -86,7 +86,7 @@ class ForceFieldPrepTester(unittest.TestCase):
     def test_protein_non_std_residue(self):
         print('Testing cube:', self.cube.name)
 
-        ifs = OEMolRecordStream(os.path.join(FILE_DIR, "pCDK2_l30_solvated_complex.oeb.gz"))
+        ifs = OEMolRecordStream(os.path.join(FILE_DIR, "pCDK2_l30_solvated_complex.oedb"))
 
         for record in ifs:
             pass

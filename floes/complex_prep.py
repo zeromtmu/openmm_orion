@@ -69,7 +69,6 @@ ofs.promote_parameter("data_out", promoted_name="out")
 fail = DataSetWriterCube('fail', title='OFS-Failure')
 fail.set_parameters(data_out='fail.oeb.gz')
 
-
 job.add_cubes(iligs, chargelig, ligset, iprot, protset, complx, solvate, ff, ofs, fail)
 
 iligs.success.connect(chargelig.intake)

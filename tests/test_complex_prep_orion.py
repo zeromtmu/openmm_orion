@@ -72,7 +72,7 @@ class TestMDOrionFloes(FloeTestCase):
             }
         )
         self.assertWorkFloeComplete(workfloe)
-        
+
         ifs = oeifstream(output_file.path)
         records = []
 

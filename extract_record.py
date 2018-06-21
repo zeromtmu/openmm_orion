@@ -1,28 +1,39 @@
 from Standards import Fields
+from tempfile import NamedTemporaryFile
 from openeye import oechem
 from datarecord import OEField, Types
 from cuberecord.cube_testing import OEMolRecordStream
+from datarecord import OEReadRecords
 from datarecord import OEWriteRecord
 
-ifs = OEMolRecordStream("npt.oeb")
+from orionclient.types import Dataset
+from orionclient.session import APISession
+
+# ds = Dataset.upload(APISession, "foobar", "p38_l38_a_2n_nvt_5ns.oeb.gz")
+
+
+ifs = OEMolRecordStream("p38_l38_a_2n_nvt_5ns.oeb.gz")
 
 # for record in ifs:
 #     OEWriteRecord()
 
 
 for record in ifs:
+    print([(x.get_name(), x.get_type()) for x in record.get_fields()])
     # print(record.get_value(Fields.title))
     # for field in record.get_fields():
     #     print(field.get_name())
 #     #print(record.get_value(OEField("DG", Types.Float)))
-    stages = record.get_value(Fields.md_stages)
-    print("Len stages = {}".format(len(stages)))
-    stage = stages[-1]
+    assert record.has_value(Fields.md_stages)
+        # raise ValueError("The System does not seem to be parametrized by the Force Field")
+    # stages = record.get_value(Fields.md_stages)
+    # print("Len stages = {}".format(len(stages)))
+    # stage = stages[-1]
+    # #print(stage.get_value(Fields.trajectory))
+    # print(stage.has_value(Fields.log_data))
+    # print(stage.get_value(Fields.log_data))
+    #print(stage.has_value(Fields.trajectory))
     #print(stage.get_value(Fields.trajectory))
-    print(stage.has_value(Fields.log_data))
-    print(stage.get_value(Fields.log_data))
-    print(stage.has_value(Fields.trajectory))
-    print(stage.get_value(Fields.trajectory))
     # mdsystem = stage.get_value(OEField("MDSystem", Types.Record))
     # complex = mdsystem.get_value(OEField('Topology_OEMol', Types.Chem.Mol))
     # ofs = oechem.oemolostream("complex.oeb")
