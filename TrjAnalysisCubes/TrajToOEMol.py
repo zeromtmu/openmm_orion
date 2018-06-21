@@ -5,8 +5,11 @@ from floe.api import (ParallelMixin,
                       parameter)
 
 # Just for old orion testing
-from datarecord import OEField, Types, OERecord
-
+from datarecord import (Types,
+                        Meta,
+                        OEFieldMeta,
+                        OEField,
+                        OERecord)
 
 from cuberecord import OERecordComputeCube
 from Standards import (Fields,
@@ -16,7 +19,8 @@ from Standards import (Fields,
 from openeye import oechem
 
 import TrjAnalysisCubes.utils as trjutl
-import TrjAnalysisCubes.OETrajBasicAnalysis as oetrjutl
+import TrjAnalysisCubes.OETrajBasicAnalysis_utils as oetrjutl
+import ensemble2img
 
 def CheckAndGetValue( record, field, rType):
     if not record.has_value(OEField(field,rType)):
@@ -120,6 +124,10 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
                 .format( system_title))
             ligMedian, protMedian, ligAverage, protAverage = oetrjutl.AnalyseProteinLigandTrajectoryOEMols( ltraj, ptraj)
 
+            # Generate interactive trajectory SVG
+            opt['Logger'].info('{} Generating interactive trajectory SVG'.format( system_title))
+            trajSVG = ensemble2img.run_ensemble2img(ligMedian, protMedian, ltraj, ptraj)
+
             # Overwrite MDStages with only first (setup) and last (production) stages
             newMDStages = [ md_stage0_record, md_stageLast_record]
             record.set_value( OEField( 'MDStages', Types.RecordVec), newMDStages)
@@ -132,6 +140,8 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
             oetrajRecord.set_value( OEField( 'ProtMedian', Types.Chem.Mol), protMedian)
             oetrajRecord.set_value( OEField( 'LigAverage', Types.Chem.Mol), ligAverage)
             oetrajRecord.set_value( OEField( 'ProtAverage', Types.Chem.Mol), protAverage)
+            TrajSVG_field = OEField( 'TrajSVG', Types.String, meta=OEFieldMeta().set_option(Meta.Hints.Image_SVG))
+            oetrajRecord.set_value( TrajSVG_field, trajSVG)
             record.set_value( OEField( 'OETraj', Types.Record), oetrajRecord)
 
             analysesDone = None
