@@ -241,10 +241,9 @@ for i in range(0, chunks):
 
     yank.promote_parameter('iterations', promoted_name='iterations'+str(i),
                            default=yank_iteration_per_chunk*(i+1))
-    yank.promote_parameter('nonbondedCutoff', promoted_name='nonbondedCutoff'+str(i), default=10.0)
 
-    yank.promote_parameter('hmr', promoted_name='hmr'+str(i), default=False,
-                           description='Hydrogen Mass Repartitioning')
+    yank.promote_parameter('verbose', promoted_name='verbose' + str(i),
+                           default=True)
 
     if i == 0:
         yank.promote_parameter('rerun', promoted_name='rerun' + str(i), default=False)

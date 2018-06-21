@@ -562,7 +562,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
             # Split the complex in components
             protein_split, ligand_split, water, excipients = oeommutils.split(complex,
-                                                                              ligand_res_name=self.opt['lig_res_name'])
+                                                                              ligand_res_name=self.opt['ligand_resname'])
 
             # Total ligand formal charge
             lig_chg = 0

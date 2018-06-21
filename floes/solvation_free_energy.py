@@ -83,8 +83,7 @@ minimize.promote_parameter('restraints', promoted_name='m_restraints', default="
                            description='Select mask to apply restarints')
 minimize.promote_parameter('restraintWt', promoted_name='m_restraintWt', default=5.0,
                            description='Restraint weight in kcal/(mol A^2')
-minimize.promote_parameter('hmr', promoted_name='hmr', default=False,
-                           description='Hydrogen Mass Repartitioning')
+
 job.add_cube(minimize)
 cube_list.append(minimize)
 
@@ -103,8 +102,7 @@ warmup.promote_parameter('reporter_interval', promoted_name='w_reporter_interval
 warmup.promote_parameter('suffix', promoted_name='w_suffix', default='warmup',
                          description='Equilibration suffix name')
 warmup.promote_parameter('center', promoted_name='center', default=True)
-warmup.promote_parameter('hmr', promoted_name='hmr', default=False,
-                         description='Hydrogen Mass Repartitioning')
+
 job.add_cube(warmup)
 cube_list.append(warmup)
 
@@ -122,8 +120,7 @@ equil.promote_parameter('reporter_interval', promoted_name='eq_reporter_interval
                         description='Reporter saving interval in ns')
 equil.promote_parameter('suffix', promoted_name='eq_suffix', default='equil',
                         description='Equilibration suffix name')
-equil.promote_parameter('hmr', promoted_name='hmr', default=False,
-                        description='Hydrogen Mass Repartitioning')
+
 job.add_cube(equil)
 cube_list.append(equil)
 
@@ -131,10 +128,9 @@ for i in range(0, chunks):
     solvationfe = YankSolvationFECube("SovationFE"+str(i))
     solvationfe.promote_parameter('iterations', promoted_name='iterations'+str(i),
                                   default=yank_iteration_per_chunk*(i+1))
-    solvationfe.promote_parameter('nonbondedCutoff', promoted_name='nonbondedCutoff'+str(i), default=10.0)
 
-    solvationfe.promote_parameter('hmr', promoted_name='hmr'+str(i), default=False,
-                                  description='Hydrogen Mass Repartitioning')
+    solvationfe.promote_parameter('verbose', promoted_name='verbose' + str(i),
+                                  default=True)
 
     if i == 0:
         solvationfe.promote_parameter('rerun', promoted_name='rerun' + str(i), default=False)

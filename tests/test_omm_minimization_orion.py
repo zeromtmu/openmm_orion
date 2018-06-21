@@ -16,7 +16,7 @@
 # or its use.
 
 import os
-from orionclient.session import OrionSession, in_orion
+from orionclient.session import OrionSession
 from artemis.wrappers import WorkFloeWrapper, DatasetWrapper, OutputDatasetWrapper
 from artemis.test import FloeTestCase
 from artemis.decorators import package
