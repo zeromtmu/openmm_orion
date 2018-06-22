@@ -9,22 +9,54 @@ from datarecord import OEWriteRecord
 from orionclient.types import Dataset
 from orionclient.session import APISession
 
+from datarecord import read_mol_record
+
+from datarecord import OEWriteRecord
+
 # ds = Dataset.upload(APISession, "foobar", "p38_l38_a_2n_nvt_5ns.oeb.gz")
 
 
-ifs = OEMolRecordStream("p38_l38_a_2n_nvt_5ns.oeb.gz")
+# ifs = OEMolRecordStream("p38_l38_a_2n_nvt_5ns.oeb.gz")
 
-# for record in ifs:
-#     OEWriteRecord()
+ifs = oechem.oeifstream("pP38_lig38a_2n_nvt_5ns_mod.oedb")
+records = []
+while True:
+    record = read_mol_record(ifs)
+    if record is None:
+        break
+    records.append(record)
+ifs.close()
+
+print(len(records))
 
 
-for record in ifs:
-    print([(x.get_name(), x.get_type()) for x in record.get_fields()])
+for record in records:
+    stages = record.get_value(Fields.md_stages)
+    print("Len stages = {}".format(len(stages)))
+    stage = stages[-1]
+    print(stage.has_value(Fields.log_data))
+    print(stage.get_value(Fields.log_data))
+
+
+#
+# ofs = oechem.oeofstream("pP38_lig38a_2n_nvt_5ns_mod.oedb")
+#
+# for record in records:
+#     stages = record.get_value(Fields.md_stages)
+#     stage = stages[-1]
+#     stages = [stage]
+#     record.set_value(Fields.md_stages, stages)
+#     OEWriteRecord(ofs, record, fmt='binary')
+#
+# ofs.close()
+
+#for record in ifs:
+    #print([(x.get_name(), x.get_type()) for x in record.get_fields()])
     # print(record.get_value(Fields.title))
     # for field in record.get_fields():
     #     print(field.get_name())
 #     #print(record.get_value(OEField("DG", Types.Float)))
-    assert record.has_value(Fields.md_stages)
+    #assert record.has_value(Fields.md_stages)
         # raise ValueError("The System does not seem to be parametrized by the Force Field")
     # stages = record.get_value(Fields.md_stages)
     # print("Len stages = {}".format(len(stages)))

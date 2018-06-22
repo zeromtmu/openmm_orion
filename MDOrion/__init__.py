@@ -15,7 +15,7 @@
 # liable for any damages or liability in connection with the Sample Code
 # or its use.
 
-__version__ = '0.5.2'
+__version__ = '0.5.2.1'
 import ComplexPrepCubes
 import ForceFieldCubes
 import LigPrepCubes

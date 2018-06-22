@@ -27,8 +27,8 @@ from datarecord import (Types,
                         OEField,
                         OERecord)
 
-if in_orion():
-    from cuberecord import OELargeFileHandler
+# from cuberecord.record_types.cube_types import OrionTypes
+from cuberecord import Types as TypesCR
 
 
 # ------------ Stage Standard Names ------------- #
@@ -78,7 +78,7 @@ class Fields:
 
     # Trajectory
     if in_orion():
-        trajectory = OEField("Trajectory_OPLMD", OELargeFileHandler)
+        trajectory = OEField("Trajectory_OPLMD", TypesCR.Orion.LargeFile)
     else:
         trajectory = OEField("Trajectory_OPLMD", Types.String)
 

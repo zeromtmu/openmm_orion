@@ -19,8 +19,8 @@ import parmed
 from floe.api.orion import in_orion
 from simtk import unit
 
-if in_orion():
-    from cuberecord import OELargeFile
+
+from cuberecord import OELargeFile
 
 
 class MDData(object):

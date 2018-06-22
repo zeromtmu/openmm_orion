@@ -18,7 +18,7 @@ class NvtTestCase(TestCase):
     @pytest.mark.slow
     def test_nvt(self):
 
-        complex_fn = os.path.join(FILE_DIR, "p38_l38_a_2n_nvt_5ns.oedb")
+        complex_fn = os.path.join(FILE_DIR, "pP38_lig38a_2n_nvt_5ns.oedb")
 
         run_args = [
             '--system', complex_fn,
