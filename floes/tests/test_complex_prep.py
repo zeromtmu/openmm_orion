@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from floes.complex_prep import job as floe
+from floes.Complex_prep import job as floe
 
 import os
 

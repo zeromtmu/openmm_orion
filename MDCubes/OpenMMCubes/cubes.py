@@ -177,9 +177,12 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
             # is necessary to avoid filename collisions due to
             # the parallel cube processes
             opt = dict(self.opt)
+            opt['CubeTitle'] = self.title
 
             # Logger string
             str_logger = '-'*32 + ' MIN CUBE PARAMETERS ' + '-'*32
+            str_logger += "\n{:<25} = {:<10}".format("Cube Title", opt['CubeTitle'])
+
             for k, v in sorted(self.parameters().items()):
                 tmp_default = copy.deepcopy(v)
 
@@ -251,7 +254,7 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
 
             # The system and the related parmed structure are passed as reference
             # and therefore, they are updated inside the simulation call
-            opt['Logger'].info('MINIMIZING System: {}'.format(system_title))
+            opt['Logger'].info('[{}] MINIMIZING System: {}'.format(opt['CubeTitle'], system_title))
             simtools.simulation(mdData, opt)
 
             record.set_value(Fields.primary_molecule, system)
@@ -261,7 +264,7 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
                                                       log=opt['str_logger'])
 
             if opt['save_md_stage']:
-                opt['Logger'].info("Saving MD stage: {}".format(opt['SimType']))
+                opt['Logger'].info("[{}] Saving MD stage: {}".format(opt['CubeTitle'], opt['SimType']))
 
                 md_stages.append(md_stage_record)
             else:
@@ -384,7 +387,7 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
 
     center = parameter.BooleanParameter(
         'center',
-        default=True,
+        default=False,
         help_text='Center the system to the OpenMM unit cell')
 
     verbose = parameter.BooleanParameter(
@@ -429,10 +432,13 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
             # is necessary to avoid filename collisions due to
             # the parallel cube processes
             opt = dict(self.opt)
+            opt['CubeTitle'] = self.title
 
             # Logger string
             # Logger string
             str_logger = '-'*32 + ' NVT CUBE PARAMETERS ' + '-'*32
+            str_logger += "\n{:<25} = {:<10}".format("Cube Title", opt['CubeTitle'])
+
             for k, v in sorted(self.parameters().items()):
                 tmp_default = copy.deepcopy(v)
 
@@ -507,7 +513,7 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
 
             # The system and the related parmed structure are passed as reference
             # and therefore, they are updated
-            opt['Logger'].info('START NVT SIMULATION: {}'.format(system_title))
+            opt['Logger'].info('[{}] START NVT SIMULATION: {}'.format(opt['CubeTitle'], system_title))
             simtools.simulation(mdData, opt)
 
             # Trajectory
@@ -549,7 +555,7 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
                                                       log=opt['str_logger'], trajectory=lf)
 
             if opt['save_md_stage']:
-                opt['Logger'].info("Saving MD stage: {}".format(opt['SimType']))
+                opt['Logger'].info("[{}] Saving MD stage: {}".format(opt['CubeTitle'], opt['SimType']))
 
                 md_stages.append(md_stage_record)
             else:
@@ -678,7 +684,7 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
 
     center = parameter.BooleanParameter(
         'center',
-        default=True,
+        default=False,
         help_text='Center the system to the OpenMM unit cell')
 
     verbose = parameter.BooleanParameter(
@@ -723,9 +729,11 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
             # is necessary to avoid filename collisions due to
             # the parallel cube processes
             opt = dict(self.opt)
-
+            opt['CubeTitle'] = self.title
             # Logger string
             str_logger = '-'*32 + ' NPT CUBE PARAMETERS ' + '-'*32
+            str_logger += "\n{:<25} = {:<10}".format("Cube Title", opt['CubeTitle'])
+
             for k, v in sorted(self.parameters().items()):
                 tmp_default = copy.deepcopy(v)
 
@@ -802,7 +810,7 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
 
             # The system and the related parmed structure are passed as reference
             # and therefore, they are updated
-            opt['Logger'].info('START NPT SIMULATION: {}'.format(system_title))
+            opt['Logger'].info('[{}] START NPT SIMULATION: {}'.format(opt['CubeTitle'], system_title))
             simtools.simulation(mdData, opt)
 
             # Trajectory
@@ -843,7 +851,7 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
                                                       log=opt['str_logger'], trajectory=lf)
 
             if opt['save_md_stage']:
-                opt['Logger'].info("Saving MD stage: {}".format(opt['SimType']))
+                opt['Logger'].info("[{}] Saving MD stage: {}".format(opt['CubeTitle'], opt['SimType']))
 
                 md_stages.append(md_stage_record)
             else:

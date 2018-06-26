@@ -257,13 +257,13 @@ for i in range(0, chunks):
     cube_list.append(yank)
 
 
-ofs = DataSetWriterCube('ofs', title='OFS-Success')
+ofs = DataSetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")
 job.add_cube(ofs)
 cube_list.append(ofs)
 
-fail = DataSetWriterCube('fail', title='OFS-Failure')
-fail.set_parameters(data_out='fail.oeb.gz')
+fail = DataSetWriterCube('fail', title='Failures')
+fail.set_parameters(data_out='fail.oedb')
 job.add_cube(fail)
 cube_list.append(fail)
 

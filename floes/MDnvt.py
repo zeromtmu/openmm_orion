@@ -45,11 +45,11 @@ nvt.promote_parameter('trajectory_interval', promoted_name='trajectory_interval'
 nvt.promote_parameter('reporter_interval', promoted_name='reporter_interval', default=0.001,
                       description='Reporter saving interval in ns')
 
-ofs = DataSetWriterCube('ofs', title='OFS-Success')
+ofs = DataSetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")
 
-fail = DataSetWriterCube('fail', title='OFS-Failure')
-fail.set_parameters(data_out='fail.oeb.gz')
+fail = DataSetWriterCube('fail', title='Failures')
+fail.set_parameters(data_out='fail.oedb')
 
 job.add_cubes(ifs, nvt, ofs, fail)
 ifs.success.connect(nvt.intake)

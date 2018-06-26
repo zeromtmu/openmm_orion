@@ -33,12 +33,11 @@ ifs.promote_parameter("data_in", promoted_name="system", title='System Input Fil
 min = OpenMMminimizeCube('Minimize')
 min.promote_parameter('steps', promoted_name='steps')
 
-# fs = DataSetWriterCubeStripCustom('ofs', title='OFS-Success')
-ofs = DataSetWriterCube('ofs', title='OFS-Success')
+ofs = DataSetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")
 
-fail = DataSetWriterCube('fail', title='OFS-Failure')
-fail.set_parameters(data_out='fail.oeb.gz')
+fail = DataSetWriterCube('fail', title='Failures')
+fail.set_parameters(data_out='fail.oedb')
 
 job.add_cubes(ifs, min, ofs, fail)
 ifs.success.connect(min.intake)

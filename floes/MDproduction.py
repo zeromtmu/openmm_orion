@@ -48,13 +48,17 @@ npt.promote_parameter('reporter_interval', promoted_name='reporter_interval', de
 npt.promote_parameter('suffix', promoted_name='suffix', default='prod',
                       description='Equilibration suffix name')
 
-ofs = DataSetWriterCube('ofs', title='OFS-Success')
+ofs = DataSetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")
 
-job.add_cubes(ifs, npt, ofs)
+fail = DataSetWriterCube('fail', title='Failures')
+fail.set_parameters(data_out='fail.oedb')
+
+job.add_cubes(ifs, npt, ofs, fail)
+
 ifs.success.connect(npt.intake)
 npt.success.connect(ofs.intake)
-
+npt.failure.connect(fail.intake)
 
 if __name__ == "__main__":
     job.run()

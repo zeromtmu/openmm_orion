@@ -88,6 +88,8 @@ class Fields:
     # Stage Field
     md_stage = OEField("MDStages_OPLMD", Types.Record)
 
+    yank_analysis = OEField("Yank_Analysis_OPLMD", Types.String)
+
 
 # ---------------- Record Standards -------------- #
 

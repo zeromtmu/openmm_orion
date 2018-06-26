@@ -37,16 +37,16 @@ from ProtPrepCubes.cubes import ProteinSetting
 from LigPrepCubes.cubes import (LigandChargeCube,
                                 LigandSetting)
 
-job = WorkFloe('Merck Frosst MD Protocol')
+job = WorkFloe('Short Trajectory MD')
 
 job.description = """
 
-The Merck Frosst MD Protocol performs MD simulations providing a set of prepared ligands and a 
+The Short Trajectory MD (STMD) protocol performs MD simulations providing a set of prepared ligands and a 
 prepared protein. The ligands need to have coordinates and correct chemistry, each ligand can have
 multiple conformers but each conformers will be treated as a different ligand and prepared to run MD.
 The protein needs to be prepared at MD preparation standard. This includes capping the protein, 
 resolve missing atoms in protein residues and resolve missing protein loops. The parametrization of
-some "known unknown" protein residues is partially supported. The Merck Frosst floe requires as inputs 
+some "known unknown" protein residues is partially supported. The STMD floe requires as inputs 
 the protein and a set of ligands correctly posed in the protein binding site. A complex is formed, 
 solvated and parametrized accordingly to the selected force fields. A minimization is preformed on the 
 system followed by a warm up (NVT ensemble) and three equilibration stages (NPT ensemble). In the 
@@ -58,7 +58,7 @@ to minimize MD failures.
 
 Locally the floe can be invoked by running the terminal command:
 
-python floes/openmm_FrosstMD.py --ligands ligands.oeb --protein protein.oeb --out prod.oeb
+python floes/ShortTrajMD.py --ligands ligands.oeb --protein protein.oeb --out prod.oeb
 
 Parameters:
 -----------
@@ -203,11 +203,11 @@ prod.promote_parameter('suffix', promoted_name='prod_outfname', default='prod',
                        description='Equilibration suffix name')
 prod.promote_parameter('save_md_stage', promoted_name='save_md_stage', default=True)
 
-ofs = DataSetWriterCube('ofs', title='OFS-Success')
+ofs = DataSetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")
 
-fail = DataSetWriterCube('fail', title='OFS-Failure')
-fail.set_parameters(data_out='fail.oeb.gz')
+fail = DataSetWriterCube('fail', title='Failures')
+fail.set_parameters(data_out='fail.oedb')
 
 job.add_cubes(iligs, ligset, iprot, protset, chargelig, complx, solvate, ff,
               minComplex, warmup, equil1, equil2, equil3, prod, ofs, fail)

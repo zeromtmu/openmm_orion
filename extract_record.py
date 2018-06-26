@@ -18,7 +18,7 @@ from datarecord import OEWriteRecord
 
 # ifs = OEMolRecordStream("p38_l38_a_2n_nvt_5ns.oeb.gz")
 
-ifs = oechem.oeifstream("pP38_lig38a_2n_nvt_5ns_mod.oedb")
+ifs = oechem.oeifstream("sys.oedb")
 records = []
 while True:
     record = read_mol_record(ifs)
@@ -36,8 +36,9 @@ for record in records:
     stage = stages[-1]
     print(stage.has_value(Fields.log_data))
     print(stage.get_value(Fields.log_data))
-
-
+    mdsystem = stage.get_value(Fields.md_system)
+    pmd = mdsystem.get_value(Fields.structure)
+    pmd.save("sys.pdb", overwrite=True)
 #
 # ofs = oechem.oeofstream("pP38_lig38a_2n_nvt_5ns_mod.oedb")
 #

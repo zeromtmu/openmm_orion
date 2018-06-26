@@ -69,11 +69,11 @@ ff = ForceFieldCube("ForceField")
 minimize = OpenMMminimizeCube('minComplex')
 minimize.promote_parameter('steps', promoted_name='steps', default=0)
 
-ofs = DataSetWriterCube('ofs', title='OFS-Success')
+ofs = DataSetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")
 
-fail = DataSetWriterCube('fail', title='OFS-Failure')
-fail.set_parameters(data_out='fail.oeb.gz')
+fail = DataSetWriterCube('fail', title='Failures')
+fail.set_parameters(data_out='fail.oedb')
 
 job.add_cubes(iligs, chargelig, ligset, iprot, protset, complx, solvate, ff, minimize, ofs, fail)
 
