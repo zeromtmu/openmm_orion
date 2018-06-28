@@ -62,6 +62,10 @@ import subprocess
 
 from oeommtools import utils as oeommutils
 
+from orionclient.session import in_orion, OrionSession
+from orionclient.types import File
+from os import environ
+
 
 class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
     version = "0.0.0"
@@ -326,6 +330,21 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                             result_str = f.read()
 
                         record.set_value(Fields.yank_analysis, result_str)
+
+                        # Upload Floe Report
+                        if in_orion():
+                            session = OrionSession()
+
+                            file_upload = File.upload(session,
+                                                      "{} MD Cluster Report".format(opt['system_title']),
+                                                      result_fn)
+
+                            session.tag_resource(file_upload, "floe_report")
+
+                            job_id = environ.get('ORION_JOB_ID')
+
+                            if job_id:
+                                session.tag_resource(file_upload, "Job {}".format(job_id))
 
                     except subprocess.SubprocessError:
                         opt['Logger'].warn("The result file have not been generated")
@@ -719,6 +738,21 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                             result_str = f.read()
 
                         record.set_value(Fields.yank_analysis, result_str)
+
+                        # Upload Floe Report
+                        if in_orion():
+                            session = OrionSession()
+
+                            file_upload = File.upload(session,
+                                                      "{} MD Cluster Report".format(opt['system_title']),
+                                                      result_fn)
+
+                            session.tag_resource(file_upload, "floe_report")
+
+                            job_id = environ.get('ORION_JOB_ID')
+
+                            if job_id:
+                                session.tag_resource(file_upload, "Job {}".format(job_id))
 
                     except subprocess.SubprocessError:
                         opt['Logger'].warn("The result file have not been generated")

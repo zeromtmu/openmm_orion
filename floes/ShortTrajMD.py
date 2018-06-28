@@ -37,6 +37,8 @@ from ProtPrepCubes.cubes import ProteinSetting
 from LigPrepCubes.cubes import (LigandChargeCube,
                                 LigandSetting)
 
+# from MDCubes import recordfile
+
 job = WorkFloe('Short Trajectory MD')
 
 job.description = """
@@ -205,6 +207,9 @@ prod.promote_parameter('save_md_stage', promoted_name='save_md_stage', default=T
 
 ofs = DataSetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")
+
+# ofs = recordfile.RecordsToRecordFileConverter("ofs")
+# ofs.promote_parameter("file_name", promoted_name="out")
 
 fail = DataSetWriterCube('fail', title='Failures')
 fail.set_parameters(data_out='fail.oedb')

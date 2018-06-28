@@ -27,7 +27,6 @@ from datarecord import (Types,
                         OEField,
                         OERecord)
 
-# from cuberecord.record_types.cube_types import OrionTypes
 from cuberecord import Types as TypesCR
 
 
