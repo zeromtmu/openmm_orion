@@ -12,7 +12,6 @@ OpenEye-cuberecord==0.13.1a1
 OpenEye-datarecord==0.12.2
 OpenEye-ensemble2img==0.1.1
 OpenEye-floe==0.5.10
-OpenEye-ensemble2img==0.1.0
 OpenEye-orionclient==0.3.1a2
 openeye-toolkits==2018.2.1
 
