@@ -41,7 +41,7 @@ class TestMDOrionFloes(FloeTestCase):
 
     def test_compex_prep_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
-            os.path.join(FLOES_DIR, "complex_prep.py"),
+            os.path.join(FLOES_DIR, "Complex_prep.py"),
             run_timeout=1200,
             queue_timeout=600
         )
@@ -72,7 +72,7 @@ class TestMDOrionFloes(FloeTestCase):
             }
         )
         self.assertWorkFloeComplete(workfloe)
-        
+
         ifs = oeifstream(output_file.path)
         records = []
 

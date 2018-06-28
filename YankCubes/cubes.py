@@ -62,6 +62,10 @@ import subprocess
 
 from oeommtools import utils as oeommutils
 
+from orionclient.session import in_orion, OrionSession
+from orionclient.types import File
+from os import environ
+
 
 class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
     version = "0.0.0"
@@ -311,25 +315,39 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                     record.set_value(DG_Field, DeltaG_solvation)
                     record.set_value(dG_Field, dDeltaG_solvation)
 
-                    # opt_1 = '--store={}'.format(exp_dir)
+                    opt_1 = '--store={}'.format(exp_dir)
 
-                    # result_fn = os.path.join(output_directory, 'results.html')
-                    # opt_2 = '--output={}'.format(result_fn)
-                    #
+                    result_fn = os.path.join(output_directory, 'results.html')
+                    opt_2 = '--output={}'.format(result_fn)
+
                     # self.log.warn(opt_1)
                     # self.log.warn(opt_2)
 
-                    # try:
-                    #     subprocess.check_call(['yank', 'analyze', 'report', opt_1, opt_2])
-                    #
-                    #     with open(result_fn, 'r') as f:
-                    #         result_str = f.read()
-                    #
-                    #     result_field = OEField('Analysis', Types.String)
-                    #     record.set_value(result_field, result_str)
+                    try:
+                        subprocess.check_call(['yank', 'analyze', 'report', opt_1, opt_2])
 
-                    # except subprocess.SubprocessError:
-                    #     opt['Logger'].warn("The result file have not been generated")
+                        with open(result_fn, 'r') as f:
+                            result_str = f.read()
+
+                        record.set_value(Fields.yank_analysis, result_str)
+
+                        # Upload Floe Report
+                        if in_orion():
+                            session = OrionSession()
+
+                            file_upload = File.upload(session,
+                                                      "{} MD Cluster Report".format(opt['system_title']),
+                                                      result_fn)
+
+                            session.tag_resource(file_upload, "floe_report")
+
+                            job_id = environ.get('ORION_JOB_ID')
+
+                            if job_id:
+                                session.tag_resource(file_upload, "Job {}".format(job_id))
+
+                    except subprocess.SubprocessError:
+                        opt['Logger'].warn("The result file have not been generated")
 
                 # Tar the Yank temp dir with its content:
                 tar_fn = os.path.basename(output_directory) + '.tar.gz'
@@ -562,7 +580,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
             # Split the complex in components
             protein_split, ligand_split, water, excipients = oeommutils.split(complex,
-                                                                              ligand_res_name=self.opt['lig_res_name'])
+                                                                              ligand_res_name=self.opt['ligand_resname'])
 
             # Total ligand formal charge
             lig_chg = 0
@@ -708,22 +726,36 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     record.set_value(DG_Field, DeltaG_solvation)
                     record.set_value(dG_Field, dDeltaG_solvation)
 
-                    # opt_1 = '--store={}'.format(exp_dir)
-                    #
-                    # result_fn = os.path.join(output_directory, 'results.html')
-                    # opt_2 = '--output={}'.format(result_fn)
-                    #
-                    # try:
-                    #     subprocess.check_call(['yank', 'analyze', 'report', opt_1, opt_2])
-                    #
-                    #     with open(result_fn, 'r') as f:
-                    #         result_str = f.read()
-                    #
-                    #     result_field =OEField('Result', Types.String)
-                    #     record.set_value(result_field, result_str)
-                    #
-                    # except subprocess.SubprocessError:
-                    #     opt['Logger'].warn("The result file have not been generated")
+                    opt_1 = '--store={}'.format(exp_dir)
+
+                    result_fn = os.path.join(output_directory, 'results.html')
+                    opt_2 = '--output={}'.format(result_fn)
+
+                    try:
+                        subprocess.check_call(['yank', 'analyze', 'report', opt_1, opt_2])
+
+                        with open(result_fn, 'r') as f:
+                            result_str = f.read()
+
+                        record.set_value(Fields.yank_analysis, result_str)
+
+                        # Upload Floe Report
+                        if in_orion():
+                            session = OrionSession()
+
+                            file_upload = File.upload(session,
+                                                      "{} MD Cluster Report".format(opt['system_title']),
+                                                      result_fn)
+
+                            session.tag_resource(file_upload, "floe_report")
+
+                            job_id = environ.get('ORION_JOB_ID')
+
+                            if job_id:
+                                session.tag_resource(file_upload, "Job {}".format(job_id))
+
+                    except subprocess.SubprocessError:
+                        opt['Logger'].warn("The result file have not been generated")
 
                 # Tar the Yank temp dir with its content:
                 tar_fn = os.path.basename(output_directory+"_"+opt['system_title']) + '.tar.gz'

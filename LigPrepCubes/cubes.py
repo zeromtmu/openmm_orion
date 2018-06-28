@@ -92,7 +92,8 @@ class LigandChargeCube(ParallelMixin, OERecordComputeCube):
                 map_charges = {at.GetIdx(): at.GetPartialCharge() for at in charged_ligand.GetAtoms()}
                 for at in ligand.GetAtoms():
                     at.SetPartialCharge(map_charges[at.GetIdx()])
-                self.log.info("ELF10 charge method applied to the ligand: {}".format(ligand.GetTitle()))
+                self.log.info("[{}] ELF10 charge method applied to the ligand: {}".format(self.title,
+                                                                                          ligand.GetTitle()))
 
             record.set_value(Fields.primary_molecule, ligand)
 
@@ -151,12 +152,23 @@ class LigandSetting(OERecordComputeCube):
 
             ligand = record.get_value(Fields.primary_molecule)
 
+            if ligand.NumConfs() > 1:
+                self.opt['Logger'].info("[{}] The molecule {} has multiple conformers. Each single conformer "
+                                        "will be treated as a new molecule".format(self.title,
+                                                                                   ligand.GetTitle()))
+
+            if oechem.OECalculateMolecularWeight(ligand) > 900.0:  # Units are in Dalton
+                self.opt['Logger'].warn("[{}] The molecule {} seems to have a large molecular weight for a ligand: {}"
+                                        .format(self.title,
+                                                ligand.GetTitle(),
+                                                oechem.OECalculateMolecularWeight(ligand)))
+
             for at in ligand.GetAtoms():
                 residue = oechem.OEAtomGetResidue(at)
                 residue.SetName(self.args.lig_res_name)
                 oechem.OEAtomSetResidue(at, residue)
 
-            num_conf = 0
+            num_conf_counter = 0
 
             for conf in ligand.GetConfs():
 
@@ -170,7 +182,7 @@ class LigandSetting(OERecordComputeCube):
                 ligand_title = 'l' + name
 
                 if ligand.GetMaxConfIdx() > 1:
-                    ligand_title += '_c' + str(num_conf)
+                    ligand_title += '_c' + str(num_conf_counter)
 
                 conf_mol.SetTitle(ligand_title)
 
@@ -178,7 +190,7 @@ class LigandSetting(OERecordComputeCube):
                 record.set_value(Fields.title, ligand_title)
                 record.set_value(Fields.primary_molecule, conf_mol)
 
-                num_conf += 1
+                num_conf_counter += 1
 
                 self.count += 1
 

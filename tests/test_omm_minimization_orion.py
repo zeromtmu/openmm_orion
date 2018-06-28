@@ -16,7 +16,7 @@
 # or its use.
 
 import os
-from orionclient.session import OrionSession, in_orion
+from orionclient.session import OrionSession
 from artemis.wrappers import WorkFloeWrapper, DatasetWrapper, OutputDatasetWrapper
 from artemis.test import FloeTestCase
 from artemis.decorators import package
@@ -83,7 +83,7 @@ class TestMDOrionFloes(FloeTestCase):
 
     def test_omm_minimization_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
-            os.path.join(FLOES_DIR, "openmm_MDminimize.py"),
+            os.path.join(FLOES_DIR, "MDminimize.py"),
             run_timeout=1200,
             queue_timeout=600
         )

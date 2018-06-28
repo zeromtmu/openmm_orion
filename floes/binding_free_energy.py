@@ -29,7 +29,7 @@ chunks = 5
 
 cube_list = []
 
-job = WorkFloe('Yank Binding Affinity')
+job = WorkFloe('Binding Affinity')
 
 job.description = """
 Set up an OpenMM complex then minimize, warm up and equilibrate a system by using three equilibration stages
@@ -241,10 +241,9 @@ for i in range(0, chunks):
 
     yank.promote_parameter('iterations', promoted_name='iterations'+str(i),
                            default=yank_iteration_per_chunk*(i+1))
-    yank.promote_parameter('nonbondedCutoff', promoted_name='nonbondedCutoff'+str(i), default=10.0)
 
-    yank.promote_parameter('hmr', promoted_name='hmr'+str(i), default=False,
-                           description='Hydrogen Mass Repartitioning')
+    yank.promote_parameter('verbose', promoted_name='verbose' + str(i),
+                           default=True)
 
     if i == 0:
         yank.promote_parameter('rerun', promoted_name='rerun' + str(i), default=False)
@@ -258,13 +257,13 @@ for i in range(0, chunks):
     cube_list.append(yank)
 
 
-ofs = DataSetWriterCube('ofs', title='OFS-Success')
+ofs = DataSetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")
 job.add_cube(ofs)
 cube_list.append(ofs)
 
-fail = DataSetWriterCube('fail', title='OFS-Failure')
-fail.set_parameters(data_out='fail.oeb.gz')
+fail = DataSetWriterCube('fail', title='Failures')
+fail.set_parameters(data_out='fail.oedb')
 job.add_cube(fail)
 cube_list.append(fail)
 

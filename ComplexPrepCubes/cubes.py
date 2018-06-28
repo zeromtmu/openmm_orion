@@ -231,7 +231,8 @@ class SolvationCube(ParallelMixin, OERecordComputeCube):
 
             # Solvate the system
             sol_system = packmol.oesolvate(solute, **opt)
-            self.log.info("Solvated System atom number: {}".format(sol_system.NumAtoms()))
+            self.log.info("[{}] Solvated System atom number: {}".format(self.title,
+                                                                        sol_system.NumAtoms()))
             sol_system.SetTitle(solute_title)
 
             record.set_value(Fields.primary_molecule, sol_system)
