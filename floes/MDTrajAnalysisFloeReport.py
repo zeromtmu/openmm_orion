@@ -24,7 +24,7 @@ ifs = DataSetReaderCube("ifs")
 #
 ifs.promote_parameter("data_in", promoted_name="in", title="System Input OERecord", description="OERecord file name")
 #
-scube = MDTrajAnalysisClusterReport("MDTrajAnalysisToFiles")
+scube = MDTrajAnalysisClusterReport("MDTrajAnalysisClusterReport")
 #
 # ofs = DataSetWriterCube('ofs', title='OFS-Success')
 # ofs.promote_parameter("data_out", promoted_name="out", title="System Output OERecord", description="OERecord file name")
