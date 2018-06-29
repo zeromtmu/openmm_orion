@@ -16,7 +16,7 @@
 # or its use.
 
 import os
-from orionclient.session import OrionSession, in_orion
+from orionclient.session import OrionSession
 from artemis.wrappers import WorkFloeWrapper, DatasetWrapper, OutputDatasetWrapper
 from artemis.test import FloeTestCase
 from artemis.decorators import package
@@ -101,7 +101,7 @@ class TestMDOrionFloes(FloeTestCase):
 
     def test_omm_npt_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
-            os.path.join(FLOES_DIR, "openmm_MDnpt.py"),
+            os.path.join(FLOES_DIR, "MDnpt.py"),
             run_timeout=1200,
             queue_timeout=600
         )
@@ -109,7 +109,7 @@ class TestMDOrionFloes(FloeTestCase):
         system = DatasetWrapper.get_dataset(
             os.path.join(
                 FILE_DIR,
-                "p38_l38_a_2n_npt_5ns.oeb.gz"
+                "pP38_lig38a_2n_npt_5ns.oedb"
             )
         )
 
@@ -121,11 +121,8 @@ class TestMDOrionFloes(FloeTestCase):
                     "system": system.identifier,
                     "restraints": "",
                     "nanoseconds": 0.01,
-                    "nonbondedMethod": "PME",
                     "temperature": 300.0,
                     "pressure": 1.0,
-                    "nonbondedCutoff": 10.0,
-                    "constraints": "HBonds",
                     "trajectory_interval": 0.0,
                     "reporter_interval": 0.0,
                     "out": output_file.identifier
@@ -133,7 +130,10 @@ class TestMDOrionFloes(FloeTestCase):
 
                 "cube": {
                     "npt": {
-                        "save_md_stage": True
+                        "save_md_stage": True,
+                        "constraints": "HBonds",
+                        "nonbondedMethod": "PME",
+                        "nonbondedCutoff": 10.0
                     }
                 }
             }
@@ -172,8 +172,8 @@ class TestMDOrionFloes(FloeTestCase):
             # Check 3*std volume
             # Average volume and its standard deviation (in nm^3) measured along
             # one 5ns run for the selected system
-            avg_volume = 588.4068302 * (unit.nanometers**3)
-            std_volume = 1.124733849
+            avg_volume = 633.0247292 * (unit.nanometers**3)
+            std_volume = 1.202811485
 
             self.assertAlmostEqual(avg_volume/(unit.nanometers**3),
                                    vol_f.in_units_of(unit.nanometers**3)/(unit.nanometers**3),
@@ -182,8 +182,8 @@ class TestMDOrionFloes(FloeTestCase):
             # Check temperature
             # Average temperature and its standard deviation (in K) measured along
             # one 5ns run for the selected system
-            avg_temperature = 300.0815623 * unit.kelvin
-            std_temperature = 1.230068243
+            avg_temperature = 300.0066236 * unit.kelvin
+            std_temperature = 1.175174286
             self.assertAlmostEqual(avg_temperature / unit.kelvin,
                                    temp_f.in_units_of(unit.kelvin) / unit.kelvin,
                                    delta=3 * std_temperature)

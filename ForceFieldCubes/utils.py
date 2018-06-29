@@ -1,3 +1,21 @@
+# (C) 2018 OpenEye Scientific Software Inc. All rights reserved.
+#
+# TERMS FOR USE OF SAMPLE CODE The software below ("Sample Code") is
+# provided to current licensees or subscribers of OpenEye products or
+# SaaS offerings (each a "Customer").
+# Customer is hereby permitted to use, copy, and modify the Sample Code,
+# subject to these terms. OpenEye claims no rights to Customer's
+# modifications. Modification of Sample Code is at Customer's sole and
+# exclusive risk. Sample Code may require Customer to have a then
+# current license or subscription to the applicable OpenEye offering.
+# THE SAMPLE CODE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED.  OPENEYE DISCLAIMS ALL WARRANTIES, INCLUDING, BUT
+# NOT LIMITED TO, WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+# PARTICULAR PURPOSE AND NONINFRINGEMENT. In no event shall OpenEye be
+# liable for any damages or liability in connection with the Sample Code
+# or its use.
+
+
 from openeye import oechem
 from oeommtools import utils as oeommutils
 import MDOrion
@@ -44,9 +62,8 @@ def applyffProtein(protein, opt):
 
     if unmatched_residues:
         # Extended ff99SBildn force field
-        oechem.OEThrow.Info("The following protein residues are not recognized "
-                            "by the selected FF: {} - {}"
-                            "\n...Extended FF is in use".format(opt['protein_forcefield'], unmatched_residues))
+        opt['Logger'].warn("The following protein residues are not recognized by the selected FF: {} - {}"
+                           "\n...Extended FF is in use".format(opt['protein_forcefield'], unmatched_residues))
 
         PACKAGE_DIR = os.path.dirname(os.path.dirname(MDOrion.__file__))
         FILE_DIR = os.path.join(PACKAGE_DIR, "ForceFieldCubes", "ffext")
@@ -133,9 +150,8 @@ def applyffExcipients(excipients, opt):
         templates.add(res.name)
 
     if templates:  # Some excipients are not recognized
-        oechem.OEThrow.Info("The following excipients are not recognized "
-                            "by the protein FF: {}"
-                            "\nThey will be parametrized by using the FF: {}".format(templates, opt['other_forcefield']))
+        opt['Logger'].warn("The following excipients are not recognized by the protein FF: {}"
+                           "\nThey will be parametrized by using the FF: {}".format(templates, opt['other_forcefield']))
 
         # Create a bit vector mask used to split recognized from un-recognize excipients
         bv = oechem.OEBitVector(excipients.GetMaxAtomIdx())
@@ -187,13 +203,11 @@ def applyffExcipients(excipients, opt):
                             # Create the unrecognized excipient OEMol
                             unrc_excp = oechem.OEMol()
                             if not oechem.OESubsetMol(unrc_excp, excipients, atom_bond_set):
-                                oechem.OEThrow.Fatal("Is was not possible extract the residue: {}".format(r_name))
+                                raise ValueError("Is was not possible extract the residue: {}".format(r_name))
 
                             # Charge the unrecognized excipient
-                            if not oequacpac.OEAssignCharges(unrc_excp,
-                                                             oequacpac.OEAM1BCCCharges(symmetrize=True)):
-                                oechem.OEThrow.Fatal("Is was not possible to "
-                                                     "charge the extract residue: {}".format(r_name))
+                            if not oequacpac.OEAssignCharges(unrc_excp, oequacpac.OEAM1BCCCharges(symmetrize=True)):
+                                raise ValueError("Is was not possible to charge the extract residue: {}".format(r_name))
 
                             # If GAFF or GAFF2 is selected as FF check for tleap command
                             if opt['other_forcefield'] in ['GAFF', 'GAFF2']:
@@ -293,6 +307,7 @@ def applyffLigand(ligand, opt):
     pmd = ff_utils.ParamLigStructure(ligand, opt['ligand_forcefield'], prefix_name=opt['prefix_name'])
     ligand_structure = pmd.parameterize()
     ligand_structure.residues[0].name = opt['ligand_res_name']
-    oechem.OEThrow.Info("Ligand parametrized by using: {}".format(opt['ligand_forcefield']))
+    opt['Logger'].info("[{}] Ligand parametrized by using: {}".format(opt['CubeTitle'],
+                                                                      opt['ligand_forcefield']))
 
     return ligand_structure

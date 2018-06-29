@@ -1,14 +1,21 @@
-include README.md
 include manifest.json
+include README.md
 include requirements.txt
-recursive-include examples *
-recursive-include floes *.py
-recursive-include MDCubes *.py
-recursive-include LigPrepCubes *.py
-recursive-include YankCubes *.py
+
 recursive-include ComplexPrepCubes *
-recursive-include TrjAnalysis *
-recursive-include Standards *
-recursive-include ProtPrepCubes *
+recursive-include floes *.py
 recursive-include ForceFieldCubes *
+recursive-include LigPrepCubes *.py
+recursive-include MDCubes *.py
+recursive-include MDOrion *
+recursive-include ProtPrepCubes *
+recursive-include Standards *
 recursive-include tests *
+recursive-include TrjAnalysisCubes *
+recursive-include YankCubes *.py
+
+
+
+
+
+

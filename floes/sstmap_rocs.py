@@ -54,7 +54,7 @@ ff = ForceFieldCube("ForceField")
 
 # Minimization
 min = OpenMMminimizeCube('minComplex', title='Minimize')
-min.promote_parameter('restraints', promoted_name='m_restraints', default="noh (ligand or protein)",
+min.promote_parameter('restraints', promoted_name='m_restraints', default="protein",
                              description='Select mask to apply restarints')
 min.promote_parameter('restraintWt', promoted_name='m_restraintWt', default=5.0,
                              description='Restraint weight')
@@ -66,9 +66,9 @@ min.promote_parameter('save_md_stage', promoted_name='save_md_stage', default=Tr
 warmup = OpenMMNvtCube('warmup', title='warmup')
 warmup.promote_parameter('time', promoted_name='warm_ns', default=0.01,
                          description='Length of MD run in nanoseconds')
-warmup.promote_parameter('restraints', promoted_name='w_restraints', default="noh (ligand or protein)",
+warmup.promote_parameter('restraints', promoted_name='w_restraints', default="protein",
                          description='Select mask to apply restarints')
-warmup.promote_parameter('restraintWt', promoted_name='w_restraintWt', default=2.0, description='Restraint weight')
+warmup.promote_parameter('restraintWt', promoted_name='w_restraintWt', default=2.5, description='Restraint weight')
 warmup.promote_parameter('trajectory_interval', promoted_name='w_trajectory_interval', default=0.0,
                          description='Trajectory saving interval in ns')
 warmup.promote_parameter('reporter_interval', promoted_name='w_reporter_interval', default=0.001,
@@ -85,9 +85,9 @@ warmup.promote_parameter('suffix', promoted_name='w_outfname', default='warmup',
 equil1 = OpenMMNptCube('equil1', title='equil1')
 equil1.promote_parameter('time', promoted_name='eq1_ns', default=0.01,
                          description='Length of MD run in nanoseconds')
-equil1.promote_parameter('restraints', promoted_name='eq1_restraints', default="noh (ligand or protein)",
+equil1.promote_parameter('restraints', promoted_name='eq1_restraints', default="protein",
                          description='Select mask to apply restarints')
-equil1.promote_parameter('restraintWt', promoted_name='eq1_restraintWt', default=2.0, description='Restraint weight')
+equil1.promote_parameter('restraintWt', promoted_name='eq1_restraintWt', default=2.5, description='Restraint weight')
 equil1.promote_parameter('trajectory_interval', promoted_name='eq1_trajectory_interval', default=0.0,
                          description='Trajectory saving interval in ps')
 equil1.promote_parameter('reporter_interval', promoted_name='eq1_reporter_interval', default=0.001,
@@ -99,9 +99,9 @@ equil1.promote_parameter('suffix', promoted_name='eq1_outfname', default='equil1
 equil2 = OpenMMNptCube('equil2', title='equil2')
 equil2.promote_parameter('time', promoted_name='eq2_ns', default=0.02,
                          description='Length of MD run in nanoseconds')
-equil2.promote_parameter('restraints', promoted_name='eq2_restraints', default="noh (ligand or protein)",
+equil2.promote_parameter('restraints', promoted_name='eq2_restraints', default="protein",
                          description='Select mask to apply restarints')
-equil2.promote_parameter('restraintWt', promoted_name='eq2_restraintWt', default=0.5,
+equil2.promote_parameter('restraintWt', promoted_name='eq2_restraintWt', default=2.5,
                          description='Restraint weight')
 equil2.promote_parameter('trajectory_interval', promoted_name='eq2_trajectory_interval', default=0.0,
                          description='Trajectory saving interval in ns')
@@ -114,9 +114,9 @@ equil2.promote_parameter('suffix', promoted_name='eq2_outfname', default='equil2
 equil3 = OpenMMNptCube('equil3', title='equil3')
 equil3.promote_parameter('time', promoted_name='eq3_ns', default=0.03,
                          description='Length of MD run in nanoseconds')
-equil3.promote_parameter('restraints', promoted_name='eq3_restraints', default="ca_protein or (noh ligand)",
+equil3.promote_parameter('restraints', promoted_name='eq3_restraints', default="protein",
                          description='Select mask to apply restarints')
-equil3.promote_parameter('restraintWt', promoted_name='eq3_restraintWt', default=0.1,
+equil3.promote_parameter('restraintWt', promoted_name='eq3_restraintWt', default=2.5,
                          description='Restraint weight')
 equil3.promote_parameter('trajectory_interval', promoted_name='eq3_trajectory_interval', default=0.0,
                          description='Trajectory saving interval in ns')
@@ -137,15 +137,14 @@ prod.promote_parameter('suffix', promoted_name='prod_outfname', default='prod',
                        description='Equilibration suffix name')
 prod.promote_parameter('restraints', promoted_name='prod_restraints', default="ca_protein",
                        description='Select mask to apply restarints')
-prod.promote_parameter('restraintWt', promoted_name='prod_restraintWt', default=0.5,
+prod.promote_parameter('restraintWt', promoted_name='prod_restraintWt', default=2.5,
                        description='Restraint weight')
 
-
-ofs = DataSetWriterCube('ofs', title='OFS-Success')
+ofs = DataSetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")
 
-fail = DataSetWriterCube('fail', title='OFS-Failure')
-fail.set_parameters(data_out='fail.oeb.gz')
+fail = DataSetWriterCube('fail', title='Failures')
+fail.set_parameters(data_out='fail.oedb')
 
 job.add_cubes(iprot, protset, solvate, ff, min, warmup,
               equil1, equil2, equil3, prod, ofs, fail)

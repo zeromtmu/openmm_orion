@@ -1,3 +1,21 @@
+# (C) 2018 OpenEye Scientific Software Inc. All rights reserved.
+#
+# TERMS FOR USE OF SAMPLE CODE The software below ("Sample Code") is
+# provided to current licensees or subscribers of OpenEye products or
+# SaaS offerings (each a "Customer").
+# Customer is hereby permitted to use, copy, and modify the Sample Code,
+# subject to these terms. OpenEye claims no rights to Customer's
+# modifications. Modification of Sample Code is at Customer's sole and
+# exclusive risk. Sample Code may require Customer to have a then
+# current license or subscription to the applicable OpenEye offering.
+# THE SAMPLE CODE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED.  OPENEYE DISCLAIMS ALL WARRANTIES, INCLUDING, BUT
+# NOT LIMITED TO, WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+# PARTICULAR PURPOSE AND NONINFRINGEMENT. In no event shall OpenEye be
+# liable for any damages or liability in connection with the Sample Code
+# or its use.
+
+
 import mdtraj
 import numpy as np
 from sys import stdout
@@ -84,7 +102,7 @@ def simulation(mdData, opt):
 
     # Centering the system to the OpenMM Unit Cell
     if opt['center'] and box is not None:
-        opt['Logger'].info("Centering is On")
+        opt['Logger'].info("[{}] Centering is On".format(opt['CubeTitle']))
         # Numpy array in A
         coords = structure.coordinates
         # System Center of Geometry
@@ -122,13 +140,15 @@ def simulation(mdData, opt):
 
     # Apply restraints
     if opt['restraints']:
-        opt['Logger'].info("RESTRAINT mask applied to: {}"
-                           "\tRestraint weight: {}".format(opt['restraints'],
+        opt['Logger'].info("[{}] RESTRAINT mask applied to: {}"
+                           "\tRestraint weight: {}".format(opt['CubeTitle'],
+                                                           opt['restraints'],
                                                            opt['restraintWt'] *
                                                            unit.kilocalories_per_mole/unit.angstroms**2))
         # Select atom to restraint
         res_atom_set = oeommutils.select_oemol_atom_idx_by_language(opt['molecule'], mask=opt['restraints'])
-        opt['Logger'].info("Number of restraint atoms: {}".format(len(res_atom_set)))
+        opt['Logger'].info("[{}] Number of restraint atoms: {}".format(opt['CubeTitle'],
+                                                                       len(res_atom_set)))
         # define the custom force to restrain atoms to their starting positions
         force_restr = openmm.CustomExternalForce('k_restr*periodicdistance(x, y, z, x0, y0, z0)^2')
         # Add the restraint weight as a global parameter in kcal/mol/A^2
@@ -147,10 +167,12 @@ def simulation(mdData, opt):
 
     # Freeze atoms
     if opt['freeze']:
-        opt['Logger'].info("FREEZE mask applied to: {}".format(opt['freeze']))
+        opt['Logger'].info("[{}] FREEZE mask applied to: {}".format(opt['CubeTitle'],
+                                                                    opt['freeze']))
 
         freeze_atom_set = oeommutils.select_oemol_atom_idx_by_language(opt['molecule'], mask=opt['freeze'])
-        opt['Logger'].info("Number of frozen atoms: {}".format(len(freeze_atom_set)))
+        opt['Logger'].info("[{}] Number of frozen atoms: {}".format(opt['CubeTitle'],
+                                                                    len(freeze_atom_set)))
         # Set atom masses to zero
         for idx in range(0, len(positions)):
             if idx in freeze_atom_set:
@@ -223,11 +245,11 @@ def simulation(mdData, opt):
     if opt['SimType'] in ['nvt', 'npt']:
 
         if velocities is not None:
-            opt['Logger'].info('RESTARTING simulation from a previous State')
+            opt['Logger'].info('[{}] RESTARTING simulation from a previous State'.format(opt['CubeTitle']))
             simulation.context.setVelocities(velocities)
         else:
             # Set the velocities drawing from the Boltzmann distribution at the selected temperature
-            opt['Logger'].info('GENERATING a new starting State')
+            opt['Logger'].info('[{}] GENERATING a new starting State'.format(opt['CubeTitle']))
             simulation.context.setVelocitiesToTemperature(opt['temperature']*unit.kelvin)
 
         # Convert simulation time in steps
@@ -247,33 +269,35 @@ def simulation(mdData, opt):
     # Host information
     for k, v in uname()._asdict().items():
         str_logger += "\n{:<25} = {:<10}".format(k, v)
-        opt['Logger'].info("{} : {}".format(k, v))
+        opt['Logger'].info("[{}] {} : {}".format(opt['CubeTitle'],
+                                                 k, v))
 
     # Platform properties
     for prop in mmplat.getPropertyNames():
         val = mmplat.getPropertyValue(simulation.context, prop)
         str_logger += "\n{:<25} = {:<10}".format(prop, val)
-        opt['Logger'].info("{} : {}".format(prop, val))
+        opt['Logger'].info("[{}] {} : {}".format(opt['CubeTitle'],
+                                                 prop, val))
 
     info = "{:<25} = {:<10}".format("OpenMM Version", mmver)
-    opt['Logger'].info("OpenMM Version : {}".format(mmver))
+    opt['Logger'].info("[{}] OpenMM Version : {}".format(opt['CubeTitle'], mmver))
     str_logger += '\n'+info
 
     info = "{:<25} = {:<10}".format("Platform in use", mmplat.getName())
-    opt['Logger'].info("Platform in use : {}".format(mmplat.getName()))
+    opt['Logger'].info("[{}] Platform in use : {}".format(opt['CubeTitle'], mmplat.getName()))
     str_logger += '\n'+info
 
     if opt['SimType'] in ['nvt', 'npt']:
 
         if opt['SimType'] == 'nvt':
-            opt['Logger'].info("Running time : {time} ns => {steps} steps of {SimType} at "
-                               "{temperature} K".format(**opt))
+            opt['Logger'].info("[{}] Running time : {time} ns => {steps} steps of {SimType} at "
+                               "{temperature} K".format(opt['CubeTitle'], **opt))
             info = "{:<25} = {time} ns => {steps} steps of {SimType} at " \
                    "{temperature} K".format("Running time", **opt)
         else:
             opt['Logger'].info(
-                "Running time : {time} ns => {steps} steps of {SimType} "
-                "at {temperature} K pressure {pressure} atm".format(**opt))
+                "[{}] Running time : {time} ns => {steps} steps of {SimType} "
+                "at {temperature} K pressure {pressure} atm".format(opt['CubeTitle'], **opt))
             info = "{:<25} = {time} ns => {steps} steps of {SimType} at " \
                    "{temperature} K pressure {pressure} atm".format("Running time", **opt)
 
@@ -283,7 +307,7 @@ def simulation(mdData, opt):
 
             total_frames = int(round(opt['time'] / opt['trajectory_interval']))
 
-            opt['Logger'].info('Total trajectory frames : {}'.format(total_frames))
+            opt['Logger'].info('[{}] Total trajectory frames : {}'.format(opt['CubeTitle'], total_frames))
             info = '{:<25} = {:<10}'.format('Total trajectory frames', total_frames)
             str_logger += '\n' + info
 
@@ -319,9 +343,9 @@ def simulation(mdData, opt):
 
         # Start minimization on the selected platform
         if opt['steps'] == 0:
-            opt['Logger'].info('Minimization steps: until convergence is found')
+            opt['Logger'].info('[{}] Minimization steps: until convergence is found'.format(opt['CubeTitle']))
         else:
-            opt['Logger'].info('Minimization steps: {steps}'.format(**opt))
+            opt['Logger'].info('[{}] Minimization steps: {steps}'.format(opt['CubeTitle'], **opt))
 
         # Set positions after minimization on the Reference Platform
         simulation.context.setPositions(state_reference_end.getPositions())
