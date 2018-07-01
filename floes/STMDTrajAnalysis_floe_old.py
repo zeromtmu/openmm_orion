@@ -1,16 +1,16 @@
 #!/usr/bin/env python
 from floe.api import WorkFloe
 from cuberecord import DataSetWriterCube, DataSetReaderCube
-from TrjAnalysisCubes.TrajToOEMol import TrajToOEMolCube
-from TrjAnalysisCubes.LigBasedTrajClustering import ClusterOETrajCube
-from TrjAnalysisCubes.MDTrajAnalysisFloeReport import MDTrajAnalysisClusterReport
+from TrjAnalysisCubes.TrajToOEMol_old import TrajToOEMolCube
+from TrjAnalysisCubes.LigBasedTrajClustering_old import ClusterOETrajCube
+from TrjAnalysisCubes.MDTrajAnalysisFloeReport_old import MDTrajAnalysisClusterReport
 #
-job = WorkFloe("Analysing Trajectory from Short Trajectory MD")
+job = WorkFloe("Analysing Trajectory from old-format Short Trajectory MD")
 #
 job.description = """
-Analysing Trajectory from Short Trajectory MD
+Analysing Trajectory from old-format Short Trajectory MD
 #
-Ex. python floes/STMDTrajAnalysis_floe.py  --in STMD_results.oedb
+Ex. python floes/STMDTrajAnalysis_floe.py  --in STMD_oldFormat_results.oedb
 --out STMD_analysisResults.oedb
 #
 Parameters:
