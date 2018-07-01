@@ -41,7 +41,7 @@ _clus_floe_report_template = """
   .content {{
     width: 75%;
   }}
-  .column > * {{ 
+  .column > * {{
     width: 100%
   }}
 </style>
@@ -72,7 +72,7 @@ def _trim_svg(svg):
     return svg[idx:]
 
 
-def CheckAndGetValue( record, field, rType):
+def CheckAndGetValueFull( record, field, rType):
     if not record.has_value(OEField(field,rType)):
         #opt['Logger'].warn('Missing record field {}'.format( field))
         print( 'Missing record field {}'.format( field))
@@ -80,11 +80,19 @@ def CheckAndGetValue( record, field, rType):
     else:
         return record.get_value(OEField(field,rType))
 
+def CheckAndGetValue( record, field):
+    if not record.has_value(field):
+        #opt['Logger'].warn('Missing record field {}'.format( field))
+        print( 'Missing record field {}'.format( field.get_name() ))
+        raise ValueError('The record does not have field {}'.format( field.get_name() ))
+    else:
+        return record.get_value(field)
+
 
 class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
     title = 'Extract relevant outputs of MD Traj Cluster  Analysis'
 
-    version = "0.0.1"
+    version = "0.1.0"
     classification = [["Simulation", "Traj Analysis"]]
     tags = ['Parallel Cube']
 
@@ -118,36 +126,36 @@ class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
 
             # title of entire solvated protein-ligand system
             opt['Logger'].info(' ')
-            system_title = CheckAndGetValue( record, 'Title_PLMD', Types.String)
+            system_title = CheckAndGetValue( record, Fields.title)
             opt['Logger'].info('{} Attempting to extract MD Traj Analysis results'
                 .format(system_title) )
-            floeID = CheckAndGetValue( record, 'ID_PLMD', Types.Int)
+            floeID = CheckAndGetValue( record, Fields.id)
             opt['Logger'].info('{} floe ID: {}'.format(system_title, floeID) )
-            ligInitPose = CheckAndGetValue( record, 'Ligand', Types.Chem.Mol)
+            ligInitPose = CheckAndGetValue( record, Fields.ligand)
 
             # Extract the traj SVG from the OETraj record
-            analysesDone = CheckAndGetValue( record, 'AnalysesDone', Types.StringVec)
+            analysesDone = CheckAndGetValueFull( record, 'AnalysesDone', Types.StringVec)
             if 'OETraj' not in analysesDone:
                 raise ValueError('{} does not have OETraj analyses done'.format(system_title) )
             else:
                 opt['Logger'].info('{} found OETraj analyses'.format(system_title) )
             # Extract the relevant traj SVG from the OETraj record
-            oetrajRecord = CheckAndGetValue( record, 'OETraj', Types.Record)
+            oetrajRecord = CheckAndGetValueFull( record, 'OETraj', Types.Record)
             opt['Logger'].info('{} found OETraj record'.format(system_title) )
-            trajSVG = CheckAndGetValue( oetrajRecord, 'TrajSVG', Types.String)
+            trajSVG = CheckAndGetValueFull( oetrajRecord, 'TrajSVG', Types.String)
 
             # Extract the three plots from the TrajClus record
-            analysesDone = CheckAndGetValue( record, 'AnalysesDone', Types.StringVec)
+            analysesDone = CheckAndGetValueFull( record, 'AnalysesDone', Types.StringVec)
             if 'TrajClus' not in analysesDone:
                 raise ValueError('{} does not have TrajClus analyses done'.format(system_title) )
             else:
                 opt['Logger'].info('{} found TrajClus analyses'.format(system_title) )
             # Extract the relevant traj SVG from the TrajClus record
-            clusRecord = CheckAndGetValue( record, 'TrajClus', Types.Record)
+            clusRecord = CheckAndGetValueFull( record, 'TrajClus', Types.Record)
             opt['Logger'].info('{} found TrajClus record'.format(system_title) )
-            trajHistRMSD_svg = CheckAndGetValue( clusRecord, 'HistSVG', Types.String)
-            trajClus_svg = CheckAndGetValue( clusRecord, 'ClusSVG', Types.String)
-            #trajHeatRMSD_png = CheckAndGetValue( clusRecord, 'HeatPNG', Types.Blob)
+            trajHistRMSD_svg = CheckAndGetValueFull( clusRecord, 'HistSVG', Types.String)
+            trajClus_svg = CheckAndGetValueFull( clusRecord, 'ClusSVG', Types.String)
+            #trajHeatRMSD_png = CheckAndGetValueFull( clusRecord, 'HeatPNG', Types.Blob)
             opt['Logger'].info('{} found the TrajClus plots'.format(system_title) )
 
             # write files for each result
@@ -166,17 +174,17 @@ class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
             analysis_txt.append('\n{} : Analysis of Short Trajectory MD\n'.format(ligInitPose.GetTitle()))
             analysis_txt.append('{} : has {} atoms\n'.
                     format( ligInitPose.GetTitle(), ligInitPose.NumAtoms() ))
-            nFrames = CheckAndGetValue(clusRecord, 'nFrames', Types.Int)
+            nFrames = CheckAndGetValueFull(clusRecord, 'nFrames', Types.Int)
             analysis_txt.append('Clustering ligand trajectory of {} frames\n'.format( nFrames))
             analysis_txt.append('    based on active site alignment:\n')
-            clusMethod = CheckAndGetValue(clusRecord, 'ClusterMethod', Types.String)
-            alpha = CheckAndGetValue(clusRecord, 'HDBSCAN_alpha', Types.Float)
+            clusMethod = CheckAndGetValueFull(clusRecord, 'ClusterMethod', Types.String)
+            alpha = CheckAndGetValueFull(clusRecord, 'HDBSCAN_alpha', Types.Float)
             analysis_txt.append('Using clustering method {} with alpha {}\n'.format( clusMethod, alpha))
-            nClusters = CheckAndGetValue(clusRecord, 'nClusters', Types.Int)
+            nClusters = CheckAndGetValueFull(clusRecord, 'nClusters', Types.Int)
             analysis_txt.append('produced {} clusters\n'.format( nClusters))
-            clusCounts = CheckAndGetValue(clusRecord, 'ClusterCounts', Types.IntVec)
+            clusCounts = CheckAndGetValueFull(clusRecord, 'ClusterCounts', Types.IntVec)
             for i, count in enumerate(clusCounts):
-                analysis_txt.append('cluster {} contains {} frames'.format( i, count))
+                analysis_txt.append('cluster {} contains {} frames\n'.format( i, count))
 
 
 

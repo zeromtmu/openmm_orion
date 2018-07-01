@@ -19,9 +19,10 @@ from Standards import (Fields,
 
 from openeye import oechem
 
-import TrjAnalysisCubes.Clustering_utils as clusutl
+#import TrjAnalysisCubes.Clustering_utils as clusutl
+import oetrajanalysis.Clustering_utils as clusutl
 
-def CheckAndGetValue( record, field, rType):
+def CheckAndGetValueFull( record, field, rType):
     if not record.has_value(OEField(field,rType)):
         #opt['Logger'].warn('Missing record field {}'.format( field))
         print( 'Missing record field {}'.format( field))
@@ -29,11 +30,19 @@ def CheckAndGetValue( record, field, rType):
     else:
         return record.get_value(OEField(field,rType))
 
+def CheckAndGetValue( record, field):
+    if not record.has_value(field):
+        #opt['Logger'].warn('Missing record field {}'.format( field))
+        print( 'Missing record field {}'.format( field.get_name() ))
+        raise ValueError('The record does not have field {}'.format( field.get_name() ))
+    else:
+        return record.get_value(field)
+
 
 class ClusterOETrajCube(ParallelMixin, OERecordComputeCube):
     title = 'Cluster Protein-Ligand Traj OEMols'
 
-    version = "0.0.1"
+    version = "0.1.0"
     classification = [["Simulation", "Traj Analysis"]]
     tags = ['Parallel Cube']
 
@@ -69,23 +78,23 @@ class ClusterOETrajCube(ParallelMixin, OERecordComputeCube):
 
             # Logger string
             opt['Logger'].info(' ')
-            system_title = CheckAndGetValue( record, 'Title_PLMD', Types.String)
+            system_title = CheckAndGetValue( record, Fields.title)
             opt['Logger'].info('{} Attempting to cluster MD Traj'
                 .format(system_title) )
-            floeID = CheckAndGetValue( record, 'ID_PLMD', Types.Int)
+            floeID = CheckAndGetValue( record, Fields.id)
             opt['Logger'].info('{} floe ID: {}'.format(system_title, floeID) )
 
             # Check that the OETraj analysis has been done
-            analysesDone = CheckAndGetValue( record, 'AnalysesDone', Types.StringVec)
+            analysesDone = CheckAndGetValueFull( record, 'AnalysesDone', Types.StringVec)
             if 'OETraj' not in analysesDone:
                 raise ValueError('{} does not have OETraj analyses done'.format(system_title) )
             else:
                 opt['Logger'].info('{} found OETraj analyses'.format(system_title) )
 
             # Extract the relevant traj OEMols from the OETraj record
-            oetrajRecord = CheckAndGetValue( record, 'OETraj', Types.Record)
+            oetrajRecord = CheckAndGetValueFull( record, 'OETraj', Types.Record)
             opt['Logger'].info('{} found OETraj record'.format(system_title) )
-            ligTraj = CheckAndGetValue( oetrajRecord, 'LigTraj', Types.Chem.Mol)
+            ligTraj = CheckAndGetValueFull( oetrajRecord, 'LigTraj', Types.Chem.Mol)
             opt['Logger'].info('{} #atoms, #confs in ligand traj OEMol: {}, {}'
                 .format( system_title, ligTraj.NumAtoms(), ligTraj.NumConfs()) )
 
