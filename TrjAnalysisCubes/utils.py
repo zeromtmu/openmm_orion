@@ -95,7 +95,7 @@ def ExtractAlignedProtLigTraj_hdf5( mol, traj_hdf5Filename, fromLigCutoff=5.0, s
     #   Note: the ligand must have residue name 'MOL' or 'LIG' (bad, should change)
     ligIdx = topologyTraj.topology.select('resname == MOL or resname == LIG')
     protligIdx = np.append( protOEIdx, ligIdx)
-    print( 'numAtoms prot, lig, protlig:', len(protOEIdx), len(ligIdx), len(protligIdx))
+    #print( 'numAtoms prot, lig, protlig:', len(protOEIdx), len(ligIdx), len(protligIdx))
     #protligIdx = topologyTraj.topology.select('protein or resname == MOL or resname == LIG')
     # Read the protein-ligand subsystem of the trajectory file
     trj_initial = md.load_hdf5(traj_hdf5Filename, atom_indices=protligIdx)
@@ -122,14 +122,8 @@ def ExtractAlignedProtLigTraj_hdf5( mol, traj_hdf5Filename, fromLigCutoff=5.0, s
         confxyz = oechem.OEFloatArray( np.array(xyzList).ravel() )
         conf = ligTraj.NewConf( confxyz)
     # Generate a multiconformer representation of the protein trajectory
-    print( protein.NumAtoms() )
-    #strNumProteinAtomsToSelect = 'index 0 to '+str(protein.NumAtoms()-1)
     strNumProteinAtomsToSelect = 'index '+str(protOEIdx[0])+' to '+str(protOEIdx[-1])
-    print( strNumProteinAtomsToSelect)
     protIdx = protlig.topology.select( strNumProteinAtomsToSelect)
-    print( 'protIdx length:', len(protIdx))
-    print( 'protIdx first 10:', protIdx[:10])
-    print( 'protIdx last 10:', protIdx[-10:])
     protTraj = oechem.OEMol(protein)
     protTraj.DeleteConfs()
     for frame in trjImaged.xyz:
