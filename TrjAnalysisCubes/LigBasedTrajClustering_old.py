@@ -19,7 +19,8 @@ from Standards import (Fields,
 
 from openeye import oechem
 
-import TrjAnalysisCubes.Clustering_utils as clusutl
+#import TrjAnalysisCubes.Clustering_utils as clusutl
+import oetrajanalysis.Clustering_utils as clusutl
 
 def CheckAndGetValue( record, field, rType):
     if not record.has_value(OEField(field,rType)):

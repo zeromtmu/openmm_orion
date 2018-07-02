@@ -19,7 +19,8 @@ from Standards import (Fields,
 from openeye import oechem
 
 import TrjAnalysisCubes.utils as trjutl
-import TrjAnalysisCubes.OETrajBasicAnalysis_utils as oetrjutl
+#import TrjAnalysisCubes.OETrajBasicAnalysis_utils as oetrjutl
+import oetrajanalysis.OETrajBasicAnalysis_utils as oetrjutl
 import ensemble2img
 
 def CheckAndGetValue( record, field, rType):
