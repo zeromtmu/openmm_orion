@@ -15,11 +15,12 @@
 # liable for any damages or liability in connection with the Sample Code
 # or its use.
 
-__version__ = '0.5.4'
+__version__ = '0.5.5'
 import ComplexPrepCubes
 import ForceFieldCubes
 import LigPrepCubes
 import MDCubes
+import oecubeutils
 import ProtPrepCubes
 import Standards
 import TrjAnalysisCubes
