@@ -13,6 +13,7 @@ recursive-include Standards *
 recursive-include tests *
 recursive-include TrjAnalysisCubes *
 recursive-include YankCubes *.py
+recusrive-include oecubeutils *.py
 
 
 

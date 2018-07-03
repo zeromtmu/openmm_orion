@@ -36,6 +36,7 @@ from ProtPrepCubes.cubes import ProteinSetting
 
 from LigPrepCubes.cubes import (LigandChargeCube,
                                 LigandSetting)
+from oecubeutils.hypercubes.shard_writer import CollectionWriter
 
 # from MDCubes import recordfile
 
@@ -202,6 +203,12 @@ prod.promote_parameter('min_parallel', promoted_name='num_gpus', default=1,
 
 prod.promote_parameter('time', promoted_name='prod_ns', default=2.0,
                        description='Length of MD run in nanoseconds')
+
+prod.promote_parameter('min_parallel', promoted_name='num_gpus', default=1,
+                       description="Number of GPU instances to reserve to perform calculations - should not exceed number of input Ligands")
+prod.promote_parameter('max_parallel', promoted_name='num_gpus', default=1,
+                       description="Number of GPU instances to reserve to perform calculations - should not exceed number of input Ligands")
+
 prod.promote_parameter('trajectory_interval', promoted_name='prod_trajectory_interval', default=0.001,
                        description='Trajectory saving interval in ns')
 prod.promote_parameter('reporter_interval', promoted_name='prod_reporter_interval', default=0.001,
@@ -210,8 +217,7 @@ prod.promote_parameter('suffix', promoted_name='prod_outfname', default='prod',
                        description='Equilibration suffix name')
 prod.promote_parameter('save_md_stage', promoted_name='save_md_stage', default=True)
 
-ofs = DataSetWriterCube('ofs', title='Out')
-ofs.promote_parameter("data_out", promoted_name="out")
+ofs = CollectionWriter('ofs', title='Out')
 
 # ofs = recordfile.RecordsToRecordFileConverter("ofs")
 # ofs.promote_parameter("file_name", promoted_name="out")
