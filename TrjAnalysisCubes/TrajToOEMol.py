@@ -171,7 +171,8 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
 
             self.success.emit(record)
 
-        except:
+        except Exception as e:
+            print("Failed to complete", str(e), flush=True)
             self.log.error(traceback.format_exc())
             # Return failed mol
             self.failure.emit(record)
