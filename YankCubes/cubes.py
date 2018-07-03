@@ -518,11 +518,13 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
     restraints = parameter.StringParameter(
         'restraints',
-        yank-sams
         #default='Harmonic',
         #choices=['FlatBottom', 'Harmonic', 'Boresch'],
-        choices = ['harmonic-on', 'boresch-on', 'rmsd-on', 'harmonic-off-endpoints', 'boresch-off-endpoints', 'rmsd-off-endpoints', 'harmonic-on-when-decoupled', 'boresch-on-when-decoupled', 'rmsd-on-when-decoupled']
-        default = 'rmsd-off-endpoints'
+        choices=['harmonic-on', 'boresch-on', 'rmsd-on',
+                 'harmonic-off-endpoints', 'boresch-off-endpoints',
+                 'rmsd-off-endpoints', 'harmonic-on-when-decoupled',
+                 'boresch-on-when-decoupled', 'rmsd-on-when-decoupled'],
+        default='rmsd-off-endpoints',
         help_text='Select the restraint types')
 
     ligand_resname = parameter.StringParameter(
@@ -686,7 +688,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     with open(solvated_ligand_omm_serialized_fn, 'w') as solvated_ligand_f:
                         solvated_ligand_f.write(solvated_ligand_omm_serialized)
 
-                yank_template = yank_sams_binding_template.format(
+                yank_template = yank_binding_template.format(
                     verbose='yes' if opt['verbose'] else 'no',
                     minimize='yes' if opt['minimize'] else 'no',
                     output_directory=output_directory,
