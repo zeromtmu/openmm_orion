@@ -43,20 +43,20 @@ job = WorkFloe('Short Trajectory MD')
 
 job.description = """
 
-The Short Trajectory MD (STMD) protocol performs MD simulations providing a set of prepared ligands and a 
+The Short Trajectory MD (STMD) protocol performs MD simulations providing a set of prepared ligands and a
 prepared protein. The ligands need to have coordinates and correct chemistry, each ligand can have
 multiple conformers but each conformers will be treated as a different ligand and prepared to run MD.
-The protein needs to be prepared at MD preparation standard. This includes capping the protein, 
+The protein needs to be prepared at MD preparation standard. This includes capping the protein,
 resolve missing atoms in protein residues and resolve missing protein loops. The parametrization of
-some "known unknown" protein residues is partially supported. The STMD floe requires as inputs 
-the protein and a set of ligands correctly posed in the protein binding site. A complex is formed, 
-solvated and parametrized accordingly to the selected force fields. A minimization is preformed on the 
-system followed by a warm up (NVT ensemble) and three equilibration stages (NPT ensemble). In the 
+some "known unknown" protein residues is partially supported. The STMD floe requires as inputs
+the protein and a set of ligands correctly posed in the protein binding site. A complex is formed,
+solvated and parametrized accordingly to the selected force fields. A minimization is preformed on the
+system followed by a warm up (NVT ensemble) and three equilibration stages (NPT ensemble). In the
 minimization, warm up and equilibration stages positional harmonic restraints are applied on the ligand
 and protein with different force constants. At the end of the equilibration stages a 2ns production run
-is performed on the system without any restraints. The MD floe parameters have been chose and tested 
-to minimize MD failures.          
- 
+is performed on the system without any restraints. The MD floe parameters have been chose and tested
+to minimize MD failures.
+
 
 Locally the floe can be invoked by running the terminal command:
 
@@ -193,10 +193,15 @@ equil3.promote_parameter('reporter_interval', promoted_name='eq3_reporter_interv
 equil3.promote_parameter('suffix', promoted_name='eq3_outfname', default='equil3',
                          description='Equilibration suffix name')
 
+# production run
 prod = OpenMMNptCube("Production", title="Production")
+prod.promote_parameter('max_parallel', promoted_name='num_gpus', default=1,
+                       description='Number of GPUS to make available - should be less than the number of ligands')
+prod.promote_parameter('min_parallel', promoted_name='num_gpus', default=1,
+                       description='Number of GPUS to make available - should be less than the number of ligands')
+
 prod.promote_parameter('time', promoted_name='prod_ns', default=2.0,
                        description='Length of MD run in nanoseconds')
-
 prod.promote_parameter('trajectory_interval', promoted_name='prod_trajectory_interval', default=0.001,
                        description='Trajectory saving interval in ns')
 prod.promote_parameter('reporter_interval', promoted_name='prod_reporter_interval', default=0.001,
