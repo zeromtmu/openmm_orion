@@ -36,6 +36,7 @@ from ProtPrepCubes.cubes import ProteinSetting
 
 from LigPrepCubes.cubes import (LigandChargeCube,
                                 LigandSetting)
+from oecubeutils.hypercubes.shard_writer import CollectionWriter
 
 # from MDCubes import recordfile
 
@@ -205,8 +206,7 @@ prod.promote_parameter('suffix', promoted_name='prod_outfname', default='prod',
                        description='Equilibration suffix name')
 prod.promote_parameter('save_md_stage', promoted_name='save_md_stage', default=True)
 
-ofs = DataSetWriterCube('ofs', title='Out')
-ofs.promote_parameter("data_out", promoted_name="out")
+ofs = CollectionWriter('ofs', title='Out')
 
 # ofs = recordfile.RecordsToRecordFileConverter("ofs")
 # ofs.promote_parameter("file_name", promoted_name="out")
