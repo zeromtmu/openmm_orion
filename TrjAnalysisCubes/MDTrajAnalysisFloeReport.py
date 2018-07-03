@@ -125,12 +125,10 @@ class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
             opt = dict(self.opt)
 
             # title of entire solvated protein-ligand system
-            opt['Logger'].info(' ')
+            opt['Logger'].info('Starting Floe Report generation for MD Traj Analysis')
             system_title = CheckAndGetValue( record, Fields.title)
             opt['Logger'].info('{} Attempting to extract MD Traj Analysis results'
                 .format(system_title) )
-            floeID = CheckAndGetValue( record, Fields.id)
-            opt['Logger'].info('{} floe ID: {}'.format(system_title, floeID) )
             ligInitPose = CheckAndGetValue( record, Fields.ligand)
 
             # Extract the traj SVG from the OETraj record
@@ -158,45 +156,22 @@ class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
             #trajHeatRMSD_png = CheckAndGetValueFull( clusRecord, 'HeatPNG', Types.Blob)
             opt['Logger'].info('{} found the TrajClus plots'.format(system_title) )
 
-            # write files for each result
-            # with oechem.oemolostream(system_title+'_ligInitPose.oeb') as ofs:
-            #     oechem.OEWriteConstMolecule(ofs,ligInitPose)
-            # with open(system_title+'_traj.svg','w') as ofs:
-            #     ofs.write( trajSVG)
-            # with open(system_title+'_histRMSD.svg','w') as ofs:
-            #     ofs.write( trajHistRMSD_svg)
-            # #with open(system_title+'_heatRMSD.png','wb') as ofs:
-            # #    ofs.write( trajHeatRMSD_png)
-            # with open(system_title+'_clusters.svg','w') as ofs:
-            #     ofs.write( trajClus_svg)
-
+            # Generate text string about Clustering information
             analysis_txt = []
-            analysis_txt.append('\n{} : Analysis of Short Trajectory MD\n'.format(ligInitPose.GetTitle()))
-            analysis_txt.append('{} : has {} atoms\n'.
-                    format( ligInitPose.GetTitle(), ligInitPose.NumAtoms() ))
+            analysis_txt.append('\nAnalysis of Short Trajectory MD\n')
             nFrames = CheckAndGetValueFull(clusRecord, 'nFrames', Types.Int)
             analysis_txt.append('Clustering ligand trajectory of {} frames\n'.format( nFrames))
             analysis_txt.append('    based on active site alignment:\n')
             clusMethod = CheckAndGetValueFull(clusRecord, 'ClusterMethod', Types.String)
             alpha = CheckAndGetValueFull(clusRecord, 'HDBSCAN_alpha', Types.Float)
-            analysis_txt.append('Using clustering method {} with alpha {}\n'.format( clusMethod, alpha))
+            analysis_txt.append('Clustering method {} with alpha {}\n'.format( clusMethod, alpha))
             nClusters = CheckAndGetValueFull(clusRecord, 'nClusters', Types.Int)
-            analysis_txt.append('produced {} clusters\n'.format( nClusters))
+            analysis_txt.append('produced {} clusters:\n'.format( nClusters))
             clusCounts = CheckAndGetValueFull(clusRecord, 'ClusterCounts', Types.IntVec)
             for i, count in enumerate(clusCounts):
                 analysis_txt.append('cluster {} contains {} frames\n'.format( i, count))
 
-
-
-            # write useful text to go into floe report
-            # with open(system_title+'_trajAnalysis.txt','w') as ofs:
-                # ofs.writelines(analysis_txt)
-
-
-
             opt['Logger'].info('{} finished writing analysis files'.format(system_title) )
-
-            opt['Logger'].info(trajHistRMSD_svg[:20])
 
             oedepict.OEPrepareDepiction(ligInitPose)
             img = oedepict.OEImage(400, 300)

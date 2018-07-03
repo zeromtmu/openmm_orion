@@ -54,6 +54,12 @@ class ClusterOETrajCube(ParallelMixin, OERecordComputeCube):
     them based on ligand RMSD.
 
     Input parameters:
+    -------
+    oechem.OEDataRecord - Streamed-in input data for the system to cluster
+
+    Output:
+    -------
+    oechem.OEDataRecord - Stream of output data for the clustered system
     """
 
     # Override defaults for some parameters
@@ -77,12 +83,10 @@ class ClusterOETrajCube(ParallelMixin, OERecordComputeCube):
             opt = dict(self.opt)
 
             # Logger string
-            opt['Logger'].info(' ')
+            opt['Logger'].info(' Beginning ClusterOETrajCube')
             system_title = CheckAndGetValue( record, Fields.title)
             opt['Logger'].info('{} Attempting to cluster MD Traj'
                 .format(system_title) )
-            floeID = CheckAndGetValue( record, Fields.id)
-            opt['Logger'].info('{} floe ID: {}'.format(system_title, floeID) )
 
             # Check that the OETraj analysis has been done
             analysesDone = CheckAndGetValueFull( record, 'AnalysesDone', Types.StringVec)

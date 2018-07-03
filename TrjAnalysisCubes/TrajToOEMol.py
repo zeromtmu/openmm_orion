@@ -56,7 +56,12 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
     the solvated protein:ligand complex and extract
     multiconf OEMols for Ligand and Protein.
 
-    Input parameters:
+    Input parameters:    -------
+    oechem.OEDataRecord - Streamed-in MD results for input
+
+    Output:
+    -------
+    oechem.OEDataRecord - Stream of output data with trajectory OEMols
     """
 
     # Override defaults for some parameters
@@ -72,6 +77,10 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
         self.opt['Logger'] = self.log
         return
 
+    def process_failed(self, record, port, last_error):
+        print("Failed to process record", record, flush=True)
+        self.failure.emit(record)
+
     def process(self, record, port):
         try:
             # The copy of the dictionary option as local variable
@@ -84,8 +93,6 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
             system_title = CheckAndGetValue( record, Fields.title)
             opt['Logger'].info('{}: Attempting MD Traj conversion into OEMols'
                 .format(system_title) )
-            floeID = CheckAndGetValue( record, Fields.id)
-            opt['Logger'].info('{} floe ID: {}'.format(system_title, floeID) )
 
             # Extract the MDStageRecord list
             md_stages = CheckAndGetValue( record, Fields.md_stages)
@@ -171,7 +178,8 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
 
             self.success.emit(record)
 
-        except:
+        except Exception as e:
+            print("Failed to complete", str(e), flush=True)
             self.log.error(traceback.format_exc())
             # Return failed mol
             self.failure.emit(record)
