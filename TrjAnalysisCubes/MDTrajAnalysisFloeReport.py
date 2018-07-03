@@ -125,13 +125,11 @@ class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
             opt = dict(self.opt)
 
             # title of entire solvated protein-ligand system
-            opt['Logger'].info(' ')
+            opt['Logger'].info('Starting Floe Report generation for MD Traj Analysis')
             system_title = CheckAndGetValue( record, Fields.title)
             opt['Logger'].info('{} Attempting to extract MD Traj Analysis results'
                 .format(system_title) )
             floeID = CheckAndGetValue( record, Fields.id)
-            opt['Logger'].info('{} floe ID: {}'.format(system_title, floeID) )
-            ligInitPose = CheckAndGetValue( record, Fields.ligand)
 
             # Extract the traj SVG from the OETraj record
             analysesDone = CheckAndGetValueFull( record, 'AnalysesDone', Types.StringVec)
@@ -186,17 +184,7 @@ class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
             for i, count in enumerate(clusCounts):
                 analysis_txt.append('cluster {} contains {} frames\n'.format( i, count))
 
-
-
-            # write useful text to go into floe report
-            # with open(system_title+'_trajAnalysis.txt','w') as ofs:
-                # ofs.writelines(analysis_txt)
-
-
-
             opt['Logger'].info('{} finished writing analysis files'.format(system_title) )
-
-            opt['Logger'].info(trajHistRMSD_svg[:20])
 
             oedepict.OEPrepareDepiction(ligInitPose)
             img = oedepict.OEImage(400, 300)

@@ -87,8 +87,6 @@ class ClusterOETrajCube(ParallelMixin, OERecordComputeCube):
             system_title = CheckAndGetValue( record, Fields.title)
             opt['Logger'].info('{} Attempting to cluster MD Traj'
                 .format(system_title) )
-            floeID = CheckAndGetValue( record, Fields.id)
-            opt['Logger'].info('{} floe ID: {}'.format(system_title, floeID) )
 
             # Check that the OETraj analysis has been done
             analysesDone = CheckAndGetValueFull( record, 'AnalysesDone', Types.StringVec)

@@ -56,7 +56,12 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
     the solvated protein:ligand complex and extract
     multiconf OEMols for Ligand and Protein.
 
-    Input parameters:
+    Input parameters:    -------
+    oechem.OEDataRecord - Streamed-in MD results for input
+
+    Output:
+    -------
+    oechem.OEDataRecord - Stream of output data with trajectory OEMols
     """
 
     # Override defaults for some parameters
@@ -88,8 +93,6 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
             system_title = CheckAndGetValue( record, Fields.title)
             opt['Logger'].info('{}: Attempting MD Traj conversion into OEMols'
                 .format(system_title) )
-            floeID = CheckAndGetValue( record, Fields.id)
-            opt['Logger'].info('{} floe ID: {}'.format(system_title, floeID) )
 
             # Extract the MDStageRecord list
             md_stages = CheckAndGetValue( record, Fields.md_stages)
