@@ -87,7 +87,6 @@ systems:
     phase1_path: [{complex_pdb_fn}, {complex_xml_fn}]
     phase2_path: [{solvent_pdb_fn}, {solvent_xml_fn}]
     ligand_dsl: resname {ligand_resname}
-    solvent_dsl: resname {solvent_dsl}
 
 protocols:
   solvation-protocol:

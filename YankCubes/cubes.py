@@ -580,18 +580,18 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
             complex = record.get_value(Fields.primary_molecule)
 
-            # Split the complex in components
-            protein_split, ligand_split, water, excipients = oeommutils.split(complex,
-                                                                              ligand_res_name=self.opt['ligand_resname'])
-
-            hv = oechem.OEHierView(water)
-            for chain in hv.GetChains():
-                for frag in chain.GetFragments():
-                    for hres in frag.GetResidues():
-                        water_name = hres.GetOEResidue().GetName()
-                        break
-                    break
-                break
+            # # Split the complex in components
+            # protein_split, ligand_split, water, excipients = oeommutils.split(complex,
+            #                                                                   ligand_res_name=self.opt['ligand_resname'])
+            #
+            # hv = oechem.OEHierView(water)
+            # for chain in hv.GetChains():
+            #     for frag in chain.GetFragments():
+            #         for hres in frag.GetResidues():
+            #             water_name = hres.GetOEResidue().GetName()
+            #             break
+            #         break
+            #     break
 
             if not record.has_value(Fields.title):
                 opt['Logger'].warn("Missing record Title field")
@@ -700,8 +700,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     solvent_pdb_fn=solvated_ligand_structure_fn,
                     solvent_xml_fn=solvated_ligand_omm_serialized_fn,
                     restraints=opt['restraints'],
-                    ligand_resname=opt['ligand_resname'],
-                    solvent_dsl=water_name)
+                    ligand_resname=opt['ligand_resname'])
 
                 opt['yank_template'] = yank_template
 
