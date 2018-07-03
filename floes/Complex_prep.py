@@ -58,6 +58,8 @@ solvate.promote_parameter('density', promoted_name='density', default=1.03,
                           description="Solution density in g/ml")
 solvate.promote_parameter('close_solvent', promoted_name='close_solvent', default=True,
                           description='The solvent molecules will be placed very close to the solute')
+solvate.promote_parameter('salt_concentration', promoted_name='salt_concentration', default=50.0,
+                          description='Salt concentration (Na+, Cl-) in millimolar')
 
 # solvate.promote_parameter("solvent_padding", promoted_name="solvent_padding", default=8.0)
 # solvate.promote_parameter("salt_concentration", promoted_name="salt_concentration", default=50)
