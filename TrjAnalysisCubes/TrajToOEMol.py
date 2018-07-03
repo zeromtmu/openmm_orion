@@ -72,6 +72,10 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
         self.opt['Logger'] = self.log
         return
 
+    def process_failed(self, record, port, last_error):
+        print("Failed to process record", record, flush=True)
+        self.failure.emit(record)
+
     def process(self, record, port):
         try:
             # The copy of the dictionary option as local variable
