@@ -129,7 +129,7 @@ class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
             system_title = CheckAndGetValue( record, Fields.title)
             opt['Logger'].info('{} Attempting to extract MD Traj Analysis results'
                 .format(system_title) )
-            floeID = CheckAndGetValue( record, Fields.id)
+            ligInitPose = CheckAndGetValue( record, Fields.ligand)
 
             # Extract the traj SVG from the OETraj record
             analysesDone = CheckAndGetValueFull( record, 'AnalysesDone', Types.StringVec)
@@ -156,30 +156,17 @@ class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
             #trajHeatRMSD_png = CheckAndGetValueFull( clusRecord, 'HeatPNG', Types.Blob)
             opt['Logger'].info('{} found the TrajClus plots'.format(system_title) )
 
-            # write files for each result
-            # with oechem.oemolostream(system_title+'_ligInitPose.oeb') as ofs:
-            #     oechem.OEWriteConstMolecule(ofs,ligInitPose)
-            # with open(system_title+'_traj.svg','w') as ofs:
-            #     ofs.write( trajSVG)
-            # with open(system_title+'_histRMSD.svg','w') as ofs:
-            #     ofs.write( trajHistRMSD_svg)
-            # #with open(system_title+'_heatRMSD.png','wb') as ofs:
-            # #    ofs.write( trajHeatRMSD_png)
-            # with open(system_title+'_clusters.svg','w') as ofs:
-            #     ofs.write( trajClus_svg)
-
+            # Generate text string about Clustering information
             analysis_txt = []
-            analysis_txt.append('\n{} : Analysis of Short Trajectory MD\n'.format(ligInitPose.GetTitle()))
-            analysis_txt.append('{} : has {} atoms\n'.
-                    format( ligInitPose.GetTitle(), ligInitPose.NumAtoms() ))
+            analysis_txt.append('\nAnalysis of Short Trajectory MD\n')
             nFrames = CheckAndGetValueFull(clusRecord, 'nFrames', Types.Int)
             analysis_txt.append('Clustering ligand trajectory of {} frames\n'.format( nFrames))
             analysis_txt.append('    based on active site alignment:\n')
             clusMethod = CheckAndGetValueFull(clusRecord, 'ClusterMethod', Types.String)
             alpha = CheckAndGetValueFull(clusRecord, 'HDBSCAN_alpha', Types.Float)
-            analysis_txt.append('Using clustering method {} with alpha {}\n'.format( clusMethod, alpha))
+            analysis_txt.append('Clustering method {} with alpha {}\n'.format( clusMethod, alpha))
             nClusters = CheckAndGetValueFull(clusRecord, 'nClusters', Types.Int)
-            analysis_txt.append('produced {} clusters\n'.format( nClusters))
+            analysis_txt.append('produced {} clusters:\n'.format( nClusters))
             clusCounts = CheckAndGetValueFull(clusRecord, 'ClusterCounts', Types.IntVec)
             for i, count in enumerate(clusCounts):
                 analysis_txt.append('cluster {} contains {} frames\n'.format( i, count))
