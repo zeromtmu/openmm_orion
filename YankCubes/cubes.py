@@ -324,6 +324,8 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                     # self.log.warn(opt_2)
 
                     try:
+                        os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
+
                         subprocess.check_call(['yank', 'analyze', 'report', opt_1, opt_2])
 
                         with open(result_fn, 'r') as f:
@@ -516,6 +518,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
     restraints = parameter.StringParameter(
         'restraints',
+        yank-sams
         #default='Harmonic',
         #choices=['FlatBottom', 'Harmonic', 'Boresch'],
         choices = ['harmonic-on', 'boresch-on', 'rmsd-on', 'harmonic-off-endpoints', 'boresch-off-endpoints', 'rmsd-off-endpoints', 'harmonic-on-when-decoupled', 'boresch-on-when-decoupled', 'rmsd-on-when-decoupled']
@@ -580,27 +583,18 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
             complex = record.get_value(Fields.primary_molecule)
 
-            # Split the complex in components
-            protein_split, ligand_split, water, excipients = oeommutils.split(complex,
-                                                                              ligand_res_name=self.opt['ligand_resname'])
-
-            # Total ligand formal charge
-            lig_chg = 0
-            for at in ligand_split.GetAtoms():
-                lig_chg += at.GetFormalCharge()
-
-            #  Excipient names and total formal charges
-            exc_chg = dict()
-            hv = oechem.OEHierView(excipients)
-            for chain in hv.GetChains():
-                for frag in chain.GetFragments():
-                    for hres in frag.GetResidues():
-                        r_name = hres.GetOEResidue().GetName()
-                        atms = hres.GetAtoms()
-                        chg = 0
-                        for at in atms:
-                            chg += at.GetFormalCharge()
-                        exc_chg[r_name] = chg
+            # # Split the complex in components
+            # protein_split, ligand_split, water, excipients = oeommutils.split(complex,
+            #                                                                   ligand_res_name=self.opt['ligand_resname'])
+            #
+            # hv = oechem.OEHierView(water)
+            # for chain in hv.GetChains():
+            #     for frag in chain.GetFragments():
+            #         for hres in frag.GetResidues():
+            #             water_name = hres.GetOEResidue().GetName()
+            #             break
+            #         break
+            #     break
 
             if not record.has_value(Fields.title):
                 opt['Logger'].warn("Missing record Title field")
@@ -671,11 +665,13 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
                     # Create the solvated OpenMM systems
                     solvated_complex_omm_sys = solvated_complex_parmed_structure.createSystem(nonbondedMethod=app.PME,
+                                                                                              ewaldErrorTolerance=1.0e-4,
                                                                                               nonbondedCutoff=opt['nonbondedCutoff'] * unit.angstroms,
                                                                                               constraints=app.HBonds,
                                                                                               removeCMMotion=False)
 
                     solvated_ligand_omm_sys = solvated_ligand_parmed_structure.createSystem(nonbondedMethod=app.PME,
+                                                                                            ewaldErrorTolerance=1.0e-4,
                                                                                             nonbondedCutoff=opt['nonbondedCutoff'] * unit.angstroms,
                                                                                             constraints=app.HBonds,
                                                                                             removeCMMotion=False)
@@ -734,6 +730,9 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     opt_2 = '--output={}'.format(result_fn)
 
                     try:
+
+                        os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
+
                         subprocess.check_call(['yank', 'analyze', 'report', opt_1, opt_2])
 
                         with open(result_fn, 'r') as f:
