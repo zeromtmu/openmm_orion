@@ -42,7 +42,21 @@ _clus_floe_report_template = """
     width: 75%;
   }}
   .column > * {{
-    width: 100%
+    width: 100%;
+    height: auto;
+  }}
+  pre {{
+    white-space: pre-wrap;
+    font-family: 'Helvetica Neue', Helvetica;
+    padding: 0 10px 20px 10px;
+  }}
+  h2 {{
+    margin-bottom: 0;
+    text-align: left;
+  }}
+  h3 {{
+    margin-bottom: 0;
+    text-align: center;
   }}
 </style>
 
@@ -52,14 +66,16 @@ _clus_floe_report_template = """
 <div class="column sidebar">
   {query_depiction}
   {rmsd_hist}
+  <h3> Ligand Clustering based on <br/> Active Site Alignment </h3>
   <pre>
   {analysis}
   </pre>
 </div>
 
 <div class="column content">
-  {clusters}
+  <h2> Analysis of Short Trajectory MD </h2>
   {traj}
+  {clusters}
 </div>
 </div>
 </body>
@@ -158,13 +174,11 @@ class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
 
             # Generate text string about Clustering information
             analysis_txt = []
-            analysis_txt.append('\nAnalysis of Short Trajectory MD\n')
             nFrames = CheckAndGetValueFull(clusRecord, 'nFrames', Types.Int)
-            analysis_txt.append('Clustering ligand trajectory of {} frames\n'.format( nFrames))
-            analysis_txt.append('    based on active site alignment:\n')
+            analysis_txt.append('Clustering {} frames\n'.format( nFrames))
             clusMethod = CheckAndGetValueFull(clusRecord, 'ClusterMethod', Types.String)
             alpha = CheckAndGetValueFull(clusRecord, 'HDBSCAN_alpha', Types.Float)
-            analysis_txt.append('Clustering method {} with alpha {}\n'.format( clusMethod, alpha))
+            analysis_txt.append('Cluster method {} with alpha {:.2f}\n'.format( clusMethod, alpha))
             nClusters = CheckAndGetValueFull(clusRecord, 'nClusters', Types.Int)
             analysis_txt.append('produced {} clusters:\n'.format( nClusters))
             clusCounts = CheckAndGetValueFull(clusRecord, 'ClusterCounts', Types.IntVec)
