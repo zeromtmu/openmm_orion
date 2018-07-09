@@ -13,7 +13,7 @@ FILE_DIR = os.path.join(PACKAGE_DIR, "tests", "data")
 
 
 class MinimizationTestCase(TestCase):
-    """ Invocation: python -m pytest floes/floe_tests/ -s """
+    """ Invocation: python -m pytest floes/tests/ -s -v"""
 
     @pytest.mark.slow
     def test_minimization(self):
@@ -22,7 +22,7 @@ class MinimizationTestCase(TestCase):
 
         run_args = [
             '--system', complex_fn,
-            '--out', 'success.oeb',
+            '--out', 'min.oedb',
             '--fail-data_out', 'fail.oedb',
             '--steps', '30000',
         ]

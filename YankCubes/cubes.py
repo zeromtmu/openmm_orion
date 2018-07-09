@@ -46,7 +46,8 @@ import os
 import itertools
 
 from YankCubes.yank_templates import (yank_solvation_template,
-                                      yank_binding_template)
+                                      yank_binding_template,
+                                      )
 
 from YankCubes import utils as yankutils
 
@@ -231,8 +232,16 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                 solvent_res_names.add(res.name)
             solvent_res_names.remove(solute_structure.residues[0].name)
 
-            solvent_str_names = ' '.join(solvent_res_names)
+            solvent_res_names = list(solvent_res_names)
 
+            for i in range(0, len(solvent_res_names)):
+                if '+' in solvent_res_names[i]:
+                    solvent_res_names[i] = "'"+solvent_res_names[i]+"'"
+                if '-' in solvent_res_names[i]:
+                    solvent_res_names[i] = "'"+solvent_res_names[i]+"'"
+
+            solvent_str_names = ' '.join(solvent_res_names)
+            
             # Write out all the required files and set-run the Yank experiment
             with TemporaryDirectory() as output_directory:
 
@@ -319,9 +328,6 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
 
                     result_fn = os.path.join(output_directory, 'results.html')
                     opt_2 = '--output={}'.format(result_fn)
-
-                    # self.log.warn(opt_1)
-                    # self.log.warn(opt_2)
 
                     try:
                         os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
@@ -448,7 +454,7 @@ class SyncBindingFECube(OERecordComputeCube):
                 new_record.set_value(ligand_solvated_field, pair[0].get_value(Fields.md_stages)[-1].get_value(Fields.md_system))
                 new_record.set_value(complex_solvated_field, pair[1].get_value(Fields.md_stages)[-1].get_value(Fields.md_system))
 
-                self.emit(new_record)
+                self.success.emit(new_record)
 
         except:
             self.log.error(traceback.format_exc())
@@ -516,17 +522,6 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
         default=10.0,
         help_text="The non-bonded cutoff in angstroms")
 
-    restraints = parameter.StringParameter(
-        'restraints',
-        #default='Harmonic',
-        #choices=['FlatBottom', 'Harmonic', 'Boresch'],
-        choices=['harmonic-on', 'boresch-on', 'rmsd-on',
-                 'harmonic-off-endpoints', 'boresch-off-endpoints',
-                 'rmsd-off-endpoints', 'harmonic-on-when-decoupled',
-                 'boresch-on-when-decoupled', 'rmsd-on-when-decoupled'],
-        default='rmsd-off-endpoints',
-        help_text='Select the restraint types')
-
     ligand_resname = parameter.StringParameter(
         'ligand_resname',
         default='LIG',
@@ -551,6 +546,27 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
         'hmr',
         default=False,
         description='Hydrogen Mass Repartitioning')
+
+    sampler = parameter.StringParameter(
+        'sampler',
+        required=True,
+        default='repex',
+        choices=['repex', 'sams'],
+        help_text='Yank Sampling mode: REPEX Replica Exchange and SAMS Self-Adjusted Mixture Sampling')
+
+    restraints = parameter.StringParameter(
+        'restraints',
+        required=True,
+        default='harmonic',
+        choices=['harmonic', 'boresch'],
+        help_text='Select the restraint type')
+
+    protocol = parameter.StringParameter(
+        'protocol',
+        required=True,
+        default='restraint_on_short',
+        choices=['auto_protocol', 'restraint_on_short', 'restraint_on_long'],
+        help_text='Select the protocol type')
 
     def begin(self):
         self.opt = vars(self.args)
@@ -585,18 +601,32 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
             complex = record.get_value(Fields.primary_molecule)
 
-            # # Split the complex in components
-            # protein_split, ligand_split, water, excipients = oeommutils.split(complex,
-            #                                                                   ligand_res_name=self.opt['ligand_resname'])
-            #
-            # hv = oechem.OEHierView(water)
-            # for chain in hv.GetChains():
-            #     for frag in chain.GetFragments():
-            #         for hres in frag.GetResidues():
-            #             water_name = hres.GetOEResidue().GetName()
-            #             break
-            #         break
-            #     break
+            # Split the complex in components
+            protein_split, ligand_split, water, excipients = oeommutils.split(complex,
+                                                                              ligand_res_name=self.opt['ligand_resname'])
+
+            solvent = water.CreateCopy()
+
+            if not oechem.OEAddMols(solvent, excipients):
+                raise ValueError("Solvent merging failure")
+
+            solvent_res_names = set()
+
+            hv = oechem.OEHierView(solvent)
+            for chain in hv.GetChains():
+                for frag in chain.GetFragments():
+                    for hres in frag.GetResidues():
+                        solvent_res_names.add(hres.GetOEResidue().GetName())
+
+            solvent_res_names = list(solvent_res_names)
+
+            for i in range(0, len(solvent_res_names)):
+                if '+' in solvent_res_names[i]:
+                    solvent_res_names[i] = "'"+solvent_res_names[i]+"'"
+                if '-' in solvent_res_names[i]:
+                    solvent_res_names[i] = "'"+solvent_res_names[i]+"'"
+
+            solvent_str_names = ' '.join(solvent_res_names)
 
             if not record.has_value(Fields.title):
                 opt['Logger'].warn("Missing record Title field")
@@ -704,8 +734,12 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     complex_xml_fn=solvated_complex_omm_serialized_fn,
                     solvent_pdb_fn=solvated_ligand_structure_fn,
                     solvent_xml_fn=solvated_ligand_omm_serialized_fn,
+                    ligand_resname=opt['ligand_resname'],
+                    solvent_dsl=solvent_str_names,
+                    sampler=opt['sampler'],
                     restraints=opt['restraints'],
-                    ligand_resname=opt['ligand_resname'])
+                    protocol=opt['protocol']
+                )
 
                 opt['yank_template'] = yank_template
 
@@ -790,7 +824,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
             record.set_value(Fields.primary_molecule, complex)
 
-            self.emit(record)
+            self.success.emit(record)
 
         except:
             # Attach an error message to the molecule that failed
@@ -799,3 +833,103 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
             self.failure.emit(record)
 
         return
+
+
+class TestFECube(ParallelMixin, OERecordComputeCube):
+    version = "0.0.0"
+    title = "YankSolvationFECube"
+    description = """
+    Compute the hydration free energy of a small molecule with YANK.
+
+    This cube uses the YANK alchemical free energy code to compute the
+    transfer free energy of one or more small molecules from gas phase
+    to the selected solvent.
+
+    See http://getyank.org for more information about YANK.
+    """
+    classification = [["Alchemical free energy calculations"]]
+    tags = [tag for lists in classification for tag in lists]
+
+    # Override defaults for some parameters
+    parameter_overrides = {
+        "gpu_count": {"default": 1},
+        "memory_mb": {"default": 6000},
+        "instance_tags": {"default": "cuda8"},
+        "spot_policy": {"default": "Allowed"},
+        "prefetch_count": {"default": 1},  # 1 molecule at a time
+        "item_count": {"default": 1}  # 1 molecule at a time
+    }
+
+    temperature = parameter.DecimalParameter(
+        'temperature',
+        default=300.0,
+        help_text="Temperature (Kelvin)")
+
+    pressure = parameter.DecimalParameter(
+        'pressure',
+        default=1.0,
+        help_text="Pressure (atm)")
+
+    minimize = parameter.BooleanParameter(
+        'minimize',
+        default=True,
+        help_text="Minimize input system")
+
+    iterations = parameter.IntegerParameter(
+        'iterations',
+        default=1000,
+        help_text="Number of iterations")
+
+    nsteps_per_iteration = parameter.IntegerParameter(
+        'nsteps_per_iteration',
+        default=500,
+        help_text="Number of steps per iteration")
+
+    nonbondedCutoff = parameter.DecimalParameter(
+        'nonbondedCutoff',
+        default=10.0,
+        help_text="The non-bonded cutoff in angstroms")
+
+    verbose = parameter.BooleanParameter(
+        'verbose',
+        default=False,
+        help_text="Print verbose YANK logging output")
+
+    rerun = parameter.BooleanParameter(
+        'rerun',
+        default=False,
+        help_text="Start Yank Restart procedure")
+
+    analyze = parameter.BooleanParameter(
+        'analyze',
+        default=False,
+        help_text="Start Yank Analysis on the collected results")
+
+    hmr = parameter.BooleanParameter(
+        'hmr',
+        default=False,
+        description='Hydrogen Mass Repartitioning')
+
+    def begin(self):
+        #self.opt = self.args.__dict__
+        self.opt = vars(self.args)
+        self.opt['Logger'] = self.log
+
+    def process(self, record, port):
+        try:
+            self.log.warn(">>>>>>> {} verbose {}".format(self.title, self.opt['verbose']))
+            self.log.warn(">>>>>>> {} rerun {}".format(self.title, self.opt['rerun']))
+            self.log.warn(">>>>>>> {} analyze {}".format(self.title, self.opt['analyze']))
+            self.log.warn(">>>>>>> {} iterations {}".format(self.title, self.opt['iterations']))
+            self.log.warn(">>>>>>> {} pressure {}".format(self.title, self.opt['pressure']))
+            self.log.warn(">>>>>>> {} temperature {}".format(self.title, self.opt['temperature']))
+            self.log.warn(">>>>>>> {} minimize {}".format(self.title, self.opt['minimize']))
+            self.log.warn(">>>>>>> {} min_parallel {}".format(self.title, self.opt['min_parallel']))
+            self.log.warn(">>>>>>> {} max_parallel {}".format(self.title, self.opt['max_parallel']))
+
+            self.success.emit(record)
+        except:
+            # Attach an error message to the molecule that failed
+            self.log.error(traceback.format_exc())
+            # Return failed mol
+            self.failure.emit(record)

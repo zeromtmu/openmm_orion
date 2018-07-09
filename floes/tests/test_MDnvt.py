@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from floes.MDnvt import job as floe
+from floes.MDnpt import job as floe
 
 import os
 
@@ -13,7 +13,7 @@ FILE_DIR = os.path.join(PACKAGE_DIR, "tests", "data")
 
 
 class NvtTestCase(TestCase):
-    """ Invocation: python -m pytest floes/floe_tests/ -s """
+    """ Invocation: python -m pytest floes/tests/ -s -v"""
 
     @pytest.mark.slow
     def test_nvt(self):
@@ -22,14 +22,7 @@ class NvtTestCase(TestCase):
 
         run_args = [
             '--system', complex_fn,
-            '--nanoseconds', '0.01',
-            '--temperature', '300.0',
-            '--restraints', 'noh (ligand or protein)',
-            '--restraintWt', '2.0',
-            '--trajectory_interval', '0.0005',
-            '--reporter_interval', '0.001',
-            '--suffix', 'nvt',
-            '--out', 'success.oeb',
+            '--out', 'nvt.oedb',
             '--fail-data_out', 'fail.oedb',
         ]
 

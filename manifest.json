@@ -13,7 +13,7 @@
                             "alchemy==1.2.3",
                             "cerberus==1.1",
                             "networkx==1.11",
-                            "oeommtools==0.1.3",
+                            "oeommtools==0.1.4",
                             "openforcefield==0.0.2",
                             "openmm==7.1.1",
                             "openmmtools==0.15.0",
@@ -31,5 +31,5 @@
   "build_requirements": {"gpu": 1, "instance_tags": ["cuda8"]},
 
   "name": "MD Orion Package",
- "version": "0.5.5"
+ "version": "0.5.5.1"
 }
