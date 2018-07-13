@@ -112,6 +112,11 @@ class ClusterOETrajCube(ParallelMixin, OERecordComputeCube):
             #trajHeatRMSD_png = clusutl.ClusterLigTrajHeatRMSD(clusResults)
             opt['Logger'].info('{} plotting cluster strip plot'.format(system_title) )
             trajClus_svg = clusutl.ClusterLigTrajClusPlot(clusResults)
+            # Calculate RMSD of ligand traj from ligand initial pose
+            vecRmsd = oechem.OEDoubleArray( ligTraj.GetMaxConfIdx() )
+            ligInitPose = CheckAndGetValue( record, Fields.ligand)
+            oechem.OERMSD( ligInitPose, ligTraj, vecRmsd)
+            rmsdInit_svg = clusutl.RmsdFromInitialPosePlot( clusResults['ClusterVec'], vecRmsd)
 
             # Create new record with trajClus results
             opt['Logger'].info('{} writing trajClus OERecord'.format(system_title) )
@@ -143,6 +148,9 @@ class ClusterOETrajCube(ParallelMixin, OERecordComputeCube):
             # Heat map is large, time-consuming, and non-essential... put back if needed
             # HeatPNG_field = OEField( 'HeatPNG', Types.Blob, meta=OEFieldMeta().set_option(Meta.Hints.Image_PNG))
             # trajClus.set_value( HeatPNG_field, trajHeatRMSD_png)
+            #
+            rmsdInit_field = OEField( 'rmsdInitPose', Types.String, meta=OEFieldMeta().set_option(Meta.Hints.Image_SVG))
+            trajClus.set_value( rmsdInit_field, rmsdInit_svg)
 
             #
             record.set_value( OEField( 'TrajClus', Types.Record), trajClus)
