@@ -18,7 +18,7 @@ from datarecord import OEWriteRecord
 
 # ifs = OEMolRecordStream("p38_l38_a_2n_nvt_5ns.oeb.gz")
 
-ifs = oechem.oeifstream("prep.oedb")
+ifs = oechem.oeifstream("test.oedb")
 records = []
 while True:
     record = read_mol_record(ifs)

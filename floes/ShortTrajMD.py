@@ -37,6 +37,8 @@ from ProtPrepCubes.cubes import ProteinSetting
 from LigPrepCubes.cubes import (LigandChargeCube,
                                 LigandSetting)
 
+from MDCubes.MDUtils.hypercubes.shard_writer import CollectionWriter
+
 job = WorkFloe('Short Trajectory MD')
 
 job.description = """
@@ -121,9 +123,9 @@ prod.promote_parameter('time', promoted_name='prod_ns', default=2.0,
 prod.promote_parameter('temperature', promoted_name='temperature', default=300.0,
                        description='Temperature (Kelvin)')
 prod.promote_parameter('pressure', promoted_name='pressure', default=1.0, description='Pressure (atm)')
-prod.promote_parameter('trajectory_interval', promoted_name='prod_trajectory_interval', default=0.001,
+prod.promote_parameter('trajectory_interval', promoted_name='prod_trajectory_interval', default=0.002,
                        description='Trajectory saving interval in ns')
-prod.promote_parameter('reporter_interval', promoted_name='prod_reporter_interval', default=0.001,
+prod.promote_parameter('reporter_interval', promoted_name='prod_reporter_interval', default=0.002,
                        description='Reporter saving interval is ns')
 prod.promote_parameter('max_parallel', promoted_name='num_gpus', default=1,
                        description='Number of GPUS to make available - should be less than the number of ligands')
@@ -200,9 +202,10 @@ equil3.set_parameters(trajectory_interval=0.0)
 equil3.set_parameters(reporter_interval=0.001)
 equil3.set_parameters(suffix='equil3')
 
+# ofs = DataSetWriterCube('ofs', title='Out')
+# ofs.promote_parameter("data_out", promoted_name="out")
 
-ofs = DataSetWriterCube('ofs', title='Out')
-ofs.promote_parameter("data_out", promoted_name="out")
+ofs = CollectionWriter('ofs', title='Out')
 
 fail = DataSetWriterCube('fail', title='Failures')
 fail.set_parameters(data_out='fail.oedb')

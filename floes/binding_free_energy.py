@@ -143,6 +143,8 @@ abfe0.promote_parameter('min_parallel', promoted_name='num_gpus', default=1,
                                     'should be less than the number of ligands')
 abfe0.promote_parameter('hmr', promoted_name='hmr', default=False, description='Hydrogen Mass Repartitioning')
 abfe0.set_parameters(rerun=False)
+abfe0.set_parameters(minimize=True)
+abfe0.set_parameters(analyze=False)
 
 job.add_cube(abfe0)
 
@@ -273,6 +275,8 @@ for i in range(1, chunks):
     abfe.promote_parameter("min_parallel", promoted_name="num_gpus")
     abfe.promote_parameter("hmr", promoted_name="hmr")
     abfe.set_parameters(rerun=True)
+    abfe.set_parameters(minimize=False)
+    abfe.set_parameters(analyze=False)
 
     if i == (chunks - 1):
         abfe.set_parameters(analyze=True)

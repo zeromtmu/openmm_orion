@@ -51,6 +51,8 @@ from YankCubes.yank_templates import (yank_solvation_template,
 
 from YankCubes import utils as yankutils
 
+from yank.analyze import ExperimentAnalyzer
+
 from Standards import (MDStageNames,
                        Fields,
                        MDRecords)
@@ -150,6 +152,17 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
     def process(self, record, port):
 
         try:
+
+            self.log.warn(">>>>>>> {} verbose {}".format(self.title, self.opt['verbose']))
+            self.log.warn(">>>>>>> {} rerun {}".format(self.title, self.opt['rerun']))
+            self.log.warn(">>>>>>> {} analyze {}".format(self.title, self.opt['analyze']))
+            self.log.warn(">>>>>>> {} iterations {}".format(self.title, self.opt['iterations']))
+            self.log.warn(">>>>>>> {} pressure {}".format(self.title, self.opt['pressure']))
+            self.log.warn(">>>>>>> {} temperature {}".format(self.title, self.opt['temperature']))
+            self.log.warn(">>>>>>> {} minimize {}".format(self.title, self.opt['minimize']))
+            self.log.warn(">>>>>>> {} min_parallel {}".format(self.title, self.opt['min_parallel']))
+            self.log.warn(">>>>>>> {} max_parallel {}".format(self.title, self.opt['max_parallel']))
+
             # The copy of the dictionary option as local variable
             # is necessary to avoid filename collisions due to
             # the parallel cube processes
@@ -312,8 +325,12 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
 
                     exp_dir = os.path.join(output_directory, "experiments")
 
-                    # Calculate solvation free energy, solvation Enthalpy and their errors
-                    DeltaG_solvation, dDeltaG_solvation, DeltaH, dDeltaH = yankutils.analyze_directory(exp_dir)
+                    experiment_to_analyze = ExperimentAnalyzer(exp_dir)
+                    analysis = experiment_to_analyze.auto_analyze()
+
+                    # Calculate solvation free energy and its error
+                    DeltaG_solvation = analysis['free_energy']['free_energy_diff']
+                    dDeltaG_solvation = analysis['free_energy']['free_energy_diff_error']
 
                     # Create OE Field to save the Solvation Free Energy in kcal/mol
                     DG_Field = OEField('DG', Types.Float,
@@ -369,6 +386,16 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
 
                 with open(os.path.join(output_directory, "experiments/experiments.log"), 'r') as flog:
                     str_logger += '\n'+flog.read()
+
+                str_logger += ">>>>>>> {} verbose {}".format(self.title, self.opt['verbose'])
+                str_logger += ">>>>>>> {} rerun {}".format(self.title, self.opt['rerun'])
+                str_logger += ">>>>>>> {} analyze {}".format(self.title, self.opt['analyze'])
+                str_logger += ">>>>>>> {} iterations {}".format(self.title, self.opt['iterations'])
+                str_logger += ">>>>>>> {} pressure {}".format(self.title, self.opt['pressure'])
+                str_logger += ">>>>>>> {} temperature {}".format(self.title, self.opt['temperature'])
+                str_logger += ">>>>>>> {} minimize {}".format(self.title, self.opt['minimize'])
+                str_logger += ">>>>>>> {} min_parallel {}".format(self.title, self.opt['min_parallel'])
+                str_logger += ">>>>>>> {} max_parallel {}".format(self.title, self.opt['max_parallel'])
 
                 md_stage_record = MDRecords.MDStageRecord(MDStageNames.FEC,
                                                           MDRecords.MDSystemRecord(system, mdData.structure),
@@ -557,7 +584,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
     restraints = parameter.StringParameter(
         'restraints',
         required=True,
-        default='harmonic',
+        default='boresch',
         choices=['harmonic', 'boresch'],
         help_text='Select the restraint type')
 
@@ -748,8 +775,12 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                 if opt['analyze']:
                     exp_dir = os.path.join(output_directory, "experiments")
 
-                    # Calculate solvation free energy, solvation Enthalpy and their errors
-                    DeltaG_solvation, dDeltaG_solvation, DeltaH, dDeltaH = yankutils.analyze_directory(exp_dir)
+                    experiment_to_analyze = ExperimentAnalyzer(exp_dir)
+                    analysis = experiment_to_analyze.auto_analyze()
+
+                    # Calculate binding free energy and its error
+                    DeltaG_binding = analysis['free_energy']['free_energy_diff']
+                    dDeltaG_binding = analysis['free_energy']['free_energy_diff_error']
 
                     # Create OE Field to save the Solvation Free Energy in kcal/mol
                     DG_Field = OEField('DG', Types.Float,
@@ -757,8 +788,8 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     dG_Field = OEField('dG', Types.Float,
                                        meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal_per_mol))
 
-                    record.set_value(DG_Field, DeltaG_solvation)
-                    record.set_value(dG_Field, dDeltaG_solvation)
+                    record.set_value(DG_Field, DeltaG_binding)
+                    record.set_value(dG_Field, dDeltaG_binding)
 
                     opt_1 = '--store={}'.format(exp_dir)
 
@@ -806,6 +837,26 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
                 with open(os.path.join(output_directory, "experiments/experiments.log"), 'r') as flog:
                     str_logger += '\n' + flog.read()
+
+                self.log.warn(">>>>>>> {} verbose {}".format(self.title, self.opt['verbose']))
+                self.log.warn(">>>>>>> {} rerun {}".format(self.title, self.opt['rerun']))
+                self.log.warn(">>>>>>> {} analyze {}".format(self.title, self.opt['analyze']))
+                self.log.warn(">>>>>>> {} iterations {}".format(self.title, self.opt['iterations']))
+                self.log.warn(">>>>>>> {} pressure {}".format(self.title, self.opt['pressure']))
+                self.log.warn(">>>>>>> {} temperature {}".format(self.title, self.opt['temperature']))
+                self.log.warn(">>>>>>> {} minimize {}".format(self.title, self.opt['minimize']))
+                self.log.warn(">>>>>>> {} min_parallel {}".format(self.title, self.opt['min_parallel']))
+                self.log.warn(">>>>>>> {} max_parallel {}".format(self.title, self.opt['max_parallel']))
+
+                str_logger += ">>>>>>> {} verbose {}".format(self.title, self.opt['verbose'])
+                str_logger += ">>>>>>> {} rerun {}".format(self.title, self.opt['rerun'])
+                str_logger += ">>>>>>> {} analyze {}".format(self.title, self.opt['analyze'])
+                str_logger += ">>>>>>> {} iterations {}".format(self.title, self.opt['iterations'])
+                str_logger += ">>>>>>> {} pressure {}".format(self.title, self.opt['pressure'])
+                str_logger += ">>>>>>> {} temperature {}".format(self.title, self.opt['temperature'])
+                str_logger += ">>>>>>> {} minimize {}".format(self.title, self.opt['minimize'])
+                str_logger += ">>>>>>> {} min_parallel {}".format(self.title, self.opt['min_parallel'])
+                str_logger += ">>>>>>> {} max_parallel {}".format(self.title, self.opt['max_parallel'])
 
                 md_stage_record = MDRecords.MDStageRecord(MDStageNames.FEC,
                                                           MDRecords.MDSystemRecord(complex,

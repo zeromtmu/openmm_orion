@@ -1,22 +1,4 @@
 #!/usr/bin/env python
-
-# (C) 2018 OpenEye Scientific Software Inc. All rights reserved.
-#
-# TERMS FOR USE OF SAMPLE CODE The software below ("Sample Code") is
-# provided to current licensees or subscribers of OpenEye products or
-# SaaS offerings (each a "Customer").
-# Customer is hereby permitted to use, copy, and modify the Sample Code,
-# subject to these terms. OpenEye claims no rights to Customer's
-# modifications. Modification of Sample Code is at Customer's sole and
-# exclusive risk. Sample Code may require Customer to have a then
-# current license or subscription to the applicable OpenEye offering.
-# THE SAMPLE CODE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-# EXPRESS OR IMPLIED.  OPENEYE DISCLAIMS ALL WARRANTIES, INCLUDING, BUT
-# NOT LIMITED TO, WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-# PARTICULAR PURPOSE AND NONINFRINGEMENT. In no event shall OpenEye be
-# liable for any damages or liability in connection with the Sample Code
-# or its use.
-
 from floe.api import WorkFloe
 from cuberecord import (DataSetWriterCube,
                         DataSetReaderCube)
@@ -33,19 +15,10 @@ from MDCubes.OpenMMCubes.cubes import (OpenMMminimizeCube,
 job = WorkFloe("Solvation Free Energy")
 
 job.description = """
-The Solvation Free Energy protocol performs Solvation Free Energy Calculations (SFEC) on 
-a set of provided ligands by using YANK ( http://getyank.org/latest/ ). The ligands need 
-to have coordinates and correct chemistry. Each ligand can have multiple conformers, 
-but each conformer will be treated as a different ligand and prepared to run SFEC. The ligands 
-are solvated in the selected mixture (default water) and parametrized accordingly to the 
-provided force field. A minimization stage is performed on the system followed by a warm up 
-(NVT ensemble) and an equilibration stage (NPT ensemble). In the minimization, warm up 
-and equilibration stage positional harmonic restraints are applied on the ligands with different 
-force constants. At the end of the equilibration stage the SFEC calculation is run by YANK 
-with the selected parameters. Solvation Free Energy values and floe reports are output.    
+Solvation Free Energy Calculation of small molecules
 
-Ex. python floes/Solvation_free_energy --ligands ligands.oeb
---out sfe.oedb
+Ex. python floes/solvation_free_energy --ligands ligands.oeb
+--ofs-data_out fe.oeb
 
 Parameters:
 -----------
@@ -53,11 +26,11 @@ ligands (file): OEB file of the prepared ligands
 
 Outputs:
 --------
-out : Output file
+ofs: Output file
 """
 
 # *************USER SETTING**************
-yank_iteration_per_chunk = 500
+yank_iteration_per_chunk = 5
 chunks = 2
 # ***************************************
 
@@ -72,10 +45,9 @@ iligs.promote_parameter("data_in", promoted_name="ligands", title="Ligand Input 
 job.add_cube(iligs)
 cube_list.append(iligs)
 
-chargelig = LigandChargeCube("LigCharge", title="Ligand Charge")
-chargelig.promote_parameter('charge_ligands', promoted_name='charge_ligands',
-                            description="Charge the ligand or not", default=True)
-
+chargelig = LigandChargeCube("LigCharge")
+chargelig.promote_parameter('max_conformers', promoted_name='max_conformers',
+                            description="Set the max number of conformers per ligand", default=800)
 job.add_cube(chargelig)
 cube_list.append(chargelig)
 
@@ -83,104 +55,94 @@ ligset = LigandSetting("LigandSetting")
 job.add_cube(ligset)
 cube_list.append(ligset)
 
-solvate = SolvationCube("Solvation", title="System Solvation")
+solvate = SolvationCube("Solvation")
 solvate.promote_parameter("density", promoted_name="density", title="Solution density in g/ml", default=1.0,
                           description="Solution Density in g/ml")
 solvate.promote_parameter("solvents", promoted_name="solvents", title="Solvent components",
-                          default='[H]O[H]',
+                          default='[H]O[H], ClC(Cl)Cl, CS(=O)C, c1ccccc1',
                           description="Comma separated smiles strings of solvent components")
 solvate.promote_parameter("molar_fractions", promoted_name="molar_fractions",
                           title="Molar fractions",
-                          default='1.0',
+                          default='1.0, 0.0, 0.0, 0.0',
                           description="Comma separated strings of solvent molar fractions")
-solvate.set_parameters(distance_between_atoms=2.5)
-solvate.set_parameters(padding_distance=11.0)
-
+solvate.promote_parameter('distance_between_atoms', promoted_name='distance_between_atoms', default=2.5)
+solvate.promote_parameter("padding_distance", promoted_name="padding_distance", default=11.0,
+                          description="The largest dimension (in A) of the solute (along the x, y, or z axis) "
+                                      "is determined, and a cubic box of size "
+                                      "(largest dimension)+2*padding is used")
 job.add_cube(solvate)
 cube_list.append(solvate)
 
-ff = ForceFieldCube("ForceField", title="System Parametrization")
-ff.promote_parameter('ligand_forcefield', promoted_name='ligand_ff', default='GAFF2')
+ff = ForceFieldCube("ForceField")
 job.add_cube(ff)
 cube_list.append(ff)
 
-
-# First Yank Cube used to build the UI interface
-solvationfe0 = YankSolvationFECube("SovationFE0", title="Solvation FE0")
-solvationfe0.promote_parameter('iterations', promoted_name='iterations', default=yank_iteration_per_chunk)
-solvationfe0.promote_parameter('verbose', promoted_name='verbose', default=True)
-solvationfe0.promote_parameter('temperature', promoted_name='temperature', default=300.0,
-                               description='Temperature (Kelvin)')
-solvationfe0.promote_parameter('pressure', promoted_name='pressure', default=1.0,
-                               description='Pressure (atm)')
-solvationfe0.promote_parameter('hmr', promoted_name='hmr', default=False,
-                               description='Hydrogen Mass Repartitioning')
-solvationfe0.promote_parameter('max_parallel', promoted_name='num_gpus', default=1,
-                               description='Number of GPUS to make available - '
-                                           'should be less than the number of ligands')
-solvationfe0.promote_parameter('min_parallel', promoted_name='num_gpus', default=1,
-                               description='Number of GPUS to make available - '
-                                           'should be less than the number of ligands')
-solvationfe0.set_parameters(rerun=False)
-job.add_cube(solvationfe0)
-
-
 # Minimization
-minimize = OpenMMminimizeCube("Minimize", title="System Minimization")
-minimize.set_parameters(restraints='noh ligand')
-minimize.set_parameters(restraintWt=5.0)
-minimize.set_parameters(center=True)
-minimize.promote_parameter("hmr", promoted_name="hmr")
+minimize = OpenMMminimizeCube("Minimize")
+minimize.promote_parameter('restraints', promoted_name='m_restraints', default="noh ligand",
+                           description='Select mask to apply restarints')
+minimize.promote_parameter('restraintWt', promoted_name='m_restraintWt', default=5.0,
+                           description='Restraint weight in kcal/(mol A^2')
 
 job.add_cube(minimize)
 cube_list.append(minimize)
 
 # NVT Warm-up
-warmup = OpenMMNvtCube('warmup', title='System Warm Up')
-warmup.set_parameters(time=0.02)
-warmup.promote_parameter("temperature", promoted_name="temperature")
-warmup.set_parameters(restraints="noh ligand")
-warmup.set_parameters(restraintWt=2.0)
-warmup.set_parameters(trajectory_interval=0.0)
-warmup.set_parameters(reporter_interval=0.0)
-warmup.set_parameters(suffix='warmup')
-warmup.promote_parameter("hmr", promoted_name="hmr")
+warmup = OpenMMNvtCube('warmup', title='warmup')
+warmup.promote_parameter('time', promoted_name='warm_ns', default=0.02,
+                         description='Length of MD run in nanoseconds')
+warmup.promote_parameter('restraints', promoted_name='w_restraints', default="noh ligand",
+                         description='Select mask to apply restarints')
+warmup.promote_parameter('restraintWt', promoted_name='w_restraintWt', default=2.0,
+                         description='Restraint weight in kcal/(mol A^2')
+warmup.promote_parameter('trajectory_interval', promoted_name='w_trajectory_interval', default=0.0,
+                         description='Trajectory saving interval in ns')
+warmup.promote_parameter('reporter_interval', promoted_name='w_reporter_interval', default=0.0,
+                         description='Reporter saving interval in ns')
+warmup.promote_parameter('suffix', promoted_name='w_suffix', default='warmup',
+                         description='Equilibration suffix name')
+warmup.promote_parameter('center', promoted_name='center', default=True)
 
 job.add_cube(warmup)
 cube_list.append(warmup)
 
 # NPT Equilibration stage
-equil = OpenMMNptCube('equil', title='System Equilibration')
-equil.set_parameters(time=0.02)
-equil.promote_parameter("temperature", promoted_name="temperature")
-equil.promote_parameter("pressure", promoted_name="pressure")
-equil.promote_parameter("hmr", promoted_name="hmr")
-equil.set_parameters(restraints="noh ligand")
-equil.set_parameters(restraintWt=0.1)
-equil.set_parameters(trajectory_interval=0.0)
-equil.set_parameters(reporter_interval=0.0)
-equil.set_parameters(suffix='equil')
+equil = OpenMMNptCube('equil', title='equil')
+equil.promote_parameter('time', promoted_name='eq_ns', default=0.02,
+                        description='Length of MD run in nanoseconds')
+equil.promote_parameter('restraints', promoted_name='eq_restraints', default="noh ligand",
+                        description='Select mask to apply restraints')
+equil.promote_parameter('restraintWt', promoted_name='eq_restraintWt', default=0.1,
+                        description='Restraint weight in kcal/(mol A^2')
+equil.promote_parameter('trajectory_interval', promoted_name='eq_trajectory_interval', default=0.0,
+                        description='Trajectory saving interval in ns')
+equil.promote_parameter('reporter_interval', promoted_name='eq_reporter_interval', default=0.0,
+                        description='Reporter saving interval in ns')
+equil.promote_parameter('suffix', promoted_name='eq_suffix', default='equil',
+                        description='Equilibration suffix name')
 
 job.add_cube(equil)
 cube_list.append(equil)
 
-# Add YANK first Cube
-cube_list.append(solvationfe0)
+for i in range(0, chunks):
+    solvationfe = YankSolvationFECube("SovationFE" + str(i), title="SovationFE" + str(i))
+    solvationfe.promote_parameter('iterations', promoted_name='iterations' + str(i),
+                                  default=yank_iteration_per_chunk*(i+1))
+    solvationfe.promote_parameter('verbose', promoted_name='verbose' + str(i),
+                                  default=True)
+    solvationfe.promote_parameter('max_parallel', promoted_name='max_parallel' + str(i),
+                                  default=1)
+    solvationfe.promote_parameter('min_parallel', promoted_name='min_parallel' + str(i),
+                                  default=1)
 
-for i in range(1, chunks):
-    solvationfe = YankSolvationFECube("SovationFE"+str(i), title="Solvation FE"+str(i))
-    solvationfe.set_parameters(iterations=(i+1)*yank_iteration_per_chunk)
-    solvationfe.promote_parameter("verbose", promoted_name="verbose")
-    solvationfe.promote_parameter("temperature", promoted_name="temperature")
-    solvationfe.promote_parameter("pressure", promoted_name="pressure")
-    solvationfe.promote_parameter("max_parallel", promoted_name="num_gpus")
-    solvationfe.promote_parameter("min_parallel", promoted_name="num_gpus")
-    solvationfe.promote_parameter("hmr", promoted_name="hmr")
-    solvationfe.set_parameters(minimize=False)
-    solvationfe.set_parameters(rerun=True)
+    if i == 0:
+        solvationfe.promote_parameter('rerun', promoted_name='rerun' + str(i), default=False)
+    else:
+        solvationfe.promote_parameter('minimize', promoted_name='minimize' + str(i), default=False)
+        solvationfe.promote_parameter('rerun', promoted_name='rerun' + str(i), default=True)
 
     if i == (chunks - 1):
-        solvationfe.set_parameters(analyze=True)
+        solvationfe.promote_parameter('analyze', promoted_name='analyze' + str(i), default=True)
 
     job.add_cube(solvationfe)
     cube_list.append(solvationfe)

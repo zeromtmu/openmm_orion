@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # (C) 2018 OpenEye Scientific Software Inc. All rights reserved.
 #
 # TERMS FOR USE OF SAMPLE CODE The software below ("Sample Code") is
@@ -15,12 +17,26 @@
 # liable for any damages or liability in connection with the Sample Code
 # or its use.
 
-__version__ = '0.5.6'
-import ComplexPrepCubes
-import ForceFieldCubes
-import LigPrepCubes
-import MDCubes
-import ProtPrepCubes
-import Standards
-import TrjAnalysisCubes
-import YankCubes
+from floe.api import WorkFloe
+from floe.api.hyper import HyperCube
+
+from MDCubes.MDUtils.cubes import (CollectionCreationCube,
+                                   CollectionCompletionCube,
+                                   RecordsToRecordCollectionConverterParallel)
+
+wf = WorkFloe('Shard Collection writer')
+
+creator = CollectionCreationCube('Collection Creator')
+creator.promote_parameter('collection_name', promoted_name='collection_name')
+writer = RecordsToRecordCollectionConverterParallel('writer')
+completer = CollectionCompletionCube('Collection Completer')
+
+wf.add_cubes(creator, completer, writer)
+
+creator.collection_setup.connect(writer.collection_setup)
+creator.collection_setup.connect(completer.collection_setup)
+writer.success.connect(completer.intake)
+
+CollectionWriter = HyperCube(wf)
+
+CollectionWriter.promote_port(writer, 'intake')
