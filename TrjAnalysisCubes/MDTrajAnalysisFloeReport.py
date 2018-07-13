@@ -31,7 +31,7 @@ _clus_floe_report_template = """
 <head>
 <style>
 
-  body {{
+  .row {{
     width:100%;
     display:flex;
   }}
@@ -63,21 +63,38 @@ _clus_floe_report_template = """
 </head>
 <body>
 
+<div class="row">
 <div class="column sidebar">
   {query_depiction}
   {rmsd_hist}
-  <h3> Ligand Clustering based on <br/> Active Site Alignment </h3>
+</div>
+
+<div class="column content">
+  <h2> Analysis of Short Trajectory MD </h2>
+  {traj}
+</div>
+</div>
+
+<div class="row">
+  <h2 style="text-align: center; width: 100%"> Ligand Clustering based on Active Site Alignment </h2>
+</div>
+
+<div class="row">
+<div class="column sidebar">
+  <br/><br/>
   <pre>
   {analysis}
   </pre>
 </div>
 
 <div class="column content">
-  <h2> Analysis of Short Trajectory MD </h2>
-  {traj}
+  <h3> Cluster membership of Trajectory ligand by Trajectory frame </h3>
   {clusters}
+  <h3> RMSD of ligand compared to initial pose, colored by cluster </h3>
+  {rmsdInit}
 </div>
 </div>
+
 </body>
 </html>
 """
@@ -169,6 +186,7 @@ class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
             opt['Logger'].info('{} found TrajClus record'.format(system_title) )
             trajHistRMSD_svg = CheckAndGetValueFull( clusRecord, 'HistSVG', Types.String)
             trajClus_svg = CheckAndGetValueFull( clusRecord, 'ClusSVG', Types.String)
+            rmsdInit_svg = CheckAndGetValueFull( clusRecord, 'rmsdInitPose', Types.String)
             #trajHeatRMSD_png = CheckAndGetValueFull( clusRecord, 'HeatPNG', Types.Blob)
             opt['Logger'].info('{} found the TrajClus plots'.format(system_title) )
 
@@ -198,6 +216,7 @@ class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
                     analysis="".join(analysis_txt),
                     clusters=_trim_svg(trajClus_svg),
                     traj=_trim_svg(trajSVG),
+                    rmsdInit=_trim_svg(rmsdInit_svg),
                     )
                 )
 
