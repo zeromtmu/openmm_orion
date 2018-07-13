@@ -1,8 +1,25 @@
 #!/usr/bin/env python
+
+# (C) 2018 OpenEye Scientific Software Inc. All rights reserved.
+#
+# TERMS FOR USE OF SAMPLE CODE The software below ("Sample Code") is
+# provided to current licensees or subscribers of OpenEye products or
+# SaaS offerings (each a "Customer").
+# Customer is hereby permitted to use, copy, and modify the Sample Code,
+# subject to these terms. OpenEye claims no rights to Customer's
+# modifications. Modification of Sample Code is at Customer's sole and
+# exclusive risk. Sample Code may require Customer to have a then
+# current license or subscription to the applicable OpenEye offering.
+# THE SAMPLE CODE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED.  OPENEYE DISCLAIMS ALL WARRANTIES, INCLUDING, BUT
+# NOT LIMITED TO, WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+# PARTICULAR PURPOSE AND NONINFRINGEMENT. In no event shall OpenEye be
+# liable for any damages or liability in connection with the Sample Code
+# or its use.
+
 from floe.api import WorkFloe
 from MDCubes.OpenMMCubes.cubes import OpenMMNptCube
 from cuberecord import DataSetReaderCube, DataSetWriterCube
-
 
 job = WorkFloe("NPT Simulation")
 
@@ -33,7 +50,7 @@ ifs = DataSetReaderCube("SystemReader", title="System Reader")
 ifs.promote_parameter("data_in", promoted_name="system", title='System Input File',
                       description="System input file")
 
-npt = OpenMMNptCube('npt')
+npt = OpenMMNptCube('npt', title='NPT Simulation')
 npt.promote_parameter('time', promoted_name='nanoseconds', default=0.01,
                       description='Length of MD run in nanoseconds')
 npt.promote_parameter('temperature', promoted_name='temperature', default=300.0,
@@ -42,9 +59,9 @@ npt.promote_parameter('pressure', promoted_name='pressure', default=1.0,
                       description='Selected pressure in atm')
 
 # Restraints
-npt.promote_parameter('restraints', promoted_name='restraints', default="ca_protein or (noh ligand)",
-                      description='Select mask to apply restraints')
-npt.promote_parameter('restraintWt', promoted_name='restraintWt', default=5.0, description='Restraint weight')
+npt.set_parameters(restraints="ca_protein or (noh ligand)")
+npt.set_parameters(restraintWt=5.0)
+npt.set_parameters(suffix='npt')
 
 # Trajectory and logging info frequency intervals
 npt.promote_parameter('trajectory_interval', promoted_name='trajectory_interval', default=0.0005,

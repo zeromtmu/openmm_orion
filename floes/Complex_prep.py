@@ -1,4 +1,22 @@
 #!/usr/bin/env python
+
+# (C) 2018 OpenEye Scientific Software Inc. All rights reserved.
+#
+# TERMS FOR USE OF SAMPLE CODE The software below ("Sample Code") is
+# provided to current licensees or subscribers of OpenEye products or
+# SaaS offerings (each a "Customer").
+# Customer is hereby permitted to use, copy, and modify the Sample Code,
+# subject to these terms. OpenEye claims no rights to Customer's
+# modifications. Modification of Sample Code is at Customer's sole and
+# exclusive risk. Sample Code may require Customer to have a then
+# current license or subscription to the applicable OpenEye offering.
+# THE SAMPLE CODE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED.  OPENEYE DISCLAIMS ALL WARRANTIES, INCLUDING, BUT
+# NOT LIMITED TO, WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+# PARTICULAR PURPOSE AND NONINFRINGEMENT. In no event shall OpenEye be
+# liable for any damages or liability in connection with the Sample Code
+# or its use.
+
 from floe.api import WorkFloe
 
 from cuberecord import DataSetWriterCube, DataSetReaderCube
@@ -12,7 +30,6 @@ from ComplexPrepCubes.cubes import (ComplexPrepCube,
                                     HydrationCube)
 
 from ForceFieldCubes.cubes import ForceFieldCube
-
 
 job = WorkFloe("Complex Preparation")
 
@@ -40,9 +57,10 @@ job.tags = [tag for lists in job.classification for tag in lists]
 iligs = DataSetReaderCube("Ligand Reader", title="Ligand Reader")
 iligs.promote_parameter("data_in", promoted_name="ligands", title="Ligand Input File", description="Ligand file name")
 
-chargelig = LigandChargeCube("LigCharge")
-chargelig.promote_parameter('max_conformers', promoted_name='max_conformers',
-                            description="Set the max number of conformers per ligand", default=800)
+chargelig = LigandChargeCube("LigCharge", title='Ligand Charge')
+chargelig.promote_parameter('charge_ligands', promoted_name='charge_ligands',
+                            description="Charge the ligand or not", default=True)
+
 
 ligset = LigandSetting("LigandSetting")
 
@@ -53,16 +71,17 @@ protset = ProteinSetting("ProteinSetting")
 
 complx = ComplexPrepCube("Complex")
 
-solvate = SolvationCube("Hydration")
+solvate = SolvationCube("Hydration", title='System Hydration')
 solvate.promote_parameter('density', promoted_name='density', default=1.03,
                           description="Solution density in g/ml")
 solvate.promote_parameter('close_solvent', promoted_name='close_solvent', default=True,
                           description='The solvent molecules will be placed very close to the solute')
+solvate.promote_parameter('salt_concentration', promoted_name='salt_concentration', default=50.0,
+                          description='Salt concentration (Na+, Cl-) in millimolar')
 
-# solvate.promote_parameter("solvent_padding", promoted_name="solvent_padding", default=8.0)
-# solvate.promote_parameter("salt_concentration", promoted_name="salt_concentration", default=50)
-
-ff = ForceFieldCube("ForceField")
+ff = ForceFieldCube("ForceField", title="System Parametrization")
+ff.promote_parameter('ligand_forcefield', promoted_name='ligand_ff', default='GAFF2')
+ff.promote_parameter('other_forcefield', promoted_name='other_ff', default='GAFF2')
 
 ofs = DataSetWriterCube('ofs', title='OFS-Success')
 ofs.promote_parameter("data_out", promoted_name="out")

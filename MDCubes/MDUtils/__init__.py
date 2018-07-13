@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 # (C) 2018 OpenEye Scientific Software Inc. All rights reserved.
 #
 # TERMS FOR USE OF SAMPLE CODE The software below ("Sample Code") is
@@ -14,14 +16,3 @@
 # PARTICULAR PURPOSE AND NONINFRINGEMENT. In no event shall OpenEye be
 # liable for any damages or liability in connection with the Sample Code
 # or its use.
-
-__version__ = '0.5.6.1'
-import ComplexPrepCubes
-import ForceFieldCubes
-import LigPrepCubes
-import MDCubes
-import oecubeutils
-import ProtPrepCubes
-import Standards
-import TrjAnalysisCubes
-import YankCubes

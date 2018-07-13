@@ -55,6 +55,12 @@ class ProteinSetting(OERecordComputeCube):
         default=False,
         help_text="If Checked/True multiple protein will be allowed")
 
+    protein_prefix = parameter.StringParameter(
+        'protein_prefix',
+        default='PRT',
+        help_text='Protein prefix used to identify the protein'
+    )
+
     def begin(self):
         self.opt = vars(self.args)
         self.opt['Logger'] = self.log
@@ -73,7 +79,7 @@ class ProteinSetting(OERecordComputeCube):
 
             name = protein.GetTitle()[0:12]
             if not name:
-                name = 'PRT'
+                name = self.opt['protein_prefix']
 
             record.set_value(Fields.title, name)
             record.set_value(Fields.id, self.count)

@@ -30,8 +30,8 @@ ofs: Output file
 """
 
 # *************USER SETTING**************
-yank_iteration_per_chunk = 1000
-chunks = 1
+yank_iteration_per_chunk = 5
+chunks = 2
 # ***************************************
 
 cube_list = []
@@ -125,16 +125,20 @@ job.add_cube(equil)
 cube_list.append(equil)
 
 for i in range(0, chunks):
-    solvationfe = YankSolvationFECube("SovationFE"+str(i))
-    solvationfe.promote_parameter('iterations', promoted_name='iterations'+str(i),
+    solvationfe = YankSolvationFECube("SovationFE" + str(i), title="SovationFE" + str(i))
+    solvationfe.promote_parameter('iterations', promoted_name='iterations' + str(i),
                                   default=yank_iteration_per_chunk*(i+1))
-
     solvationfe.promote_parameter('verbose', promoted_name='verbose' + str(i),
                                   default=True)
+    solvationfe.promote_parameter('max_parallel', promoted_name='max_parallel' + str(i),
+                                  default=1)
+    solvationfe.promote_parameter('min_parallel', promoted_name='min_parallel' + str(i),
+                                  default=1)
 
     if i == 0:
         solvationfe.promote_parameter('rerun', promoted_name='rerun' + str(i), default=False)
     else:
+        solvationfe.promote_parameter('minimize', promoted_name='minimize' + str(i), default=False)
         solvationfe.promote_parameter('rerun', promoted_name='rerun' + str(i), default=True)
 
     if i == (chunks - 1):

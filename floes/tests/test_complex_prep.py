@@ -11,7 +11,7 @@ FILE_DIR = os.path.join(PACKAGE_DIR, "tests", "data")
 
 
 class ComplexPrepTestCase(TestCase):
-    """ Invocation: python -m pytest floes/floe_tests/ -s """
+    """ Invocation: python -m pytest floes/tests/ -s -v"""
 
     def test_complex_prep(self):
 
@@ -22,8 +22,7 @@ class ComplexPrepTestCase(TestCase):
         run_args = [
             '--protein', protein_fn,
             '--ligands', ligand_fn,
-            '--max_conformers', '800',
-            '--out', 'success.oedb',
+            '--out', 'prep.oedb',
             '--fail-data_out', 'fail.oedb',
         ]
 

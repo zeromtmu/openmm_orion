@@ -18,7 +18,7 @@ from datarecord import OEWriteRecord
 
 # ifs = OEMolRecordStream("p38_l38_a_2n_nvt_5ns.oeb.gz")
 
-ifs = oechem.oeifstream("nvt.oedb")
+ifs = oechem.oeifstream("test.oedb")
 records = []
 while True:
     record = read_mol_record(ifs)
@@ -34,11 +34,11 @@ for record in records:
     stages = record.get_value(Fields.md_stages)
     print("Len stages = {}".format(len(stages)))
     stage = stages[-1]
-    print(stage.has_value(Fields.log_data))
-    print(stage.get_value(Fields.log_data))
-    # mdsystem = stage.get_value(Fields.md_system)
-    # pmd = mdsystem.get_value(Fields.structure)
-    # pmd.save("sys.pdb", overwrite=True)
+    #print(stage.has_value(Fields.log_data))
+    #print(stage.get_value(Fields.log_data))
+    mdsystem = stage.get_value(Fields.md_system)
+    pmd = mdsystem.get_value(Fields.structure)
+    pmd.save("sys.pdb", overwrite=True)
     # complex = mdsystem.get_value(Fields.topology)
     # with oechem.oemolostream("compl.oeb") as ofs:
     #     oechem.OEWriteConstMolecule(ofs, complex)

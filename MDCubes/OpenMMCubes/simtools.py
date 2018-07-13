@@ -27,6 +27,7 @@ import os
 import fcntl
 import time
 from floe.api.orion import in_orion
+from MDCubes.OpenMMCubes.utils import StateDataReporterName
 
 
 def local_cluster(sim):
@@ -426,11 +427,18 @@ def getReporters(totalSteps=None, outfname=None, **opt):
 
         reporters.append(state_reporter)
 
-        progress_reporter = app.StateDataReporter(stdout, separator="\t",
+        # progress_reporter = app.StateDataReporter(stdout, separator="\t",
+        #                                           reportInterval=reporter_steps,
+        #                                           step=True, totalSteps=totalSteps,
+        #                                           time=True, speed=True, progress=True,
+        #                                           elapsedTime=True, remainingTime=True)
+
+        progress_reporter = StateDataReporterName(stdout, system_name=opt['system_title']+'_'+str(opt['system_id']),
+                                                  separator="\t",
                                                   reportInterval=reporter_steps,
-                                                  step=True, totalSteps=totalSteps,
+                                                  step=False, totalSteps=totalSteps,
                                                   time=True, speed=True, progress=True,
-                                                  elapsedTime=True, remainingTime=True)
+                                                  elapsedTime=False, remainingTime=True)
 
         reporters.append(progress_reporter)
 
