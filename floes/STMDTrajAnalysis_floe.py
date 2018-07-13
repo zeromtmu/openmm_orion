@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 from floe.api import WorkFloe
 from cuberecord import DataSetWriterCube, DataSetReaderCube
+from oecubeutils.hypercubes.shard_reader import CollectionReader, RecordsShardToRecordConverterParallel
 from TrjAnalysisCubes.TrajToOEMol import TrajToOEMolCube
 from TrjAnalysisCubes.LigBasedTrajClustering import ClusterOETrajCube
 from TrjAnalysisCubes.MDTrajAnalysisFloeReport import MDTrajAnalysisClusterReport
@@ -22,9 +23,13 @@ Outputs:
 STMD_results.oedb
 """
 #
-ifs = DataSetReaderCube("ifs")
+#ifs = DataSetReaderCube("ifs")
+#ifs.promote_parameter("data_in", promoted_name="in", title="System Input OERecord", description="OERecord file name")
 #
-ifs.promote_parameter("data_in", promoted_name="in", title="System Input OERecord", description="OERecord file name")
+ifs = CollectionReader("ifs")
+ifs.promote_parameter("collection", promoted_name="collection",
+    title="System Input OECollection", description="OECollection file name")
+converterCube = RecordsShardToRecordConverterParallel("converterCube")
 #
 trajCube = TrajToOEMolCube("TrajToOEMolCube")
 clusCube = ClusterOETrajCube("ClusterOETrajCube")
@@ -34,9 +39,10 @@ reportCube = MDTrajAnalysisClusterReport("MDTrajAnalysisClusterReport")
 #ofs.promote_parameter("data_out", promoted_name="out", title="System Output OERecord", description="OERecord file name")
 #
 #job.add_cubes(ifs, trajCube, clusCube, reportCube, ofs)
-job.add_cubes(ifs, trajCube, clusCube, reportCube)
+job.add_cubes(ifs, converterCube, trajCube, clusCube, reportCube)
 #
-ifs.success.connect(trajCube.intake)
+ifs.success.connect(converterCube.intake)
+converterCube.success.connect(trajCube.intake)
 trajCube.success.connect(clusCube.intake)
 clusCube.success.connect(reportCube.intake)
 #reportCube.success.connect(ofs.intake)
