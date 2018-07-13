@@ -122,7 +122,8 @@ def CheckAndGetValue( record, field):
         return record.get_value(field)
 
 
-class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
+#class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
+class MDTrajAnalysisClusterReport(OERecordComputeCube):
     title = 'Extract relevant outputs of MD Traj Cluster  Analysis'
 
     version = "0.1.0"
@@ -209,7 +210,7 @@ class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
             img = oedepict.OEImage(400, 300)
             oedepict.OERenderMolecule(img, ligInitPose)
 
-            with open("md_clus_report.html", 'w+') as report_file:
+            with open("md_clus_report.html", 'a') as report_file:
                 report_file.write(_clus_floe_report_template.format(
                     query_depiction=oedepict.OEWriteImageToString("svg", img).decode("utf8"),
                     rmsd_hist=_trim_svg(trajHistRMSD_svg),
