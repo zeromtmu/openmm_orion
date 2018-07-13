@@ -56,7 +56,8 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
     the solvated protein:ligand complex and extract
     multiconf OEMols for Ligand and Protein.
 
-    Input parameters:    -------
+    Input parameters:
+    -------
     oechem.OEDataRecord - Streamed-in MD results for input
 
     Output:
@@ -147,7 +148,6 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
 
             # Overwrite MDStages with only first (setup) and last (production) stages
             newMDStages = [ md_stage0_record, md_stageLast_record]
-            #record.set_value( OEField( 'MDStages', Types.RecordVec), newMDStages)
             record.set_value( Fields.md_stages, newMDStages)
 
             # Create new record with OETraj results
