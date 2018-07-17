@@ -36,8 +36,6 @@ from ProtPrepCubes.cubes import ProteinSetting
 
 from LigPrepCubes.cubes import (LigandChargeCube,
                                 LigandSetting)
-from oecubeutils.hypercubes.shard_writer import CollectionWriter
-
 from MDCubes.MDUtils.hypercubes.shard_writer import CollectionWriter
 
 job = WorkFloe('Short Trajectory MD')
