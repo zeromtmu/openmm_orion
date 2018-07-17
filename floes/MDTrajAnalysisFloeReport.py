@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from floe.api import WorkFloe
 from cuberecord import DataSetWriterCube, DataSetReaderCube
-from oecubeutils.hypercubes.shard_reader import CollectionReader
+from MDCubes.MDUtils.cubes import CollectionReader, RecordsShardToRecordConverterParallel
 from TrjAnalysisCubes.MDTrajAnalysisFloeReport import MDTrajAnalysisClusterReport
 #
 job = WorkFloe("Testing writing out traj analysis results")

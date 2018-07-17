@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from floe.api import WorkFloe
 from cuberecord import DataSetWriterCube, DataSetReaderCube
-from oecubeutils.hypercubes.shard_reader import CollectionReader, RecordsShardToRecordConverterParallel
+from MDCubes.MDUtils.cubes import CollectionReader, RecordsShardToRecordConverterParallel
 from TrjAnalysisCubes.TrajToOEMol import TrajToOEMolCube
 from TrjAnalysisCubes.LigBasedTrajClustering import ClusterOETrajCube
 from TrjAnalysisCubes.MDTrajAnalysisFloeReport import MDTrajAnalysisClusterReport
