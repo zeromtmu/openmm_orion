@@ -123,7 +123,7 @@ def CheckAndGetValue( record, field):
 
 
 #class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
-class MDTrajAnalysisClusterReport(OERecordComputeCube):
+class MDTrajAnalysisClusterReport_old(OERecordComputeCube):
     title = 'Extract relevant outputs of MD Traj Cluster  Analysis'
 
     version = "0.1.0"

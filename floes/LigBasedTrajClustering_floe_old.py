@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from floe.api import WorkFloe
 from cuberecord import DataSetWriterCube, DataSetReaderCube
-from TrjAnalysisCubes.LigBasedTrajClustering_old import ClusterOETrajCube
+from TrjAnalysisCubes.LigBasedTrajClustering_old import ClusterOETrajCube_old
 #
 job = WorkFloe("Testing Traj OEMol Clustering")
 #
@@ -24,7 +24,7 @@ ifs = DataSetReaderCube("ifs")
 #
 ifs.promote_parameter("data_in", promoted_name="in", title="System Input OERecord", description="OERecord file name")
 #
-scube = ClusterOETrajCube("ClusterOETrajCube")
+scube = ClusterOETrajCube_old("ClusterOETrajCube_old")
 #
 ofs = DataSetWriterCube('ofs', title='OFS-Success')
 ofs.promote_parameter("data_out", promoted_name="out", title="System Output OERecord", description="OERecord file name")

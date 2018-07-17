@@ -40,7 +40,7 @@ def CheckAndGetValue( record, field):
         return record.get_value(field)
 
 
-class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
+class TrajToOEMolCube_old(ParallelMixin, OERecordComputeCube):
     title = 'Traj to OEMol Cube'
 
     version = "0.1.0"

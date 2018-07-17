@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 from floe.api import WorkFloe
 from cuberecord import DataSetWriterCube, DataSetReaderCube
-from oecubeutils.hypercubes.shard_reader import CollectionReader
-from TrjAnalysisCubes.MDTrajAnalysisFloeReport_old import MDTrajAnalysisClusterReport
+from MDCubes.MDUtils.hypercubes.shard_reader import CollectionReader, RecordsShardToRecordConverterParallel
+from TrjAnalysisCubes.MDTrajAnalysisFloeReport_old import MDTrajAnalysisClusterReport_old
 #
 job = WorkFloe("Testing writing out traj analysis results")
 #
@@ -26,7 +26,7 @@ ofs: Output file
 ifs = DataSetReaderCube("ifs")
 ifs.promote_parameter("data_in", promoted_name="in", title="System Input OERecord", description="OERecord file name")
 #
-scube = MDTrajAnalysisClusterReport("MDTrajAnalysisClusterReport")
+scube = MDTrajAnalysisClusterReport_old("MDTrajAnalysisClusterReport_old")
 #
 # ofs = DataSetWriterCube('ofs', title='OFS-Success')
 # ofs.promote_parameter("data_out", promoted_name="out", title="System Output OERecord", description="OERecord file name")

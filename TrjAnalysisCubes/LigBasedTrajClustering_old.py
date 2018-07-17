@@ -39,7 +39,7 @@ def CheckAndGetValue( record, field):
         return record.get_value(field)
 
 
-class ClusterOETrajCube(ParallelMixin, OERecordComputeCube):
+class ClusterOETrajCube_old(ParallelMixin, OERecordComputeCube):
     title = 'Cluster Protein-Ligand Traj OEMols'
 
     version = "0.1.0"
