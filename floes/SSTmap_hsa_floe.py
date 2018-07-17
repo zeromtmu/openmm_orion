@@ -18,31 +18,53 @@
 # or its use.
 
 from floe.api import WorkFloe
-
-from MDCubes.MDUtils.cubes import (CollectionReader,
-                                   RecordsShardToRecordConverterParallel)
-
-from cuberecord import DataSetWriterCube
+from cuberecord import DataSetWriterCube, DataSetReaderCube
+from TrjAnalysisCubes.sstmap import SSTMapHsa
 
 
-wf = WorkFloe('Shard Collection Reader')
+job = WorkFloe("Testing SSTMAP HSA")
 
-reader = CollectionReader('Collection Reader')
-reader.promote_parameter(
-    'collection',
-    promoted_name='collection',
-    description="Identifier of Collection, recommended to use ocli to find collections"
-)
+job.description = """
+ Testing Floe
 
-converter = RecordsShardToRecordConverterParallel('Converter')
+ Ex. python floes/up.py --ligands ligands.oeb
+ --ofs-data_out prep.oeb
 
+ Parameters:
+ -----------
+ ligands (file): OEB file of the prepared ligands
+
+ Outputs:
+ --------
+ ofs: Output file
+ """
+
+job.classification = [
+    ["OpenEye", "Example"],
+    ["OpenEye", "Custom"]
+]
+job.tags = [tag for lists in job.classification for tag in lists]
+
+ifs = DataSetReaderCube("ifs")
 ofs = DataSetWriterCube("ofs")
+fail = DataSetWriterCube("fail")
+ligand_ifs = DataSetReaderCube("ligand_ifs")
+
+# Promotes the parameter
+ifs.promote_parameter("data_in", promoted_name="in")
+ligand_ifs.promote_parameter("data_in", promoted_name="ligand")
+
 ofs.promote_parameter("data_out", promoted_name="out")
+fail.set_parameters(data_out="fail.oedb")
 
-wf.add_cubes(reader, converter, ofs)
+sstmap_hsa = SSTMapHsa("sstmap_hsa")
 
-reader.success.connect(converter.intake)
-converter.success.connect(ofs.intake)
+job.add_cubes(ifs, ligand_ifs, ofs, fail, sstmap_hsa)
+
+ifs.success.connect(sstmap_hsa.intake)
+ligand_ifs.success.connect(sstmap_hsa.ligand_port)
+sstmap_hsa.success.connect(ofs.intake)
+sstmap_hsa.failure.connect(fail.intake)
 
 if __name__ == "__main__":
-    wf.run()
+    job.run()

@@ -125,6 +125,12 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
         default=10.0,
         help_text="The non-bonded cutoff in angstroms")
 
+    ligand_res_name = parameter.StringParameter(
+        'ligand_res_name',
+        required=True,
+        default='LIG',
+        help_text='Ligand residue name')
+
     verbose = parameter.BooleanParameter(
         'verbose',
         default=False,
@@ -200,6 +206,17 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
 
             if not record.has_value(Fields.id):
                 raise ValueError("Missing the Primary Molecule field")
+
+            prot_split, lig_split, water, excipients = oeommutils.split(system, ligand_res_name=opt['ligand_res_name'])
+
+            fchg_lig = 0
+            for at in lig_split.GetAtoms():
+                fchg_lig += at.GetFormalCharge()
+
+            if fchg_lig != 0:
+                alchemical_pme_treatment = 'exact'
+            else:
+                alchemical_pme_treatment = 'direct-space'
 
             opt['system_title'] = system_title
 
@@ -311,6 +328,7 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                                                  resume_sim='yes' if opt['rerun'] else 'no',
                                                  resume_setup='yes' if opt['rerun'] else 'no',
                                                  hydrogen_mass=4.0 if opt['hmr'] else 1.0,
+                                                 alchemical_pme_treatment=alchemical_pme_treatment,
                                                  solvated_pdb_fn=solvated_structure_fn,
                                                  solvated_xml_fn=solvated_omm_sys_serialized_fn,
                                                  solute_pdb_fn=solute_structure_fn,
@@ -329,8 +347,10 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                     analysis = experiment_to_analyze.auto_analyze()
 
                     # Calculate solvation free energy and its error
-                    DeltaG_solvation = analysis['free_energy']['free_energy_diff']
-                    dDeltaG_solvation = analysis['free_energy']['free_energy_diff_error']
+                    DeltaG_solvation = analysis['free_energy']['free_energy_diff_unit'].\
+                                         in_units_of(unit.kilocalorie_per_mole)/unit.kilocalorie_per_mole
+                    dDeltaG_solvation = analysis['free_energy']['free_energy_diff_error_unit'].\
+                                          in_units_of(unit.kilocalorie_per_mole)/unit.kilocalorie_per_mole
 
                     # Create OE Field to save the Solvation Free Energy in kcal/mol
                     DG_Field = OEField('DG', Types.Float,
@@ -346,10 +366,12 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                     result_fn = os.path.join(output_directory, 'results.html')
                     opt_2 = '--output={}'.format(result_fn)
 
+                    opt_3 = '--format=html'
+
                     try:
                         os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
-                        subprocess.check_call(['yank', 'analyze', 'report', opt_1, opt_2])
+                        subprocess.check_call(['yank', 'analyze', 'report', opt_1, opt_2, opt_3])
 
                         with open(result_fn, 'r') as f:
                             result_str = f.read()
@@ -584,7 +606,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
     restraints = parameter.StringParameter(
         'restraints',
         required=True,
-        default='boresch',
+        default='harmonic',
         choices=['harmonic', 'boresch'],
         help_text='Select the restraint type')
 
@@ -603,6 +625,16 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
         try:
             opt = dict(self.opt)
+
+            self.log.warn(">>>>>>> {} verbose {}".format(self.title, self.opt['verbose']))
+            self.log.warn(">>>>>>> {} rerun {}".format(self.title, self.opt['rerun']))
+            self.log.warn(">>>>>>> {} analyze {}".format(self.title, self.opt['analyze']))
+            self.log.warn(">>>>>>> {} iterations {}".format(self.title, self.opt['iterations']))
+            self.log.warn(">>>>>>> {} pressure {}".format(self.title, self.opt['pressure']))
+            self.log.warn(">>>>>>> {} temperature {}".format(self.title, self.opt['temperature']))
+            self.log.warn(">>>>>>> {} minimize {}".format(self.title, self.opt['minimize']))
+            self.log.warn(">>>>>>> {} min_parallel {}".format(self.title, self.opt['min_parallel']))
+            self.log.warn(">>>>>>> {} max_parallel {}".format(self.title, self.opt['max_parallel']))
 
             # Logger string
             str_logger = '-' * 32 + ' YANK BINDING CUBE PARAMETERS ' + '-' * 32
@@ -631,6 +663,14 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
             # Split the complex in components
             protein_split, ligand_split, water, excipients = oeommutils.split(complex,
                                                                               ligand_res_name=self.opt['ligand_resname'])
+            fchg_lig = 0
+            for at in ligand_split.GetAtoms():
+                fchg_lig += at.GetFormalCharge()
+
+            if fchg_lig != 0:
+                alchemical_pme_treatment = 'exact'
+            else:
+                alchemical_pme_treatment = 'direct-space'
 
             solvent = water.CreateCopy()
 
@@ -757,6 +797,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     resume_sim='yes' if opt['rerun'] else 'no',
                     resume_setup='yes' if opt['rerun'] else 'no',
                     hydrogen_mass=4.0 if opt['hmr'] else 1.0,
+                    alchemical_pme_treatment=alchemical_pme_treatment,
                     complex_pdb_fn=solvated_complex_structure_fn,
                     complex_xml_fn=solvated_complex_omm_serialized_fn,
                     solvent_pdb_fn=solvated_ligand_structure_fn,
@@ -778,9 +819,11 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     experiment_to_analyze = ExperimentAnalyzer(exp_dir)
                     analysis = experiment_to_analyze.auto_analyze()
 
-                    # Calculate binding free energy and its error
-                    DeltaG_binding = analysis['free_energy']['free_energy_diff']
-                    dDeltaG_binding = analysis['free_energy']['free_energy_diff_error']
+                    # Calculate binding free energy and its error in kcal/mol
+                    DeltaG_binding = analysis['free_energy']['free_energy_diff_unit'].\
+                                         in_units_of(unit.kilocalorie_per_mole)/unit.kilocalorie_per_mole
+                    dDeltaG_binding = analysis['free_energy']['free_energy_diff_error_unit'].\
+                                          in_units_of(unit.kilocalorie_per_mole)/unit.kilocalorie_per_mole
 
                     # Create OE Field to save the Solvation Free Energy in kcal/mol
                     DG_Field = OEField('DG', Types.Float,
@@ -796,11 +839,13 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     result_fn = os.path.join(output_directory, 'results.html')
                     opt_2 = '--output={}'.format(result_fn)
 
+                    opt_3 = '--format=html'
+
                     try:
 
                         os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
-                        subprocess.check_call(['yank', 'analyze', 'report', opt_1, opt_2])
+                        subprocess.check_call(['yank', 'analyze', 'report', opt_1, opt_2, opt_3])
 
                         with open(result_fn, 'r') as f:
                             result_str = f.read()
@@ -837,16 +882,6 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
                 with open(os.path.join(output_directory, "experiments/experiments.log"), 'r') as flog:
                     str_logger += '\n' + flog.read()
-
-                self.log.warn(">>>>>>> {} verbose {}".format(self.title, self.opt['verbose']))
-                self.log.warn(">>>>>>> {} rerun {}".format(self.title, self.opt['rerun']))
-                self.log.warn(">>>>>>> {} analyze {}".format(self.title, self.opt['analyze']))
-                self.log.warn(">>>>>>> {} iterations {}".format(self.title, self.opt['iterations']))
-                self.log.warn(">>>>>>> {} pressure {}".format(self.title, self.opt['pressure']))
-                self.log.warn(">>>>>>> {} temperature {}".format(self.title, self.opt['temperature']))
-                self.log.warn(">>>>>>> {} minimize {}".format(self.title, self.opt['minimize']))
-                self.log.warn(">>>>>>> {} min_parallel {}".format(self.title, self.opt['min_parallel']))
-                self.log.warn(">>>>>>> {} max_parallel {}".format(self.title, self.opt['max_parallel']))
 
                 str_logger += ">>>>>>> {} verbose {}".format(self.title, self.opt['verbose'])
                 str_logger += ">>>>>>> {} rerun {}".format(self.title, self.opt['rerun'])
@@ -886,101 +921,101 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
         return
 
 
-class TestFECube(ParallelMixin, OERecordComputeCube):
-    version = "0.0.0"
-    title = "YankSolvationFECube"
-    description = """
-    Compute the hydration free energy of a small molecule with YANK.
-
-    This cube uses the YANK alchemical free energy code to compute the
-    transfer free energy of one or more small molecules from gas phase
-    to the selected solvent.
-
-    See http://getyank.org for more information about YANK.
-    """
-    classification = [["Alchemical free energy calculations"]]
-    tags = [tag for lists in classification for tag in lists]
-
-    # Override defaults for some parameters
-    parameter_overrides = {
-        "gpu_count": {"default": 1},
-        "memory_mb": {"default": 6000},
-        "instance_tags": {"default": "cuda8"},
-        "spot_policy": {"default": "Allowed"},
-        "prefetch_count": {"default": 1},  # 1 molecule at a time
-        "item_count": {"default": 1}  # 1 molecule at a time
-    }
-
-    temperature = parameter.DecimalParameter(
-        'temperature',
-        default=300.0,
-        help_text="Temperature (Kelvin)")
-
-    pressure = parameter.DecimalParameter(
-        'pressure',
-        default=1.0,
-        help_text="Pressure (atm)")
-
-    minimize = parameter.BooleanParameter(
-        'minimize',
-        default=True,
-        help_text="Minimize input system")
-
-    iterations = parameter.IntegerParameter(
-        'iterations',
-        default=1000,
-        help_text="Number of iterations")
-
-    nsteps_per_iteration = parameter.IntegerParameter(
-        'nsteps_per_iteration',
-        default=500,
-        help_text="Number of steps per iteration")
-
-    nonbondedCutoff = parameter.DecimalParameter(
-        'nonbondedCutoff',
-        default=10.0,
-        help_text="The non-bonded cutoff in angstroms")
-
-    verbose = parameter.BooleanParameter(
-        'verbose',
-        default=False,
-        help_text="Print verbose YANK logging output")
-
-    rerun = parameter.BooleanParameter(
-        'rerun',
-        default=False,
-        help_text="Start Yank Restart procedure")
-
-    analyze = parameter.BooleanParameter(
-        'analyze',
-        default=False,
-        help_text="Start Yank Analysis on the collected results")
-
-    hmr = parameter.BooleanParameter(
-        'hmr',
-        default=False,
-        description='Hydrogen Mass Repartitioning')
-
-    def begin(self):
-        #self.opt = self.args.__dict__
-        self.opt = vars(self.args)
-        self.opt['Logger'] = self.log
-
-    def process(self, record, port):
-        try:
-            self.log.warn(">>>>>>> {} verbose {}".format(self.title, self.opt['verbose']))
-            self.log.warn(">>>>>>> {} rerun {}".format(self.title, self.opt['rerun']))
-            self.log.warn(">>>>>>> {} analyze {}".format(self.title, self.opt['analyze']))
-            self.log.warn(">>>>>>> {} iterations {}".format(self.title, self.opt['iterations']))
-            self.log.warn(">>>>>>> {} pressure {}".format(self.title, self.opt['pressure']))
-            self.log.warn(">>>>>>> {} temperature {}".format(self.title, self.opt['temperature']))
-            self.log.warn(">>>>>>> {} minimize {}".format(self.title, self.opt['minimize']))
-            self.log.warn(">>>>>>> {} min_parallel {}".format(self.title, self.opt['min_parallel']))
-            self.log.warn(">>>>>>> {} max_parallel {}".format(self.title, self.opt['max_parallel']))
-
-            self.success.emit(record)
-        except:
-            # Attach an error message to the molecule that failed
-            self.log.error(traceback.format_exc())
-            # Return failed mol
-            self.failure.emit(record)
+# class TestFECube(ParallelMixin, OERecordComputeCube):
+#     version = "0.0.0"
+#     title = "YankSolvationFECube"
+#     description = """
+#     Compute the hydration free energy of a small molecule with YANK.
+#
+#     This cube uses the YANK alchemical free energy code to compute the
+#     transfer free energy of one or more small molecules from gas phase
+#     to the selected solvent.
+#
+#     See http://getyank.org for more information about YANK.
+#     """
+#     classification = [["Alchemical free energy calculations"]]
+#     tags = [tag for lists in classification for tag in lists]
+#
+#     # Override defaults for some parameters
+#     parameter_overrides = {
+#         "gpu_count": {"default": 1},
+#         "memory_mb": {"default": 6000},
+#         "instance_tags": {"default": "cuda8"},
+#         "spot_policy": {"default": "Allowed"},
+#         "prefetch_count": {"default": 1},  # 1 molecule at a time
+#         "item_count": {"default": 1}  # 1 molecule at a time
+#     }
+#
+#     temperature = parameter.DecimalParameter(
+#         'temperature',
+#         default=300.0,
+#         help_text="Temperature (Kelvin)")
+#
+#     pressure = parameter.DecimalParameter(
+#         'pressure',
+#         default=1.0,
+#         help_text="Pressure (atm)")
+#
+#     minimize = parameter.BooleanParameter(
+#         'minimize',
+#         default=True,
+#         help_text="Minimize input system")
+#
+#     iterations = parameter.IntegerParameter(
+#         'iterations',
+#         default=1000,
+#         help_text="Number of iterations")
+#
+#     nsteps_per_iteration = parameter.IntegerParameter(
+#         'nsteps_per_iteration',
+#         default=500,
+#         help_text="Number of steps per iteration")
+#
+#     nonbondedCutoff = parameter.DecimalParameter(
+#         'nonbondedCutoff',
+#         default=10.0,
+#         help_text="The non-bonded cutoff in angstroms")
+#
+#     verbose = parameter.BooleanParameter(
+#         'verbose',
+#         default=False,
+#         help_text="Print verbose YANK logging output")
+#
+#     rerun = parameter.BooleanParameter(
+#         'rerun',
+#         default=False,
+#         help_text="Start Yank Restart procedure")
+#
+#     analyze = parameter.BooleanParameter(
+#         'analyze',
+#         default=False,
+#         help_text="Start Yank Analysis on the collected results")
+#
+#     hmr = parameter.BooleanParameter(
+#         'hmr',
+#         default=False,
+#         description='Hydrogen Mass Repartitioning')
+#
+#     def begin(self):
+#         #self.opt = self.args.__dict__
+#         self.opt = vars(self.args)
+#         self.opt['Logger'] = self.log
+#
+#     def process(self, record, port):
+#         try:
+#             self.log.warn(">>>>>>> {} verbose {}".format(self.title, self.opt['verbose']))
+#             self.log.warn(">>>>>>> {} rerun {}".format(self.title, self.opt['rerun']))
+#             self.log.warn(">>>>>>> {} analyze {}".format(self.title, self.opt['analyze']))
+#             self.log.warn(">>>>>>> {} iterations {}".format(self.title, self.opt['iterations']))
+#             self.log.warn(">>>>>>> {} pressure {}".format(self.title, self.opt['pressure']))
+#             self.log.warn(">>>>>>> {} temperature {}".format(self.title, self.opt['temperature']))
+#             self.log.warn(">>>>>>> {} minimize {}".format(self.title, self.opt['minimize']))
+#             self.log.warn(">>>>>>> {} min_parallel {}".format(self.title, self.opt['min_parallel']))
+#             self.log.warn(">>>>>>> {} max_parallel {}".format(self.title, self.opt['max_parallel']))
+#
+#             self.success.emit(record)
+#         except:
+#             # Attach an error message to the molecule that failed
+#             self.log.error(traceback.format_exc())
+#             # Return failed mol
+#             self.failure.emit(record)

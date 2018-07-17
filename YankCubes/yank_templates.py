@@ -80,6 +80,7 @@ options:
   resume_setup: {resume_sim}
   hydrogen_mass: {hydrogen_mass:f}*amu
   processes_per_experiment: 1
+  alchemical_pme_treatment: {alchemical_pme_treatment}
 
 mcmc_moves:
   langevin:
@@ -189,6 +190,7 @@ options:
   resume_setup: {resume_sim}
   hydrogen_mass: {hydrogen_mass:f}*amu
   processes_per_experiment: 1
+  alchemical_pme_treatment: {alchemical_pme_treatment}
 
 mcmc_moves:
   langevin:
