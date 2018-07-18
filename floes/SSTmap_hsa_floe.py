@@ -19,7 +19,7 @@
 
 from floe.api import WorkFloe
 from cuberecord import DataSetWriterCube, DataSetReaderCube
-from TrjAnalysisCubes.sstmap import SSTMapHsa
+from TrjAnalysisCubes.sstmap_cubes import SSTMapHsa
 
 
 job = WorkFloe("Testing SSTMAP HSA")
@@ -45,19 +45,20 @@ job.classification = [
 ]
 job.tags = [tag for lists in job.classification for tag in lists]
 
-ifs = DataSetReaderCube("ifs")
-ofs = DataSetWriterCube("ofs")
-fail = DataSetWriterCube("fail")
-ligand_ifs = DataSetReaderCube("ligand_ifs")
 
-# Promotes the parameter
-ifs.promote_parameter("data_in", promoted_name="in")
+ifs = DataSetReaderCube("ifs", title="System Reader")
+ifs.promote_parameter("data_in", promoted_name="system")
+
+ligand_ifs = DataSetReaderCube("ligand_ifs", title="Ligand Reader")
 ligand_ifs.promote_parameter("data_in", promoted_name="ligand")
 
-ofs.promote_parameter("data_out", promoted_name="out")
-fail.set_parameters(data_out="fail.oedb")
-
 sstmap_hsa = SSTMapHsa("sstmap_hsa")
+
+ofs = DataSetWriterCube("ofs", title="Out")
+ofs.promote_parameter("data_out", promoted_name="out")
+
+fail = DataSetWriterCube("fail", title="Fail")
+fail.set_parameters(data_out="fail.oedb")
 
 job.add_cubes(ifs, ligand_ifs, ofs, fail, sstmap_hsa)
 

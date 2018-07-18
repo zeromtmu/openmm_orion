@@ -20,7 +20,8 @@
 
 from floe.api import WorkFloe
 from cuberecord import DataSetWriterCube, DataSetReaderCube
-from TrjAnalysisCubes.sstmap import SSTMapGist
+from TrjAnalysisCubes.sstmap_cubes import SSTMapGist
+from LigPrepCubes.cubes import LigandSetting
 
 job = WorkFloe("SSTMAP GIST")
 
@@ -45,24 +46,27 @@ job.classification = [
 ]
 job.tags = [tag for lists in job.classification for tag in lists]
 
-ifs = DataSetReaderCube("ifs")
-ofs = DataSetWriterCube("ofs")
-fail = DataSetWriterCube("fail")
-ligand_ifs = DataSetReaderCube("ligand_ifs")
+ifs = DataSetReaderCube("ifs", title="System Reader")
+ifs.promote_parameter("data_in", promoted_name="system")
 
-# Promotes the parameter
-ifs.promote_parameter("data_in", promoted_name="in")
+ligand_ifs = DataSetReaderCube("ligand_ifs", title="Ligand Reader")
 ligand_ifs.promote_parameter("data_in", promoted_name="ligand")
 
-ofs.promote_parameter("data_out", promoted_name="out")
-fail.set_parameters(data_out="fail.oedb")
+lig_setting = LigandSetting("LigandSetting", title="Ligand Setting")
 
 sstmap_gist = SSTMapGist("sstmap_gist", title="SSTMap GIST")
 
-job.add_cubes(ifs, ligand_ifs, ofs, fail, sstmap_gist)
+ofs = DataSetWriterCube("ofs", title="Out")
+ofs.promote_parameter("data_out", promoted_name="out")
+
+fail = DataSetWriterCube("fail", title="Fail")
+fail.set_parameters(data_out="fail.oedb")
+
+job.add_cubes(ifs, ligand_ifs, lig_setting, ofs, fail, sstmap_gist)
 
 ifs.success.connect(sstmap_gist.intake)
-ligand_ifs.success.connect(sstmap_gist.ligand_port)
+ligand_ifs.success.connect(lig_setting.intake)
+lig_setting.success.connect(sstmap_gist.ligand_port)
 sstmap_gist.success.connect(ofs.intake)
 sstmap_gist.failure.connect(fail.intake)
 

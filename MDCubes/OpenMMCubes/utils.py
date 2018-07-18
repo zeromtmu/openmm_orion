@@ -116,14 +116,19 @@ def upload(filename):
     return file_id
 
 
-def download(file_id):
+def download(file_id, suffix=None, delete=False):
 
     filename = file_id
 
     if in_orion():
+
         filename = file_id.retrieve()
-        # if delete:
-        #     file_id.delete()
+
+        if delete:
+            file_id.delete()
+
+    if suffix is not None:
+        filename += suffix
 
     return filename
 

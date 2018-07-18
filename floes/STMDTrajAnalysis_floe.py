@@ -32,14 +32,14 @@ job = WorkFloe("Analysing Trajectory from Short Trajectory MD")
 
 job.description = """
 Analysing Trajectory from Short Trajectory MD
-#
+
 Ex. python floes/STMDTrajAnalysis_floe.py  --in STMD_results.oedb
 --out STMD_analysisResults.oedb
-#
+
 Parameters:
 -----------
 {none so far}
-#
+
 Outputs:
 --------
 STMD_results.oedb

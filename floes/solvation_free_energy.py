@@ -115,12 +115,12 @@ solvationfe0.promote_parameter('pressure', promoted_name='pressure', default=1.0
                                description='Pressure (atm)')
 solvationfe0.promote_parameter('hmr', promoted_name='hmr', default=False,
                                description='Hydrogen Mass Repartitioning')
-solvationfe0.promote_parameter('max_parallel', promoted_name='num_gpus', default=1,
-                               description='Number of GPUS to make available - '
-                                           'should be less than the number of ligands')
-solvationfe0.promote_parameter('min_parallel', promoted_name='num_gpus', default=1,
-                               description='Number of GPUS to make available - '
-                                           'should be less than the number of ligands')
+# solvationfe0.promote_parameter('max_parallel', promoted_name='num_gpus', default=1,
+#                                description='Number of GPUS to make available - '
+#                                            'should be less than the number of ligands')
+# solvationfe0.promote_parameter('min_parallel', promoted_name='num_gpus', default=1,
+#                                description='Number of GPUS to make available - '
+#                                            'should be less than the number of ligands')
 solvationfe0.set_parameters(rerun=False)
 solvationfe0.set_parameters(minimize=True)
 
@@ -179,8 +179,8 @@ for i in range(1, chunks):
     solvationfe.promote_parameter("verbose", promoted_name="verbose")
     solvationfe.promote_parameter("temperature", promoted_name="temperature")
     solvationfe.promote_parameter("pressure", promoted_name="pressure")
-    solvationfe.promote_parameter("max_parallel", promoted_name="num_gpus")
-    solvationfe.promote_parameter("min_parallel", promoted_name="num_gpus")
+    # solvationfe.promote_parameter("max_parallel", promoted_name="num_gpus")
+    # solvationfe.promote_parameter("min_parallel", promoted_name="num_gpus")
     solvationfe.promote_parameter("hmr", promoted_name="hmr")
     solvationfe.set_parameters(minimize=False)
     solvationfe.set_parameters(analyze=False)

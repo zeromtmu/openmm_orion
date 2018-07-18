@@ -50,6 +50,7 @@ def process_trajectory(trajectory_filename, parmed_obj, lig_resname, output_dir,
     # Fit trajectory to first frame if has ligand or to a reference
     if reference_topology is None:
         trajectory_fit = trajectory.superpose(trajectory, frame=0, atom_indices=atoms_tofit, parallel=False)
+        protein_selection = topology_fromtrajectory.select("protein")
     else:
         # Generate pdb file for reference topology
         reference_topology_filename = os.path.join(output_dir, "reference_topology.pdb")
@@ -62,6 +63,7 @@ def process_trajectory(trajectory_filename, parmed_obj, lig_resname, output_dir,
         # Create reference with mdtraj
         reference_topology_mdtraj = md.load_pdb(reference_topology_filename)
         ref_atoms_tofit = reference_topology_mdtraj.topology.select("protein and name CA")
+        protein_selection = reference_topology_mdtraj.topology.select("protein")
         print("traj: {}, frm: {}".format(len(atoms_tofit), len(ref_atoms_tofit)))
         trajectory_fit = trajectory.superpose(reference_topology_mdtraj, frame=0,
                                               atom_indices=ref_atoms_tofit,
@@ -78,7 +80,19 @@ def process_trajectory(trajectory_filename, parmed_obj, lig_resname, output_dir,
         strip_trajectory_filename = os.path.join(output_dir,"stripandfit_trajectory.dcd")
         trajectory_fit.save_dcd(filename=strip_trajectory_filename)
 
-    return strip_topology_filename, parm_filename, strip_trajectory_filename
+    # Generate protein for visualization
+    aligned_prot_filename = os.path.join(output_dir, "aligned_protein.pdb")
+    traj_frame = trajectory_fit[1]
+    traj_frame.atom_slice(protein_selection, inplace=True)
+    traj_frame.save_pdb(aligned_prot_filename)
+    # Create protein oemol
+    aligned_prot_oemol = oechem.OEMol()
+    ifs = oechem.oemolistream(aligned_prot_filename)
+    pdb_flavor = ofs.GetFlavor(oechem.OEFormat_PDB) ^ oechem.OEOFlavor_PDB_OrderAtoms
+    ifs.SetFlavor(oechem.OEFormat_PDB, pdb_flavor)
+    oechem.OEReadMolecule(ifs, aligned_prot_oemol)
+
+    return strip_topology_filename, parm_filename, strip_trajectory_filename, aligned_prot_oemol
 
 
 def process_clusters(output_dir, total_number_frames, cluster_frame_info_list):

@@ -145,12 +145,12 @@ abfe0.promote_parameter('restraints', promoted_name='restraints',
 abfe0.promote_parameter('protocol', promoted_name='protocol',
                         description='Select the protocol types. '
                                     'Choices: auto, restraint-on-when-decoupled')
-abfe0.promote_parameter('max_parallel', promoted_name='num_gpus', default=1,
-                        description='Number of GPUS to make available - '
-                                    'should be less than the number of ligands')
-abfe0.promote_parameter('min_parallel', promoted_name='num_gpus', default=1,
-                        description='Number of GPUS to make available - '
-                                    'should be less than the number of ligands')
+# abfe0.promote_parameter('max_parallel', promoted_name='num_gpus', default=1,
+#                         description='Number of GPUS to make available - '
+#                                     'should be less than the number of ligands')
+# abfe0.promote_parameter('min_parallel', promoted_name='num_gpus', default=1,
+#                         description='Number of GPUS to make available - '
+#                                     'should be less than the number of ligands')
 abfe0.promote_parameter('hmr', promoted_name='hmr', default=False, description='Hydrogen Mass Repartitioning')
 abfe0.set_parameters(rerun=False)
 abfe0.set_parameters(minimize=True)
@@ -285,8 +285,8 @@ for i in range(1, chunks):
     abfe.promote_parameter("verbose", promoted_name="verbose")
     abfe.promote_parameter("temperature", promoted_name="temperature")
     abfe.promote_parameter("pressure", promoted_name="pressure")
-    abfe.promote_parameter("max_parallel", promoted_name="num_gpus")
-    abfe.promote_parameter("min_parallel", promoted_name="num_gpus")
+    # abfe.promote_parameter("max_parallel", promoted_name="num_gpus")
+    # abfe.promote_parameter("min_parallel", promoted_name="num_gpus")
     abfe.promote_parameter("hmr", promoted_name="hmr")
     abfe.set_parameters(rerun=True)
     abfe.set_parameters(minimize=False)
