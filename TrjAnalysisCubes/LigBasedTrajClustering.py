@@ -19,24 +19,9 @@ from Standards import (Fields,
 
 from openeye import oechem
 
+import TrjAnalysisCubes.utils as utl
 #import TrjAnalysisCubes.Clustering_utils as clusutl
 import oetrajanalysis.Clustering_utils as clusutl
-
-def CheckAndGetValueFull( record, field, rType):
-    if not record.has_value(OEField(field,rType)):
-        #opt['Logger'].warn('Missing record field {}'.format( field))
-        print( 'Missing record field {}'.format( field))
-        raise ValueError('The record does not have field {}'.format( field))
-    else:
-        return record.get_value(OEField(field,rType))
-
-def CheckAndGetValue( record, field):
-    if not record.has_value(field):
-        #opt['Logger'].warn('Missing record field {}'.format( field))
-        print( 'Missing record field {}'.format( field.get_name() ))
-        raise ValueError('The record does not have field {}'.format( field.get_name() ))
-    else:
-        return record.get_value(field)
 
 
 class ClusterOETrajCube(ParallelMixin, OERecordComputeCube):
@@ -84,21 +69,21 @@ class ClusterOETrajCube(ParallelMixin, OERecordComputeCube):
 
             # Logger string
             opt['Logger'].info(' Beginning ClusterOETrajCube')
-            system_title = CheckAndGetValue( record, Fields.title)
+            system_title = utl.RequestOEFieldType( record, Fields.title)
             opt['Logger'].info('{} Attempting to cluster MD Traj'
                 .format(system_title) )
 
             # Check that the OETraj analysis has been done
-            analysesDone = CheckAndGetValueFull( record, 'AnalysesDone', Types.StringVec)
+            analysesDone = utl.RequestOEField( record, 'AnalysesDone', Types.StringVec)
             if 'OETraj' not in analysesDone:
                 raise ValueError('{} does not have OETraj analyses done'.format(system_title) )
             else:
                 opt['Logger'].info('{} found OETraj analyses'.format(system_title) )
 
             # Extract the relevant traj OEMols from the OETraj record
-            oetrajRecord = CheckAndGetValueFull( record, 'OETraj', Types.Record)
+            oetrajRecord = utl.RequestOEField( record, 'OETraj', Types.Record)
             opt['Logger'].info('{} found OETraj record'.format(system_title) )
-            ligTraj = CheckAndGetValueFull( oetrajRecord, 'LigTraj', Types.Chem.Mol)
+            ligTraj = utl.RequestOEField( oetrajRecord, 'LigTraj', Types.Chem.Mol)
             opt['Logger'].info('{} #atoms, #confs in ligand traj OEMol: {}, {}'
                 .format( system_title, ligTraj.NumAtoms(), ligTraj.NumConfs()) )
 
@@ -114,7 +99,7 @@ class ClusterOETrajCube(ParallelMixin, OERecordComputeCube):
             trajClus_svg = clusutl.ClusterLigTrajClusPlot(clusResults)
             # Calculate RMSD of ligand traj from ligand initial pose
             vecRmsd = oechem.OEDoubleArray( ligTraj.GetMaxConfIdx() )
-            ligInitPose = CheckAndGetValue( record, Fields.ligand)
+            ligInitPose = utl.RequestOEFieldType( record, Fields.ligand)
             oechem.OERMSD( ligInitPose, ligTraj, vecRmsd)
             rmsdInit_svg = clusutl.RmsdFromInitialPosePlot( clusResults['ClusterVec'], vecRmsd)
 

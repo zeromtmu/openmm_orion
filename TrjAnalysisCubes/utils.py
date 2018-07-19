@@ -4,6 +4,8 @@
 import numpy as np
 import openeye.oechem as oechem
 import mdtraj as md
+from datarecord import (Types, OEField, OERecord)
+
 
 def GetCardinalOrderOfProteinResNums( mol):
     # make map of protein res nums to the residue cardinal order index
@@ -131,4 +133,22 @@ def ExtractAlignedProtLigTraj_hdf5( mol, traj_hdf5Filename, fromLigCutoff=5.0, s
         confxyz = oechem.OEFloatArray( np.array(xyzList).ravel() )
         conf = protTraj.NewConf( confxyz)
     return protTraj, ligTraj
+
+
+def RequestOEField( record, field, rType):
+    if not record.has_value(OEField(field,rType)):
+        #opt['Logger'].warn('Missing record field {}'.format( field))
+        print( 'Missing record field {}'.format( field))
+        raise ValueError('The record does not have field {}'.format( field))
+    else:
+        return record.get_value(OEField(field,rType))
+
+def RequestOEFieldType( record, field):
+    if not record.has_value(field):
+        #opt['Logger'].warn('Missing record field {}'.format( field))
+        print( 'Missing record field {}'.format( field.get_name() ))
+        raise ValueError('The record does not have field {}'.format( field.get_name() ))
+    else:
+        return record.get_value(field)
+
 

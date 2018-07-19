@@ -20,27 +20,10 @@ from openeye import oechem
 
 import MDCubes.OpenMMCubes.utils as omm_utils
 
-import TrjAnalysisCubes.utils as trjutl
+import TrjAnalysisCubes.utils as utl
 #import TrjAnalysisCubes.OETrajBasicAnalysis_utils as oetrjutl
 import oetrajanalysis.OETrajBasicAnalysis_utils as oetrjutl
 import ensemble2img
-
-def CheckAndGetValueFull( record, field, rType):
-    if not record.has_value(OEField(field,rType)):
-        #opt['Logger'].warn('Missing record field {}'.format( field))
-        print( 'Missing record field {}'.format( field))
-        raise ValueError('The record does not have field {}'.format( field))
-    else:
-        return record.get_value(OEField(field,rType))
-
-def CheckAndGetValue( record, field):
-    if not record.has_value(field):
-        #opt['Logger'].warn('Missing record field {}'.format( field))
-        print( 'Missing record field {}'.format( field.get_name() ))
-        raise ValueError('The record does not have field {}'.format( field.get_name() ))
-    else:
-        return record.get_value(field)
-
 
 class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
     title = 'Traj to OEMol Cube'
@@ -91,21 +74,21 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
 
             # Logger string
             opt['Logger'].info(' ')
-            system_title = CheckAndGetValue( record, Fields.title)
+            system_title = utl.RequestOEFieldType( record, Fields.title)
             opt['Logger'].info('{}: Attempting MD Traj conversion into OEMols'
                 .format(system_title) )
 
             # Extract the MDStageRecord list
-            md_stages = CheckAndGetValue( record, Fields.md_stages)
+            md_stages = utl.RequestOEFieldType( record, Fields.md_stages)
             if len(md_stages)<2:
                 raise ValueError('{} does not have at least 2 MD Stages'.format(system_title) )
 
             # Extract and verify the traj filename for the last MD stage
             md_stageLast_record = md_stages[-1]
-            lastName = CheckAndGetValue( md_stageLast_record, Fields.stage_name )
+            lastName = utl.RequestOEFieldType( md_stageLast_record, Fields.stage_name )
             if lastName!='NPT':
                 raise ValueError('Cannot find the NPT stage')
-            trajID = CheckAndGetValue( md_stageLast_record, Fields.trajectory)
+            trajID = utl.RequestOEFieldType( md_stageLast_record, Fields.trajectory)
             if trajID==None:
                 opt['Logger'].info('Traj name was None' )
                 raise ValueError('{} invalid Trajectory filename:'.format(system_title) )
@@ -121,17 +104,17 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
 
             # Extract the Setup Topology
             md_stage0_record = md_stages[0]
-            setupName = CheckAndGetValue( md_stage0_record, Fields.stage_name)
+            setupName = utl.RequestOEFieldType( md_stage0_record, Fields.stage_name)
             if setupName!='SETUP':
                 raise ValueError('Cannot find the SETUP stage')
-            md_system = CheckAndGetValue( md_stage0_record, Fields.md_system)
-            setupOEMol = CheckAndGetValue( md_system, Fields.topology)
+            md_system = utl.RequestOEFieldType( md_stage0_record, Fields.md_system)
+            setupOEMol = utl.RequestOEFieldType( md_system, Fields.topology)
             opt['Logger'].info('Setup topology has {} atoms'.format(setupOEMol.NumAtoms()))
 
             # Generate multiconformer protein and ligand OEMols from the trajectory
             opt['Logger'].info('{} Generating protein and ligand trajectory OEMols'
                 .format( system_title))
-            ptraj, ltraj = trjutl.ExtractAlignedProtLigTraj_hdf5(setupOEMol, trajName )
+            ptraj, ltraj = utl.ExtractAlignedProtLigTraj_hdf5(setupOEMol, trajName )
             opt['Logger'].info('{} #atoms, #confs in protein traj OEMol: {}, {}'
                 .format( system_title, ptraj.NumAtoms(), ptraj.NumConfs()) )
             opt['Logger'].info('{} #atoms, #confs in ligand traj OEMol: {}, {}'
@@ -164,7 +147,7 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
 
             analysesDone = None
             try:
-                analysesDone = CheckAndGetValueFull( record, 'AnalysesDone', Types.StringVec)
+                analysesDone = utl.RequestOEField( record, 'AnalysesDone', Types.StringVec)
                 opt['Logger'].info('{}: found AnalysesDone list'.format( system_title) )
                 analysesDone.append( 'OETraj')
             except:
