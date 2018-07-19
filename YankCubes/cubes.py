@@ -166,8 +166,8 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
             self.log.warn(">>>>>>> {} pressure {}".format(self.title, self.opt['pressure']))
             self.log.warn(">>>>>>> {} temperature {}".format(self.title, self.opt['temperature']))
             self.log.warn(">>>>>>> {} minimize {}".format(self.title, self.opt['minimize']))
-            self.log.warn(">>>>>>> {} min_parallel {}".format(self.title, self.opt['min_parallel']))
-            self.log.warn(">>>>>>> {} max_parallel {}".format(self.title, self.opt['max_parallel']))
+            # self.log.warn(">>>>>>> {} min_parallel {}".format(self.title, self.opt['min_parallel']))
+            # self.log.warn(">>>>>>> {} max_parallel {}".format(self.title, self.opt['max_parallel']))
 
             # The copy of the dictionary option as local variable
             # is necessary to avoid filename collisions due to
@@ -416,8 +416,8 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                 str_logger += ">>>>>>> {} pressure {}".format(self.title, self.opt['pressure'])
                 str_logger += ">>>>>>> {} temperature {}".format(self.title, self.opt['temperature'])
                 str_logger += ">>>>>>> {} minimize {}".format(self.title, self.opt['minimize'])
-                str_logger += ">>>>>>> {} min_parallel {}".format(self.title, self.opt['min_parallel'])
-                str_logger += ">>>>>>> {} max_parallel {}".format(self.title, self.opt['max_parallel'])
+                # str_logger += ">>>>>>> {} min_parallel {}".format(self.title, self.opt['min_parallel'])
+                # str_logger += ">>>>>>> {} max_parallel {}".format(self.title, self.opt['max_parallel'])
 
                 md_stage_record = MDRecords.MDStageRecord(MDStageNames.FEC,
                                                           MDRecords.MDSystemRecord(system, mdData.structure),
