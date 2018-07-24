@@ -89,7 +89,7 @@ _clus_floe_report_template = """
 </div>
 
 <div class="column content">
-  <h3> Cluster membership of Trajectory ligand by Trajectory frame </h3>
+  <h3> Cluster membership of ligand by Trajectory frame </h3>
   {clusters}
   <h3> RMSD of ligand compared to initial pose, colored by cluster </h3>
   {rmsdInit}
@@ -200,7 +200,8 @@ class MDTrajAnalysisClusterReport(OERecordComputeCube):
             img = oedepict.OEImage(400, 300)
             oedepict.OERenderMolecule(img, ligInitPose)
 
-            with open("md_clus_report.html", 'w') as report_file:
+            reportFName = system_title+'_ClusReport.html'
+            with open( reportFName, 'w') as report_file:
                 report_file.write(_clus_floe_report_template.format(
                     query_depiction=oedepict.OEWriteImageToString("svg", img).decode("utf8"),
                     rmsd_hist=trim_svg(trajHistRMSD_svg),
@@ -216,7 +217,7 @@ class MDTrajAnalysisClusterReport(OERecordComputeCube):
             if in_orion():
                 session = OrionSession()
 
-                file_upload = File.upload(session, "{} MD Cluster Report".format(system_title), "./md_clus_report.html")
+                file_upload = File.upload(session, "{} STMD Report".format(system_title), "./"+reportFName)
                 session.tag_resource(file_upload, "floe_report")
                 job_id = environ.get('ORION_JOB_ID')
                 if job_id:
