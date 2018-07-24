@@ -125,6 +125,13 @@ class TrajToOEMolCube_old(ParallelMixin, OERecordComputeCube):
             opt['Logger'].info('{} Generating interactive trajectory SVG'.format( system_title))
             trajSVG = ensemble2img.run_ensemble2img(ligMedian, protMedian, ltraj, ptraj)
 
+            # Convert some old-format record fields to new ones for following cubes
+            # set Fields.title to system_title
+            record.set_value(Fields.title, system_title )
+            # set Fields.ligand to initial ligand pose
+            ligInitPose = utl.RequestOEField( record, 'Ligand', Types.Chem.Mol)
+            record.set_value(Fields.ligand, ligInitPose)
+
             # Overwrite MDStages with only first (setup) and last (production) stages
             newMDStages = [ md_stage0_record, md_stageLast_record]
             record.set_value( OEField( 'MDStages', Types.RecordVec), newMDStages)
