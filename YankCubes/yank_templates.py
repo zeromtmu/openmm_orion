@@ -81,6 +81,7 @@ options:
   hydrogen_mass: {hydrogen_mass:f}*amu
   processes_per_experiment: 1
   alchemical_pme_treatment: {alchemical_pme_treatment}
+  checkpoint_interval: {checkpoint_interval}
 
 mcmc_moves:
   langevin:
@@ -191,6 +192,7 @@ options:
   hydrogen_mass: {hydrogen_mass:f}*amu
   processes_per_experiment: 1
   alchemical_pme_treatment: {alchemical_pme_treatment}
+  checkpoint_interval: {checkpoint_interval}
 
 mcmc_moves:
   langevin:

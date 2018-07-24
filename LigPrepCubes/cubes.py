@@ -184,7 +184,7 @@ class LigandSetting(OERecordComputeCube):
                 if ligand.GetMaxConfIdx() > 1:
                     ligand_title += '_c' + str(num_conf_counter)
 
-                conf_mol.SetTitle(ligand_title)
+                # conf_mol.SetTitle(ligand_title)
 
                 record.set_value(Fields.id, self.count)
                 record.set_value(Fields.title, ligand_title)

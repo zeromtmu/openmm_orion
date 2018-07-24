@@ -16,7 +16,7 @@
                             "networkx==1.11",
                             "oeommtools==0.1.4",
                             "openforcefield==0.0.2",
-                            "openmm==7.1.1",
+                            "openmm==7.2.2",
                             "openmmtools==0.15.0",
                             "openmoltools==0.8.1",
                             "packmol=*18.013",
@@ -29,8 +29,8 @@
                             "sstmap==1.1.2",
                             "yank==0.23.1" ],
 
-  "build_requirements": {"gpu": 1, "instance_tags": ["cuda8"]},
+  "build_requirements": {"gpu": 1, "instance_tags": ["cuda9"]},
 
   "name": "MD Orion Package",
- "version": "0.6.3"
+ "version": "0.7.0"
 }

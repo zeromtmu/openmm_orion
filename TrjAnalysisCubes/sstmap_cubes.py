@@ -164,7 +164,7 @@ class SSTMapHsa(ParallelMixin, OERecordComputeCube):
 
                 sys_id = record.get_value(Fields.id)
 
-                sys_info = system_title + '_' + sys_id
+                sys_info = system_title + '_' + str(sys_id)
 
                 # Get the MDStageRecord list from the record
                 if record.has_value(Fields.md_stages):
@@ -300,6 +300,8 @@ class SSTMapHsa(ParallelMixin, OERecordComputeCube):
                     # Create new record with results
                     new_record = OERecord()
                     new_record.set_value(Fields.primary_molecule, most_prob_config)
+
+                    new_record.set_value(Fields.protein, aligned_prot_oemol)
 
                     # Create Field
                     mol_vec = OEField("clusters", Types.Chem.MolVec)
@@ -446,7 +448,7 @@ class SSTMapGist(ParallelMixin, OERecordComputeCube):
 
                 sys_id = record.get_value(Fields.id)
 
-                sys_info = system_title + '_' + sys_id
+                sys_info = system_title + '_' + str(sys_id)
 
                 # Get the MDStageRecord list from the record
                 if record.has_value(Fields.md_stages):

@@ -70,7 +70,7 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
     parameter_overrides = {
         "gpu_count": {"default": 1},
         "memory_mb": {"default": 6000},
-        "instance_tags": {"default": "cuda8"},
+        "instance_tags": {"default": "cuda9"},
         "spot_policy": {"default": "Allowed"},
         "prefetch_count": {"default": 1},  # 1 molecule at a time
         "item_count": {"default": 1}  # 1 molecule at a time
@@ -304,7 +304,7 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
     parameter_overrides = {
         "gpu_count": {"default": 1},
         "memory_mb": {"default": 6000},
-        "instance_tags": {"default": "cuda8"},
+        "instance_tags": {"default": "cuda9"},
         "spot_policy": {"default": "Allowed"},
         "prefetch_count": {"default": 1},  # 1 molecule at a time
         "item_count": {"default": 1}  # 1 molecule at a time
@@ -596,7 +596,7 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
     parameter_overrides = {
         "gpu_count": {"default": 1},
         "memory_mb": {"default": 6000},
-        "instance_tags": {"default": "cuda8"},
+        "instance_tags": {"default": "cuda9"},
         "spot_policy": {"default": "Allowed"},
         "prefetch_count": {"default": 1},  # 1 molecule at a time
         "item_count": {"default": 1}  # 1 molecule at a time
