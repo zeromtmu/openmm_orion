@@ -34,17 +34,11 @@ from LigPrepCubes.cubes import (LigandChargeCube,
                                 LigandSetting)
 
 from YankCubes.cubes import (SyncBindingFECube,
-                             YankBindingFECube)
+                             YankBindingFECube,
+                             YankProxyCube)
 
 from cuberecord import (DataSetWriterCube,
                         DataSetReaderCube)
-
-# *************USER SETTING**************
-yank_iteration_per_chunk = 200
-chunks = 5
-# ***************************************
-
-cube_list = []
 
 job = WorkFloe('Binding Affinity')
 
@@ -126,41 +120,45 @@ ffComplex.promote_parameter('ligand_forcefield', promoted_name='ligand_ff', defa
 ffComplex.promote_parameter('other_forcefield', promoted_name='other_ff', default='GAFF2')
 job.add_cube(ffComplex)
 
+# Add YANK Cube
+yank_proxy = YankProxyCube("YankProxy", title="Yank Proxy")
+yank_proxy.promote_parameter('iterations', promoted_name='iterations',
+                             default=13,
+                             description="Total number of Yank iterations")
+job.add_cube(yank_proxy)
+
+
 # First Yank Cube used to build the UI interface
-abfe0 = YankBindingFECube("ABFE0", title="ABFE")
-abfe0.promote_parameter('iterations', promoted_name='iterations', default=yank_iteration_per_chunk)
-abfe0.promote_parameter('verbose', promoted_name='verbose', default=True)
-abfe0.promote_parameter('temperature', promoted_name='temperature', default=300.0,
-                        description='Temperature (Kelvin)')
-abfe0.promote_parameter('pressure', promoted_name='pressure', default=1.0,
-                        description='Pressure (atm)')
-abfe0.promote_parameter('hmr', promoted_name='hmr', default=False,
-                        description='Hydrogen Mass Repartitioning')
-abfe0.promote_parameter('sampler', promoted_name='sampler', default='repex',
-                        description='Yank Sampling mode: '
-                                    'REPEX Replica Exchange and SAMS Self-Adjusted Mixture Sampling')
-abfe0.promote_parameter('restraints', promoted_name='restraints',
-                        description='Select the restraint types. '
-                                    'Choices: harmonic, boresch')
-abfe0.promote_parameter('protocol', promoted_name='protocol',
-                        description='Select the protocol types. '
-                                    'Choices: auto, restraint-on-when-decoupled')
+abfe = YankBindingFECube("YankABFE", title="Yank ABFE")
+abfe.promote_parameter('iterations', promoted_name='iterations')
+abfe.promote_parameter('iterations_per_cube', promoted_name='iterations_per_cube',
+                       default=5,
+                       description="Number of Yank iterations per cube")
+abfe.promote_parameter('verbose', promoted_name='verbose', default=True)
+abfe.promote_parameter('temperature', promoted_name='temperature', default=300.0,
+                       description='Temperature (Kelvin)')
+abfe.promote_parameter('pressure', promoted_name='pressure', default=1.0,
+                       description='Pressure (atm)')
+abfe.promote_parameter('hmr', promoted_name='hmr', default=False,
+                       description='Hydrogen Mass Repartitioning')
+abfe.promote_parameter('sampler', promoted_name='sampler', default='repex',
+                       description='Yank Sampling mode: '
+                                   'REPEX Replica Exchange and SAMS Self-Adjusted Mixture Sampling')
+abfe.promote_parameter('restraints', promoted_name='restraints',
+                       description='Select the restraint types. '
+                                   'Choices: harmonic, boresch')
+abfe.promote_parameter('protocol', promoted_name='protocol',
+                       description='Select the protocol types. '
+                                   'Choices: auto, restraint-on-when-decoupled')
+abfe.promote_parameter('hmr', promoted_name='hmr', default=False, description='Hydrogen Mass Repartitioning')
 # abfe0.promote_parameter('max_parallel', promoted_name='num_gpus', default=1,
 #                         description='Number of GPUS to make available - '
 #                                     'should be less than the number of ligands')
 # abfe0.promote_parameter('min_parallel', promoted_name='num_gpus', default=1,
 #                         description='Number of GPUS to make available - '
 #                                     'should be less than the number of ligands')
-abfe0.promote_parameter('hmr', promoted_name='hmr', default=False, description='Hydrogen Mass Repartitioning')
-abfe0.set_parameters(rerun=False)
-abfe0.set_parameters(minimize=True)
 
-if chunks == 1:
-    abfe0.set_parameters(analyze=True)
-else:
-    abfe0.set_parameters(analyze=False)
-
-job.add_cube(abfe0)
+job.add_cube(abfe)
 
 # Minimization
 minComplex = OpenMMminimizeCube('minComplex', title='Complex Minimization')
@@ -274,39 +272,15 @@ job.add_cube(equilLigand)
 
 sync = SyncBindingFECube("SyncCube", title="Unbounded and Bonded Synchronization")
 job.add_cube(sync)
-cube_list.append(sync)
-
-# Add YANK first Cube
-cube_list.append(abfe0)
-
-for i in range(1, chunks):
-    abfe = YankBindingFECube("ABFE"+str(i), title="ABFE"+str(i))
-    abfe.set_parameters(iterations=yank_iteration_per_chunk*(i+1))
-    abfe.promote_parameter("verbose", promoted_name="verbose")
-    abfe.promote_parameter("temperature", promoted_name="temperature")
-    abfe.promote_parameter("pressure", promoted_name="pressure")
-    # abfe.promote_parameter("max_parallel", promoted_name="num_gpus")
-    # abfe.promote_parameter("min_parallel", promoted_name="num_gpus")
-    abfe.promote_parameter("hmr", promoted_name="hmr")
-    abfe.set_parameters(rerun=True)
-    abfe.set_parameters(minimize=False)
-    abfe.set_parameters(analyze=False)
-
-    if i == (chunks - 1):
-        abfe.set_parameters(analyze=True)
-
-    job.add_cube(abfe)
-    cube_list.append(abfe)
 
 ofs = DataSetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")
 job.add_cube(ofs)
-cube_list.append(ofs)
 
 fail = DataSetWriterCube('fail', title='Failures')
 fail.set_parameters(data_out='fail.oedb')
 job.add_cube(fail)
-cube_list.append(fail)
+
 
 # Complex Connections
 iprot.success.connect(protset.intake)
@@ -331,13 +305,13 @@ minimizeLigand.success.connect(warmupLigand.intake)
 warmupLigand.success.connect(equilLigand.intake)
 equilLigand.success.connect(sync.solvated_ligand_in_port)
 
-
-# Connections Yank cubes
-for i in range(0, len(cube_list)-2):
-    cube_list[i].success.connect(cube_list[i + 1].intake)
-    if i == len(cube_list) - 3:
-        cube_list[i].failure.connect(cube_list[i+2].intake)
-
+# ABFE Connections
+sync.success.connect(yank_proxy.intake)
+yank_proxy.success.connect(ofs.intake)
+yank_proxy.failure.connect(fail.intake)
+yank_proxy.cycle_out_port.connect(abfe.intake)
+abfe.success.connect(yank_proxy.cycle_in_port)
+abfe.failure.connect(fail.intake)
 
 if __name__ == "__main__":
     job.run()

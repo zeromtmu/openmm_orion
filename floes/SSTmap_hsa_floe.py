@@ -22,7 +22,7 @@ from cuberecord import DataSetWriterCube, DataSetReaderCube
 from TrjAnalysisCubes.sstmap_cubes import SSTMapHsa
 
 
-job = WorkFloe("Testing SSTMAP HSA")
+job = WorkFloe("SSTMAP HSA")
 
 job.description = """
  Testing Floe
