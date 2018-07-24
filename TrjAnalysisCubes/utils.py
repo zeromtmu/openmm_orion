@@ -151,4 +151,30 @@ def RequestOEFieldType( record, field):
     else:
         return record.get_value(field)
 
+def MakeClusterInfoText(dataDict):
+    # Generate text string about Clustering information
+    #
+    text = []
+    nFrames = dataDict['nFrames']
+    text.append('Cluster method {}\n'.format( dataDict['clusMethod']) )
+    text.append('    clustered {} frames\n'.format(nFrames) )
+    text.append('    using alpha={:.2f}\n'.format( dataDict['alpha']))
+    #
+    if dataDict['nClusters']<2:
+        text.append('Produced {} cluster\n'.format( dataDict['nClusters']))
+    else:
+        text.append('Produced  {} clusters\n'.format( dataDict['nClusters']))
+    nOutliers = dataDict['ClusterVec'].count(-1)
+    text.append('     with {:4d} outliers\n\n'.format( nOutliers))
+    #
+    text.append(' Status Cluster Size\n')
+    text.append(' ------ ------- ----\n')
+    for i, count in enumerate(dataDict['ClusterCounts']):
+        if nFrames/count>10:
+            text.append('  minor   {:2d}    {:4d}\n'.format( i, count))
+        else:
+            text.append('  major   {:2d}    {:4d}\n'.format( i, count))
+    #
+    return text
+
 

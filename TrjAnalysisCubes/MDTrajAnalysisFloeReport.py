@@ -182,17 +182,14 @@ class MDTrajAnalysisClusterReport(OERecordComputeCube):
             opt['Logger'].info('{} found the TrajClus plots'.format(system_title) )
 
             # Generate text string about Clustering information
-            analysis_txt = []
-            nFrames = utl.RequestOEField(clusRecord, 'nFrames', Types.Int)
-            analysis_txt.append('Clustering {} frames\n'.format( nFrames))
-            clusMethod = utl.RequestOEField(clusRecord, 'ClusterMethod', Types.String)
-            alpha = utl.RequestOEField(clusRecord, 'HDBSCAN_alpha', Types.Float)
-            analysis_txt.append('Cluster method {} with alpha {:.2f}\n'.format( clusMethod, alpha))
-            nClusters = utl.RequestOEField(clusRecord, 'nClusters', Types.Int)
-            analysis_txt.append('produced {} clusters:\n'.format( nClusters))
-            clusCounts = utl.RequestOEField(clusRecord, 'ClusterCounts', Types.IntVec)
-            for i, count in enumerate(clusCounts):
-                analysis_txt.append('cluster {} contains {} frames\n'.format( i, count))
+            clusData = {}
+            clusData['nFrames'] = utl.RequestOEField(clusRecord, 'nFrames', Types.Int)
+            clusData['clusMethod'] = utl.RequestOEField(clusRecord, 'ClusterMethod', Types.String)
+            clusData['alpha'] = utl.RequestOEField(clusRecord, 'HDBSCAN_alpha', Types.Float)
+            clusData['nClusters'] = utl.RequestOEField(clusRecord, 'nClusters', Types.Int)
+            clusData['ClusterVec'] = utl.RequestOEField( clusRecord, 'Clusters', Types.IntVec)
+            clusData['ClusterCounts'] = utl.RequestOEField( clusRecord, 'ClusterCounts', Types.IntVec)
+            analysis_txt = utl.MakeClusterInfoText( clusData)
 
             opt['Logger'].info('{} finished writing analysis files'.format(system_title) )
 
