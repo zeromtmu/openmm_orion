@@ -313,7 +313,7 @@ boresch:
   system: system
   protocol: {protocol}
   restraint:
-    type: PeriodicTorsionBoresch
+    type: Boresch
 
 experiments: [{restraints}]
 """

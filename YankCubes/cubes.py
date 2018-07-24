@@ -619,7 +619,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
     restraints = parameter.StringParameter(
         'restraints',
         required=True,
-        default='harmonic',
+        default='boresch',
         choices=['harmonic', 'boresch'],
         help_text='Select the restraint type')
 

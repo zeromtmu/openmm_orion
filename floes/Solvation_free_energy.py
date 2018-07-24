@@ -61,16 +61,6 @@ Outputs:
 out : Output file
 """
 
-<<<<<<< HEAD:floes/Solvation_free_energy.py
-# *************USER SETTING**************
-yank_iteration_per_chunk = 1000
-chunks = 1
-# ***************************************
-
-cube_list = []
-=======
->>>>>>> cycle:floes/solvation_free_energy.py
-
 job.classification = [['Solvation Free Energy']]
 job.tags = [tag for lists in job.classification for tag in lists]
 
