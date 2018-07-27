@@ -18,19 +18,14 @@
 # or its use.
 
 from floe.api import WorkFloe
-
 from cuberecord import (DataSetWriterCube,
                         DataSetReaderCube)
-
 from ComplexPrepCubes.cubes import SolvationCube
 from ForceFieldCubes.cubes import ForceFieldCube
-
 from LigPrepCubes.cubes import (LigandChargeCube,
                                 LigandSetting)
 
-from YankCubes.cubes import (YankSolvationFECube,
-                             YankProxyCube)
-
+from YankCubes.cubes import YankSolvationFECube
 from MDCubes.OpenMMCubes.cubes import (OpenMMminimizeCube,
                                        OpenMMNvtCube,
                                        OpenMMNptCube)
@@ -61,6 +56,13 @@ Outputs:
 out : Output file
 """
 
+# *************USER SETTING**************
+yank_iteration_per_chunk = 500
+chunks = 2
+# ***************************************
+
+cube_list = []
+
 job.classification = [['Solvation Free Energy']]
 job.tags = [tag for lists in job.classification for tag in lists]
 
@@ -68,16 +70,18 @@ job.tags = [tag for lists in job.classification for tag in lists]
 iligs = DataSetReaderCube("Ligands", title="Ligand Reader")
 iligs.promote_parameter("data_in", promoted_name="ligands", title="Ligand Input File", description="Ligand file name")
 job.add_cube(iligs)
-
+cube_list.append(iligs)
 
 chargelig = LigandChargeCube("LigCharge", title="Ligand Charge")
 chargelig.promote_parameter('charge_ligands', promoted_name='charge_ligands',
                             description="Charge the ligand or not", default=True)
+
 job.add_cube(chargelig)
+cube_list.append(chargelig)
 
 ligset = LigandSetting("LigandSetting")
 job.add_cube(ligset)
-
+cube_list.append(ligset)
 
 solvate = SolvationCube("Solvation", title="System Solvation")
 solvate.promote_parameter("density", promoted_name="density", title="Solution density in g/ml", default=1.0,
@@ -93,38 +97,39 @@ solvate.set_parameters(distance_between_atoms=2.5)
 solvate.set_parameters(padding_distance=11.0)
 
 job.add_cube(solvate)
-
+cube_list.append(solvate)
 
 ff = ForceFieldCube("ForceField", title="System Parametrization")
 ff.promote_parameter('ligand_forcefield', promoted_name='ligand_ff', default='GAFF2')
 job.add_cube(ff)
+cube_list.append(ff)
 
-# Add YANK Cube
-yank_proxy = YankProxyCube("YankProxy", title="Yank Proxy")
-yank_proxy.promote_parameter('iterations', promoted_name='iterations', default=1000,
-                             description="Total number of Yank iterations")
-job.add_cube(yank_proxy)
 
 # First Yank Cube used to build the UI interface
-solvationfe = YankSolvationFECube("SovationFE", title="Yank Solvation")
-solvationfe.promote_parameter('iterations', promoted_name='iterations')
-solvationfe.promote_parameter('iterations_per_cube', promoted_name='iterations_per_cube',
-                              default=200,
-                              description="Number of Yank iterations per cube")
-solvationfe.promote_parameter('verbose', promoted_name='verbose', default=True)
-solvationfe.promote_parameter('temperature', promoted_name='temperature', default=300.0,
-                              description='Temperature (Kelvin)')
-solvationfe.promote_parameter('pressure', promoted_name='pressure', default=1.0,
-                              description='Pressure (atm)')
-solvationfe.promote_parameter('hmr', promoted_name='hmr', default=False,
-                              description='Hydrogen Mass Repartitioning')
+solvationfe0 = YankSolvationFECube("SovationFE0", title="Solvation FE0")
+solvationfe0.promote_parameter('iterations', promoted_name='iterations', default=yank_iteration_per_chunk)
+solvationfe0.promote_parameter('verbose', promoted_name='verbose', default=True)
+solvationfe0.promote_parameter('temperature', promoted_name='temperature', default=300.0,
+                               description='Temperature (Kelvin)')
+solvationfe0.promote_parameter('pressure', promoted_name='pressure', default=1.0,
+                               description='Pressure (atm)')
+solvationfe0.promote_parameter('hmr', promoted_name='hmr', default=False,
+                               description='Hydrogen Mass Repartitioning')
 # solvationfe0.promote_parameter('max_parallel', promoted_name='num_gpus', default=1,
 #                                description='Number of GPUS to make available - '
 #                                            'should be less than the number of ligands')
 # solvationfe0.promote_parameter('min_parallel', promoted_name='num_gpus', default=1,
 #                                description='Number of GPUS to make available - '
 #                                            'should be less than the number of ligands')
-job.add_cube(solvationfe)
+solvationfe0.set_parameters(rerun=False)
+solvationfe0.set_parameters(minimize=True)
+
+if chunks == 1:
+    solvationfe0.set_parameters(analyze=True)
+else:
+    solvationfe0.set_parameters(analyze=False)
+
+job.add_cube(solvationfe0)
 
 # Minimization
 minimize = OpenMMminimizeCube("Minimize", title="System Minimization")
@@ -132,8 +137,9 @@ minimize.set_parameters(restraints='noh ligand')
 minimize.set_parameters(restraintWt=5.0)
 minimize.set_parameters(center=True)
 minimize.promote_parameter("hmr", promoted_name="hmr")
-job.add_cube(minimize)
 
+job.add_cube(minimize)
+cube_list.append(minimize)
 
 # NVT Warm-up
 warmup = OpenMMNvtCube('warmup', title='System Warm Up')
@@ -145,8 +151,9 @@ warmup.set_parameters(trajectory_interval=0.0)
 warmup.set_parameters(reporter_interval=0.0)
 warmup.set_parameters(suffix='warmup')
 warmup.promote_parameter("hmr", promoted_name="hmr")
-job.add_cube(warmup)
 
+job.add_cube(warmup)
+cube_list.append(warmup)
 
 # NPT Equilibration stage
 equil = OpenMMNptCube('equil', title='System Equilibration')
@@ -159,29 +166,47 @@ equil.set_parameters(restraintWt=0.1)
 equil.set_parameters(trajectory_interval=0.0)
 equil.set_parameters(reporter_interval=0.0)
 equil.set_parameters(suffix='equil')
+
 job.add_cube(equil)
+cube_list.append(equil)
+
+# Add YANK first Cube
+cube_list.append(solvationfe0)
+
+for i in range(1, chunks):
+    solvationfe = YankSolvationFECube("SovationFE"+str(i), title="Solvation FE"+str(i))
+    solvationfe.set_parameters(iterations=(i+1)*yank_iteration_per_chunk)
+    solvationfe.promote_parameter("verbose", promoted_name="verbose")
+    solvationfe.promote_parameter("temperature", promoted_name="temperature")
+    solvationfe.promote_parameter("pressure", promoted_name="pressure")
+    # solvationfe.promote_parameter("max_parallel", promoted_name="num_gpus")
+    # solvationfe.promote_parameter("min_parallel", promoted_name="num_gpus")
+    solvationfe.promote_parameter("hmr", promoted_name="hmr")
+    solvationfe.set_parameters(minimize=False)
+    solvationfe.set_parameters(analyze=False)
+    solvationfe.set_parameters(rerun=True)
+
+    if i == (chunks - 1):
+        solvationfe.set_parameters(analyze=True)
+
+    job.add_cube(solvationfe)
+    cube_list.append(solvationfe)
 
 ofs = DataSetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")
 job.add_cube(ofs)
+cube_list.append(ofs)
 
 fail = DataSetWriterCube('fail', title='Failures')
 fail.set_parameters(data_out='fail.oedb')
 job.add_cube(fail)
+cube_list.append(fail)
 
-iligs.success.connect(chargelig.intake)
-chargelig.success.connect(ligset.intake)
-ligset.success.connect(solvate.intake)
-solvate.success.connect(ff.intake)
-ff.success.connect(minimize.intake)
-minimize.success.connect(warmup.intake)
-warmup.success.connect(equil.intake)
-equil.success.connect(yank_proxy.intake)
-yank_proxy.success.connect(ofs.intake)
-yank_proxy.failure.connect(fail.intake)
-yank_proxy.cycle_out_port.connect(solvationfe.intake)
-solvationfe.success.connect(yank_proxy.cycle_in_port)
-solvationfe.failure.connect(fail.intake)
+# Connections
+for i in range(0, len(cube_list)-2):
+    cube_list[i].success.connect(cube_list[i + 1].intake)
+    if i == len(cube_list) - 3:
+        cube_list[i].failure.connect(cube_list[i+2].intake)
 
 if __name__ == "__main__":
     job.run()
