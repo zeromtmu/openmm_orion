@@ -157,23 +157,23 @@ def MakeClusterInfoText(dataDict):
     text = []
     nFrames = dataDict['nFrames']
     text.append('Cluster method {}\n'.format( dataDict['clusMethod']) )
-    text.append('    clustered {} frames\n'.format(nFrames) )
-    text.append('    using alpha={:.2f}\n'.format( dataDict['alpha']))
+    text.append('- Clustered {} frames\n'.format(nFrames) )
+    text.append('- Used alpha={:.2f}\n'.format( dataDict['alpha']))
     #
     if dataDict['nClusters']<2:
-        text.append('Produced {} cluster\n'.format( dataDict['nClusters']))
+        text.append('- Produced {} cluster\n'.format( dataDict['nClusters']))
     else:
-        text.append('Produced  {} clusters\n'.format( dataDict['nClusters']))
+        text.append('- Produced  {} clusters\n'.format( dataDict['nClusters']))
     nOutliers = dataDict['ClusterVec'].count(-1)
-    text.append('     with {:4d} outliers\n\n'.format( nOutliers))
+    text.append('    with {:4d} outliers\n\n'.format( nOutliers))
     #
-    text.append(' Status Cluster Size\n')
-    text.append(' ------ ------- ----\n')
+    text.append(' Cluster Size Status\n')
+    text.append(' ------- ---- ------\n')
     for i, count in enumerate(dataDict['ClusterCounts']):
         if nFrames/count>10:
-            text.append('  minor   {:2d}    {:4d}\n'.format( i, count))
+            text.append('  {:2d}    {:4d}  minor\n'.format( i, count))
         else:
-            text.append('  major   {:2d}    {:4d}\n'.format( i, count))
+            text.append('  {:2d}    {:4d}  major\n'.format( i, count))
     #
     return text
 
