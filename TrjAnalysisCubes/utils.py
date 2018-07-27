@@ -156,9 +156,9 @@ def MakeClusterInfoText(dataDict):
     #
     text = []
     nFrames = dataDict['nFrames']
-    text.append('Cluster method {}\n'.format( dataDict['clusMethod']) )
+    text.append('Cluster method {}\n'.format( dataDict['ClusterMethod']) )
     text.append('- Clustered {} frames\n'.format(nFrames) )
-    text.append('- Used alpha={:.2f}\n'.format( dataDict['alpha']))
+    text.append('- Used alpha={:.2f}\n'.format( dataDict['HDBSCAN_alpha']))
     #
     if dataDict['nClusters']<2:
         text.append('- Produced {} cluster\n'.format( dataDict['nClusters']))

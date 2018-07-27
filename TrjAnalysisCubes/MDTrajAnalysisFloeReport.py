@@ -184,8 +184,8 @@ class MDTrajAnalysisClusterReport(OERecordComputeCube):
             # Generate text string about Clustering information
             clusData = {}
             clusData['nFrames'] = utl.RequestOEField(clusRecord, 'nFrames', Types.Int)
-            clusData['clusMethod'] = utl.RequestOEField(clusRecord, 'ClusterMethod', Types.String)
-            clusData['alpha'] = utl.RequestOEField(clusRecord, 'HDBSCAN_alpha', Types.Float)
+            clusData['ClusterMethod'] = utl.RequestOEField(clusRecord, 'ClusterMethod', Types.String)
+            clusData['HDBSCAN_alpha'] = utl.RequestOEField(clusRecord, 'HDBSCAN_alpha', Types.Float)
             clusData['nClusters'] = utl.RequestOEField(clusRecord, 'nClusters', Types.Int)
             clusData['ClusterVec'] = utl.RequestOEField( clusRecord, 'Clusters', Types.IntVec)
             clusData['ClusterCounts'] = utl.RequestOEField( clusRecord, 'ClusterCounts', Types.IntVec)
