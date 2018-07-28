@@ -20,6 +20,7 @@ from Standards import (Fields,
 from openeye import oechem
 
 import TrjAnalysisCubes.utils as utl
+import oetrajanalysis.OETrajBasicAnalysis_utils as oetrjutl
 #import TrjAnalysisCubes.Clustering_utils as clusutl
 import oetrajanalysis.Clustering_utils as clusutl
 
@@ -86,6 +87,9 @@ class ClusterOETrajCube(ParallelMixin, OERecordComputeCube):
             ligTraj = utl.RequestOEField( oetrajRecord, 'LigTraj', Types.Chem.Mol)
             opt['Logger'].info('{} #atoms, #confs in ligand traj OEMol: {}, {}'
                 .format( system_title, ligTraj.NumAtoms(), ligTraj.NumConfs()) )
+            protTraj = utl.RequestOEField( oetrajRecord, 'ProtTraj', Types.Chem.Mol)
+            opt['Logger'].info('{} #atoms, #confs in protein traj OEMol: {}, {}'
+                .format( system_title, protTraj.NumAtoms(), protTraj.NumConfs()) )
 
             # Cluster ligand traj into cluster OEMols with matching protein OEMols
             opt['Logger'].info('{} starting clustering'.format(system_title) )
@@ -103,9 +107,35 @@ class ClusterOETrajCube(ParallelMixin, OERecordComputeCube):
             oechem.OERMSD( ligInitPose, ligTraj, vecRmsd)
             rmsdInit_svg = clusutl.RmsdFromInitialPosePlot( clusResults['ClusterVec'], vecRmsd)
 
+            # Create trajSVG for each major cluster (major= 10% or more of traj)
+            clusLigAvgMol = []
+            clusProtAvgMol = []
+            clusTrajSVG = []
+            for clusID, count in enumerate(clusResults['ClusterCounts']):
+                if clusResults['nFrames']/count<=10:
+                    opt['Logger'].info('generating svg for {} cluster {}'.format( system_title, clusID))
+                    clusLig = clusutl.TrajOEMolFromCluster( ligTraj, clusResults['Clusters'], clusID)
+                    opt['Logger'].info( 'new mol {} with {} confs:'.format( clusLig.GetTitle(),clusLig.NumConfs()) )
+                    clusProt = clusutl.TrajOEMolFromCluster( protTraj, clusResults['Clusters'], clusID)
+                    opt['Logger'].info( 'new mol {} with {} confs:'.format( clusProt.GetTitle(),clusProt.NumConfs()) )
+                    ligMed, protMed, ligAvg, protAvg = oetrjutl.AnalyseProteinLigandTrajectoryOEMols( clusLig, clusProt)
+                    clusSVG = ensemble2img.run_ensemble2img(ligAvg, protAvg, clusLig, clusProt)
+                    clusLigAvgMol.append( ligAvg)
+                    clusProtAvgMol.append( protAvg)
+                    clusTrajSVG.append( clusSVG)
+
             # Create new record with trajClus results
             opt['Logger'].info('{} writing trajClus OERecord'.format(system_title) )
             trajClus = OERecord()
+            #
+            ClusLigAvgMol_field = OEField( 'ClusLigAvgMol', Types.Chem.MolVec)
+            trajClus.set_value( ClusLigAvgMol_field, clusLigAvgMol)
+            #
+            ClusProtAvgMol_field = OEField( 'ClusProtAvgMol', Types.Chem.MolVec)
+            trajClus.set_value( ClusProtAvgMol_field, clusProtAvgMol)
+            #
+            ClusTrajSVG_field = OEField( 'ClusTrajSVG', Types.Chem.MolVec)
+            trajClus.set_value( ClusTrajSVG_field, clusTrajSVG)
             #
             ClusterMethod_field = OEField( 'ClusterMethod', Types.String)
             trajClus.set_value( ClusterMethod_field, clusResults['ClusterMethod'])
