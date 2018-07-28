@@ -18,7 +18,6 @@
 # or its use.
 
 from floe.api import WorkFloe
-from floe.api.hyper import HyperCube
 
 from MDCubes.MDUtils.cubes import (CollectionReader,
                                    RecordsShardToRecordConverterParallel)
@@ -44,11 +43,6 @@ wf.add_cubes(reader, converter, ofs)
 
 reader.success.connect(converter.intake)
 converter.success.connect(ofs.intake)
-
-
-# COllectionReader = HyperCube(wf)
-#
-# COllectionReader.promote_port(converter, 'success')
 
 if __name__ == "__main__":
     wf.run()

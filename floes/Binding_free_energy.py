@@ -40,8 +40,8 @@ from cuberecord import (DataSetWriterCube,
                         DataSetReaderCube)
 
 # *************USER SETTING**************
-yank_iteration_per_chunk = 200
-chunks = 5
+yank_iteration_per_chunk = 70
+chunks = 15
 # ***************************************
 
 cube_list = []
@@ -49,21 +49,31 @@ cube_list = []
 job = WorkFloe('Binding Affinity')
 
 job.description = """
-Set up an OpenMM complex then minimize, warm up and equilibrate a system by using three equilibration stages
-
-Ex: python floes/openmm_MDprep.py --ligands ligands.oeb --protein protein.oeb --ofs-data_out prep.oeb
+The Absolute Binding Affinity Free Energy protocol (ABFE) performs Binding Affinity calculations 
+on a set of provided ligands and related receptor by using YANK ( http://getyank.org/latest/ ). 
+The ligands need to have coordinates and correct chemistry. Each ligand can have multiple conformers, 
+but each conformer will be treated as a different ligand and prepared to run ABFE. 
+The protein needs to be prepared at MD preparation standard. This includes capping the protein, 
+resolve missing atoms in protein residues and resolve missing protein loops. The parametrization of
+some "known unknown" protein residues is partially supported. Ligands need to be already posed 
+in the protein binding site. A complex (Bonded State) is formed, solvated and parametrized accordingly 
+to the selected force fields. In a similar fashion the Unbounded state is also prepared. Minimization, 
+Warm up (NVT) and Equilibration (NPT) stages are performed an the Bonded and Unbounded states. In order
+to minimize Molecular Dynamics (MD) failures along these stages, positional harmonic restraints are 
+applied on the ligand and protein with different force constants. At the end of the equilibration stages 
+the ABFE calculations are run by YANK with the selected parameters. Calculated Binding Affinities 
+for each ligand are output with the related floe reports. 
+   
+Ex. python floes/Binding_free_energy --ligands ligands.oeb --protein protein.oeb --out bfe.oedb
 
 Parameters:
 -----------
-ligands (file): oeb file of ligand posed in the protein active site.
-protein (file): oeb file of the protein structure, assumed to be pre-prepared
-
-Optionals:
------------
+ligands (file): OEB file of the prepared ligands
+protein (file): OEB/PDB file of the prepared protein
 
 Outputs:
 --------
-ofs: Outputs a ready system to MD production run
+out : Output file
 """
 
 job.classification = [['BindingFreeEnergy', 'Yank']]
@@ -74,7 +84,7 @@ iligs = DataSetReaderCube("LigandReader", title="Ligand Reader")
 iligs.promote_parameter("data_in", promoted_name="ligands", title="Ligand Input File", description="Ligand file name")
 job.add_cube(iligs)
 
-chargelig = LigandChargeCube("LigCharge")
+chargelig = LigandChargeCube("LigCharge", title="Ligand Charge")
 chargelig.promote_parameter('charge_ligands', promoted_name='charge_ligands',
                             description="Charge the ligand or not", default=True)
 job.add_cube(chargelig)
@@ -89,14 +99,14 @@ iprot.promote_parameter("data_in", promoted_name="protein", title='Protein Input
                         description="Protein file name")
 job.add_cube(iprot)
 
-protset = ProteinSetting("ProteinSetting")
+protset = ProteinSetting("ProteinSetting", title="Protein Setting")
 protset.promote_parameter("protein_prefix", promoted_name="protein_prefix", default="PRT")
 job.add_cube(protset)
 
 # COMPLEX SETTING
 
 # Complex cube used to assemble the ligands and the solvated protein
-complx = ComplexPrepCube("Complex")
+complx = ComplexPrepCube("Complex", title="Complex Preparation")
 job.add_cube(complx)
 
 # The solvation cube is used to solvate the system and define the ionic strength of the solution
@@ -117,8 +127,10 @@ ffComplex.promote_parameter('other_forcefield', promoted_name='other_ff', defaul
 job.add_cube(ffComplex)
 
 # First Yank Cube used to build the UI interface
-abfe0 = YankBindingFECube("ABFE0", title="ABFE")
-abfe0.promote_parameter('iterations', promoted_name='iterations', default=yank_iteration_per_chunk)
+abfe0 = YankBindingFECube("ABFE0", title="ABFE0")
+abfe0.promote_parameter('iterations', promoted_name='iterations',
+                        default=yank_iteration_per_chunk,
+                        description="Number of Yank iterations per Yank cube")
 abfe0.promote_parameter('verbose', promoted_name='verbose', default=True)
 abfe0.promote_parameter('temperature', promoted_name='temperature', default=300.0,
                         description='Temperature (Kelvin)')
@@ -128,23 +140,28 @@ abfe0.promote_parameter('hmr', promoted_name='hmr', default=False,
                         description='Hydrogen Mass Repartitioning')
 abfe0.promote_parameter('sampler', promoted_name='sampler', default='repex',
                         description='Yank Sampling mode: '
-                                    'REPEX Replica Exchange and SAMS Self-Adjusted Mixture Sampling')
+                                    'repex Replica Exchange and sams Self-Adjusted Mixture Sampling')
 abfe0.promote_parameter('restraints', promoted_name='restraints',
+                        default='boresch',
                         description='Select the restraint types. '
                                     'Choices: harmonic, boresch')
 abfe0.promote_parameter('protocol', promoted_name='protocol',
                         description='Select the protocol types. '
                                     'Choices: auto, restraint-on-when-decoupled')
-abfe0.promote_parameter('max_parallel', promoted_name='num_gpus', default=1,
-                        description='Number of GPUS to make available - '
-                                    'should be less than the number of ligands')
-abfe0.promote_parameter('min_parallel', promoted_name='num_gpus', default=1,
-                        description='Number of GPUS to make available - '
-                                    'should be less than the number of ligands')
+# abfe0.promote_parameter('max_parallel', promoted_name='num_gpus', default=1,
+#                         description='Number of GPUS to make available - '
+#                                     'should be less than the number of ligands')
+# abfe0.promote_parameter('min_parallel', promoted_name='num_gpus', default=1,
+#                         description='Number of GPUS to make available - '
+#                                     'should be less than the number of ligands')
 abfe0.promote_parameter('hmr', promoted_name='hmr', default=False, description='Hydrogen Mass Repartitioning')
 abfe0.set_parameters(rerun=False)
 abfe0.set_parameters(minimize=True)
-abfe0.set_parameters(analyze=False)
+
+if chunks == 1:
+    abfe0.set_parameters(analyze=True)
+else:
+    abfe0.set_parameters(analyze=False)
 
 job.add_cube(abfe0)
 
@@ -221,8 +238,8 @@ job.add_cube(solvateLigand)
 
 # Ligand Force Field Application
 ffLigand = ForceFieldCube("ForceFieldLigand", title="Unbounded Ligand Parametrization")
-ffLigand.promote_parameter('ligand_forcefield', promoted_name='ligand_forcefield')
-ffLigand.promote_parameter('other_forcefield', promoted_name='other_forcefield')
+ffLigand.promote_parameter('ligand_forcefield', promoted_name='ligand_ff')
+ffLigand.promote_parameter('other_forcefield', promoted_name='other_ff')
 job.add_cube(ffLigand)
 
 # Ligand Minimization
@@ -271,9 +288,12 @@ for i in range(1, chunks):
     abfe.promote_parameter("verbose", promoted_name="verbose")
     abfe.promote_parameter("temperature", promoted_name="temperature")
     abfe.promote_parameter("pressure", promoted_name="pressure")
-    abfe.promote_parameter("max_parallel", promoted_name="num_gpus")
-    abfe.promote_parameter("min_parallel", promoted_name="num_gpus")
+    abfe.promote_parameter("sampler", promoted_name="sampler")
+    abfe.promote_parameter("protocol", promoted_name="protocol")
+    abfe.promote_parameter("restraints", promoted_name="restraints")
     abfe.promote_parameter("hmr", promoted_name="hmr")
+    # abfe.promote_parameter("max_parallel", promoted_name="num_gpus")
+    # abfe.promote_parameter("min_parallel", promoted_name="num_gpus")
     abfe.set_parameters(rerun=True)
     abfe.set_parameters(minimize=False)
     abfe.set_parameters(analyze=False)
@@ -283,7 +303,6 @@ for i in range(1, chunks):
 
     job.add_cube(abfe)
     cube_list.append(abfe)
-
 
 ofs = DataSetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")
@@ -295,15 +314,9 @@ fail.set_parameters(data_out='fail.oedb')
 job.add_cube(fail)
 cube_list.append(fail)
 
-# Connections
-iligs.success.connect(chargelig.intake)
-chargelig.success.connect(ligset.intake)
-ligset.success.connect(complx.intake)
-
+# Complex Connections
 iprot.success.connect(protset.intake)
 protset.success.connect(complx.protein_port)
-
-# Complex Connections
 complx.success.connect(solvateComplex.intake)
 solvateComplex.success.connect(ffComplex.intake)
 ffComplex.success.connect(minComplex.intake)
@@ -312,13 +325,18 @@ warmupComplex.success.connect(equil1Complex.intake)
 equil1Complex.success.connect(equil2Complex.intake)
 equil2Complex.success.connect(equil3Complex.intake)
 equil3Complex.success.connect(sync.intake)
+
 # Ligand Connections
+iligs.success.connect(chargelig.intake)
+chargelig.success.connect(ligset.intake)
+ligset.success.connect(complx.intake)
 ligset.success.connect(solvateLigand.intake)
 solvateLigand.success.connect(ffLigand.intake)
 ffLigand.success.connect(minimizeLigand.intake)
 minimizeLigand.success.connect(warmupLigand.intake)
 warmupLigand.success.connect(equilLigand.intake)
 equilLigand.success.connect(sync.solvated_ligand_in_port)
+
 
 # Connections Yank cubes
 for i in range(0, len(cube_list)-2):

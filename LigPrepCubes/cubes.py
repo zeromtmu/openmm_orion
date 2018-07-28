@@ -78,6 +78,13 @@ class LigandChargeCube(ParallelMixin, OERecordComputeCube):
 
             ligand = record.get_value(Fields.primary_molecule)
 
+            if oechem.OECalculateMolecularWeight(ligand) > 900.0:  # Units are in Dalton
+                self.opt['Logger'].warn("[{}] The molecule {} seems to have a large molecular "
+                                        "weight for a ligand: {:.2f} Da"
+                                        .format(self.title,
+                                                ligand.GetTitle(),
+                                                oechem.OECalculateMolecularWeight(ligand)))
+
             # Ligand sanitation
             ligand = oeommutils.sanitizeOEMolecule(ligand)
 
@@ -158,7 +165,8 @@ class LigandSetting(OERecordComputeCube):
                                                                                    ligand.GetTitle()))
 
             if oechem.OECalculateMolecularWeight(ligand) > 900.0:  # Units are in Dalton
-                self.opt['Logger'].warn("[{}] The molecule {} seems to have a large molecular weight for a ligand: {}"
+                self.opt['Logger'].warn("[{}] The molecule {} seems to have a large molecular "
+                                        "weight for a ligand: {:.2f} Da"
                                         .format(self.title,
                                                 ligand.GetTitle(),
                                                 oechem.OECalculateMolecularWeight(ligand)))
@@ -184,7 +192,7 @@ class LigandSetting(OERecordComputeCube):
                 if ligand.GetMaxConfIdx() > 1:
                     ligand_title += '_c' + str(num_conf_counter)
 
-                conf_mol.SetTitle(ligand_title)
+                # conf_mol.SetTitle(ligand_title)
 
                 record.set_value(Fields.id, self.count)
                 record.set_value(Fields.title, ligand_title)

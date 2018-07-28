@@ -25,13 +25,12 @@ from ForceFieldCubes.cubes import ForceFieldCube
 from LigPrepCubes.cubes import (LigandChargeCube,
                                 LigandSetting)
 
-#from YankCubes.cubes import YankSolvationFECube
-from YankCubes.cubes import TestFECube
+from YankCubes.cubes import YankSolvationFECube
 from MDCubes.OpenMMCubes.cubes import (OpenMMminimizeCube,
                                        OpenMMNvtCube,
                                        OpenMMNptCube)
 
-job = WorkFloe("Testing Solvation Free Energy")
+job = WorkFloe("Solvation Free Energy")
 
 job.description = """
 The Solvation Free Energy protocol performs Solvation Free Energy Calculations (SFEC) on 
@@ -41,7 +40,7 @@ but each conformer will be treated as a different ligand and prepared to run SFE
 are solvated in the selected mixture (default water) and parametrized accordingly to the 
 provided force field. A minimization stage is performed on the system followed by a warm up 
 (NVT ensemble) and an equilibration stage (NPT ensemble). In the minimization, warm up 
-and equilibration stage positional harmonic restraints are applied on the ligands with different 
+and equilibration stage positional harmonic restraints are applied to the ligands with different 
 force constants. At the end of the equilibration stage the SFEC calculation is run by YANK 
 with the selected parameters. Solvation Free Energy values and floe reports are output.    
 
@@ -59,7 +58,7 @@ out : Output file
 
 # *************USER SETTING**************
 yank_iteration_per_chunk = 500
-chunks = 5
+chunks = 2
 # ***************************************
 
 cube_list = []
@@ -107,31 +106,37 @@ cube_list.append(ff)
 
 
 # First Yank Cube used to build the UI interface
-solvationfe0 = TestFECube("SovationFE0", title="Solvation FE0")
+solvationfe0 = YankSolvationFECube("SovationFE0", title="Solvation FE0")
 solvationfe0.promote_parameter('iterations', promoted_name='iterations', default=yank_iteration_per_chunk)
 solvationfe0.promote_parameter('verbose', promoted_name='verbose', default=True)
-solvationfe0.promote_parameter('temperature', promoted_name='temperature', default=298.15,
+solvationfe0.promote_parameter('temperature', promoted_name='temperature', default=300.0,
                                description='Temperature (Kelvin)')
-solvationfe0.promote_parameter('pressure', promoted_name='pressure', default=1.01,
+solvationfe0.promote_parameter('pressure', promoted_name='pressure', default=1.0,
                                description='Pressure (atm)')
 solvationfe0.promote_parameter('hmr', promoted_name='hmr', default=False,
                                description='Hydrogen Mass Repartitioning')
-solvationfe0.promote_parameter('max_parallel', promoted_name='max_parallel', default=1,
-                               description='Number of GPUS to make available - '
-                                           'should be less than the number of ligands')
-solvationfe0.promote_parameter('min_parallel', promoted_name='min_parallel', default=1,
-                               description='Number of GPUS to make available - '
-                                           'should be less than the number of ligands')
+# solvationfe0.promote_parameter('max_parallel', promoted_name='num_gpus', default=1,
+#                                description='Number of GPUS to make available - '
+#                                            'should be less than the number of ligands')
+# solvationfe0.promote_parameter('min_parallel', promoted_name='num_gpus', default=1,
+#                                description='Number of GPUS to make available - '
+#                                            'should be less than the number of ligands')
 solvationfe0.set_parameters(rerun=False)
-job.add_cube(solvationfe0)
+solvationfe0.set_parameters(minimize=True)
 
+if chunks == 1:
+    solvationfe0.set_parameters(analyze=True)
+else:
+    solvationfe0.set_parameters(analyze=False)
+
+job.add_cube(solvationfe0)
 
 # Minimization
 minimize = OpenMMminimizeCube("Minimize", title="System Minimization")
 minimize.set_parameters(restraints='noh ligand')
 minimize.set_parameters(restraintWt=5.0)
 minimize.set_parameters(center=True)
-minimize.set_parameters(hmr=solvationfe0.promoted_parameters['hmr']['default'])
+minimize.promote_parameter("hmr", promoted_name="hmr")
 
 job.add_cube(minimize)
 cube_list.append(minimize)
@@ -139,13 +144,13 @@ cube_list.append(minimize)
 # NVT Warm-up
 warmup = OpenMMNvtCube('warmup', title='System Warm Up')
 warmup.set_parameters(time=0.02)
-warmup.set_parameters(temperature=solvationfe0.promoted_parameters['temperature']['default'])
+warmup.promote_parameter("temperature", promoted_name="temperature")
 warmup.set_parameters(restraints="noh ligand")
 warmup.set_parameters(restraintWt=2.0)
 warmup.set_parameters(trajectory_interval=0.0)
 warmup.set_parameters(reporter_interval=0.0)
 warmup.set_parameters(suffix='warmup')
-warmup.set_parameters(hmr=solvationfe0.promoted_parameters['hmr']['default'])
+warmup.promote_parameter("hmr", promoted_name="hmr")
 
 job.add_cube(warmup)
 cube_list.append(warmup)
@@ -153,9 +158,9 @@ cube_list.append(warmup)
 # NPT Equilibration stage
 equil = OpenMMNptCube('equil', title='System Equilibration')
 equil.set_parameters(time=0.02)
-equil.set_parameters(temperature=solvationfe0.promoted_parameters['temperature']['default'])
-equil.set_parameters(pressure=solvationfe0.promoted_parameters['pressure']['default'])
-equil.set_parameters(hmr=solvationfe0.promoted_parameters['hmr']['default'])
+equil.promote_parameter("temperature", promoted_name="temperature")
+equil.promote_parameter("pressure", promoted_name="pressure")
+equil.promote_parameter("hmr", promoted_name="hmr")
 equil.set_parameters(restraints="noh ligand")
 equil.set_parameters(restraintWt=0.1)
 equil.set_parameters(trajectory_interval=0.0)
@@ -169,15 +174,16 @@ cube_list.append(equil)
 cube_list.append(solvationfe0)
 
 for i in range(1, chunks):
-    solvationfe = TestFECube("SovationFE"+str(i), title="Solvation FE"+str(i))
+    solvationfe = YankSolvationFECube("SovationFE"+str(i), title="Solvation FE"+str(i))
     solvationfe.set_parameters(iterations=(i+1)*yank_iteration_per_chunk)
-    solvationfe.set_parameters(verbose=solvationfe0.promoted_parameters['verbose']['default'])
-    solvationfe.set_parameters(temperature=solvationfe0.promoted_parameters['temperature']['default'])
-    solvationfe.set_parameters(pressure=solvationfe0.promoted_parameters['pressure']['default'])
-    solvationfe.set_parameters(hmr=solvationfe0.promoted_parameters['hmr']['default'])
-    solvationfe.set_parameters(max_parallel=solvationfe0.promoted_parameters['max_parallel']['default'])
-    solvationfe.set_parameters(min_parallel=solvationfe0.promoted_parameters['min_parallel']['default'])
+    solvationfe.promote_parameter("verbose", promoted_name="verbose")
+    solvationfe.promote_parameter("temperature", promoted_name="temperature")
+    solvationfe.promote_parameter("pressure", promoted_name="pressure")
+    # solvationfe.promote_parameter("max_parallel", promoted_name="num_gpus")
+    # solvationfe.promote_parameter("min_parallel", promoted_name="num_gpus")
+    solvationfe.promote_parameter("hmr", promoted_name="hmr")
     solvationfe.set_parameters(minimize=False)
+    solvationfe.set_parameters(analyze=False)
     solvationfe.set_parameters(rerun=True)
 
     if i == (chunks - 1):
