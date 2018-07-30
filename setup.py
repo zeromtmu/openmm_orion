@@ -42,7 +42,7 @@ def get_version():
 
 setup(
     name="MDOrion",
-    version='0.7.2',
+    version='0.7.5',
     packages=find_packages(exclude=['tests*']),
     include_package_data=True,
     author="Christopher Bayly, Gaetano Calabro, Nathan M. Lim, John Chodera, ",

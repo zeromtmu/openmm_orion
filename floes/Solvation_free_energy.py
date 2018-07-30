@@ -30,6 +30,8 @@ from MDCubes.OpenMMCubes.cubes import (OpenMMminimizeCube,
                                        OpenMMNvtCube,
                                        OpenMMNptCube)
 
+from YankCubes.yank_templates import number_cubes_solvation
+
 job = WorkFloe("Solvation Free Energy")
 
 job.description = """
@@ -44,22 +46,15 @@ and equilibration stage positional harmonic restraints are applied to the ligand
 force constants. At the end of the equilibration stage the SFEC calculation is run by YANK 
 with the selected parameters. Solvation Free Energy values and floe reports are output.    
 
-Ex. python floes/Solvation_free_energy --ligands ligands.oeb
---out sfe.oedb
-
-Parameters:
+Required Input Parameters:
 -----------
-ligands (file): OEB file of the prepared ligands
+ligands: Dataset of the prepared ligands
 
 Outputs:
 --------
-out : Output file
+out : Dataset of the solvated systems with the calculated solvation free energies and 
+      floe reports
 """
-
-# *************USER SETTING**************
-yank_iteration_per_chunk = 500
-chunks = 2
-# ***************************************
 
 cube_list = []
 
@@ -68,7 +63,9 @@ job.tags = [tag for lists in job.classification for tag in lists]
 
 # Ligand setting
 iligs = DataSetReaderCube("Ligands", title="Ligand Reader")
-iligs.promote_parameter("data_in", promoted_name="ligands", title="Ligand Input File", description="Ligand file name")
+iligs.promote_parameter("data_in", promoted_name="ligands",
+                        title="Ligand Input File",
+                        description="Ligand file name")
 job.add_cube(iligs)
 cube_list.append(iligs)
 
@@ -100,14 +97,14 @@ job.add_cube(solvate)
 cube_list.append(solvate)
 
 ff = ForceFieldCube("ForceField", title="System Parametrization")
-ff.promote_parameter('ligand_forcefield', promoted_name='ligand_ff', default='GAFF2')
+ff.promote_parameter('ligand_forcefield', promoted_name='ligand_forcefield', default='GAFF2')
 job.add_cube(ff)
 cube_list.append(ff)
 
 
 # First Yank Cube used to build the UI interface
 solvationfe0 = YankSolvationFECube("SovationFE0", title="Solvation FE0")
-solvationfe0.promote_parameter('iterations', promoted_name='iterations', default=yank_iteration_per_chunk)
+solvationfe0.promote_parameter('iterations', promoted_name='iterations', default=1000)
 solvationfe0.promote_parameter('verbose', promoted_name='verbose', default=True)
 solvationfe0.promote_parameter('temperature', promoted_name='temperature', default=300.0,
                                description='Temperature (Kelvin)')
@@ -121,13 +118,6 @@ solvationfe0.promote_parameter('hmr', promoted_name='hmr', default=False,
 # solvationfe0.promote_parameter('min_parallel', promoted_name='num_gpus', default=1,
 #                                description='Number of GPUS to make available - '
 #                                            'should be less than the number of ligands')
-solvationfe0.set_parameters(rerun=False)
-solvationfe0.set_parameters(minimize=True)
-
-if chunks == 1:
-    solvationfe0.set_parameters(analyze=True)
-else:
-    solvationfe0.set_parameters(analyze=False)
 
 job.add_cube(solvationfe0)
 
@@ -173,21 +163,15 @@ cube_list.append(equil)
 # Add YANK first Cube
 cube_list.append(solvationfe0)
 
-for i in range(1, chunks):
+for i in range(1, number_cubes_solvation):
     solvationfe = YankSolvationFECube("SovationFE"+str(i), title="Solvation FE"+str(i))
-    solvationfe.set_parameters(iterations=(i+1)*yank_iteration_per_chunk)
+    solvationfe.promote_parameter('iterations', promoted_name='iterations')
     solvationfe.promote_parameter("verbose", promoted_name="verbose")
     solvationfe.promote_parameter("temperature", promoted_name="temperature")
     solvationfe.promote_parameter("pressure", promoted_name="pressure")
+    solvationfe.promote_parameter("hmr", promoted_name="hmr")
     # solvationfe.promote_parameter("max_parallel", promoted_name="num_gpus")
     # solvationfe.promote_parameter("min_parallel", promoted_name="num_gpus")
-    solvationfe.promote_parameter("hmr", promoted_name="hmr")
-    solvationfe.set_parameters(minimize=False)
-    solvationfe.set_parameters(analyze=False)
-    solvationfe.set_parameters(rerun=True)
-
-    if i == (chunks - 1):
-        solvationfe.set_parameters(analyze=True)
 
     job.add_cube(solvationfe)
     cube_list.append(solvationfe)
