@@ -43,7 +43,7 @@ from YankCubes.yank_templates import number_cubes_binding
 
 cube_list = []
 
-job = WorkFloe('Binding Affinity Repex Linear')
+job = WorkFloe('Binding Affinity Sams Linear')
 
 job.description = """
 The Absolute Binding Affinity Free Energy protocol (ABFE) performs Binding Affinity calculations 

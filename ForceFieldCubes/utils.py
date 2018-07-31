@@ -105,6 +105,13 @@ def applyffWater(water, opt):
     topology, positions = oeommutils.oemol_to_openmmTop(water)
 
     forcefield = app.ForceField(opt['solvent_forcefield'])
+
+    # if opt['solvent_forcefield'] == 'tip4pew.xml':
+    #     modeller = app.Modeller(topology, positions)
+    #     modeller.addExtraParticles(forcefield)
+    #     topology = modeller.topology
+    #     positions = modeller.positions
+
     unmatched_residues = forcefield.getUnmatchedResidues(topology)
 
     if unmatched_residues:
