@@ -20,7 +20,11 @@ number_cubes_binding = 15
 number_cubes_solvation = 2
 # ***************************************
 
-resources = {'k80': {'w29': {'slope': 1.12e-6, 'intercept': 0.002}}}  # intercept in hrs
+resources = {'k80':
+                 {'w29': {'slope': 1.12e-6, 'intercept': 0.002},
+                  'wsams': {'slope': 8.10e-8, 'intercept': 0.005}
+                  }
+             }  # intercept in hrs
 
 yank_solvation_template = """
 ---

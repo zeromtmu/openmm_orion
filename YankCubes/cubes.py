@@ -190,6 +190,10 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                                                                 getattr(self.args, tmp_default.name),
                                                                 tmp_description)
 
+            if opt['iterations'] <= 0:
+                raise ValueError(
+                    "The number of iterations cannot be a non-negative number: {}".format(opt['iterations']))
+
             iterations_per_cube = ceil(opt['iterations'] / number_cubes_solvation)
 
             if not record.has_value(current_iteration_field):
@@ -200,6 +204,10 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
 
             # Current number of iterations
             current_iterations = record.get_value(current_iteration_field)
+
+            if current_iterations == opt['iterations']:
+                self.success.emit(record)
+                return
 
             # Calculate the new number of iterations to run
             if current_iterations + iterations_per_cube > opt['iterations']:
@@ -680,6 +688,9 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                                                                 getattr(self.args, tmp_default.name),
                                                                 tmp_description)
 
+            if opt['iterations'] <= 0:
+                raise ValueError("The number of iterations cannot be a non-negative number: {}".format(opt['iterations']))
+
             iterations_per_cube = ceil(opt['iterations'] / number_cubes_binding)
 
             if not record.has_value(current_iteration_field):
@@ -690,6 +701,10 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
             # Current number of iterations
             current_iterations = record.get_value(current_iteration_field)
+
+            if current_iterations == opt['iterations']:
+                self.success.emit(record)
+                return
 
             # Calculate the new number of iterations to run
             if current_iterations + iterations_per_cube > opt['iterations']:
@@ -710,8 +725,16 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
             complex = record.get_value(Fields.primary_molecule)
 
-            total_time_per_iteration = resources['k80']['w29']['intercept'] + \
-                                       resources['k80']['w29']['slope']*complex.NumAtoms()
+            if opt['sampler'] == 'repex':
+                self.log.warn('REPEX samplig selected')
+                total_time_per_iteration = resources['k80']['w29']['intercept'] + \
+                                           resources['k80']['w29']['slope'] * complex.NumAtoms()
+            elif opt['sampler'] == 'sams':
+                self.log.warn('SAMS samplig selected')
+                total_time_per_iteration = resources['k80']['wsams']['intercept'] + \
+                                           resources['k80']['wsams']['slope'] * complex.NumAtoms()
+            else:
+                raise ValueError("The selected sampling method is not supported: {}".format(opt['sampler']))
 
             total_time = total_time_per_iteration * iterations_per_cube
 

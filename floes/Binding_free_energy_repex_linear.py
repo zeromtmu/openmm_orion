@@ -47,7 +47,7 @@ job = WorkFloe('Binding Affinity Repex Linear')
 
 job.description = """
 The Absolute Binding Affinity Free Energy protocol (ABFE) performs Binding Affinity calculations 
-on a set of provided ligands and related receptor by using YANK ( http://getyank.org/latest/ ). 
+on a set of provided ligands and related receptor by using YANK Replica Exchange ( http://getyank.org/latest/ ). 
 The ligands need to have coordinates and correct chemistry. Each ligand can have multiple conformers, 
 but each conformer will be treated as a different ligand and prepared to run ABFE. 
 The protein needs to be prepared at MD preparation standard. This includes capping the protein, 
