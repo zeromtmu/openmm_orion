@@ -12,7 +12,7 @@ PACKAGE_DIR = os.path.dirname(os.path.dirname(MDOrion.__file__))
 FILE_DIR = os.path.join(PACKAGE_DIR, "tests", "data")
 
 
-class YankBondingRepexTestCase(TestCase):
+class YankBindingRepexTestCase(TestCase):
     """ Invocation: python -m pytest floes/tests/ -s -v"""
 
     @pytest.mark.slow
