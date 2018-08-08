@@ -120,7 +120,8 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
     iterations = parameter.IntegerParameter(
         'iterations',
         default=1000,
-        help_text="Number of Yank iterations. This set for how long run the simulation")
+        help_text="Total Number of Yank iterations for the entire floe. "
+                  "A Yank iteration is 500 MD steps")
 
     nsteps_per_iteration = parameter.IntegerParameter(
         'nsteps_per_iteration',
@@ -601,7 +602,8 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
     iterations = parameter.IntegerParameter(
         'iterations',
         default=1000,
-        help_text="Number of Yank iterations. This set for how long run the simulation")
+        help_text="Total Number of Yank iterations for the entire floe. "
+                  "A Yank iteration is 500 MD steps")
 
     nsteps_per_iteration = parameter.IntegerParameter(
         'nsteps_per_iteration',
@@ -638,14 +640,15 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
         default='repex',
         choices=['repex',
                  'sams'],
-        help_text='Yank Sampling mode: repex Replica Exchange and sams Self-Adjusted Mixture Sampling')
+        help_text='Yank Sampling mode: REPEX Replica Exchange and SAMS Self-Adjusted Mixture Sampling')
 
     restraints = parameter.StringParameter(
         'restraints',
         default='boresch',
         choices=['harmonic',
                  'boresch'],
-        help_text='Select the restraint type')
+        help_text='Select the restraint types to apply to the ligand during the '
+                  'alchemical decoupling. Choices: harmonic, boresch')
 
     protocol = parameter.StringParameter(
         'protocol',
@@ -1011,4 +1014,4 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
             # Return failed mol
             self.failure.emit(record)
 
-        return
+        return 
