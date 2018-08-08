@@ -146,7 +146,7 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
     hmr = parameter.BooleanParameter(
         'hmr',
         default=False,
-        description='Hydrogen Mass Repartitioning')
+        description='On enables Hydrogen Mass Repartitioning')
 
     def begin(self):
         self.opt = vars(self.args)
@@ -258,6 +258,10 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                 alchemical_pme_treatment = 'exact'
             else:
                 alchemical_pme_treatment = 'direct-space'
+
+            if fchg_lig != 0:
+                raise ValueError("The provided ligand {} is not neutral. Formal charge = {}".format(system_title,
+                                                                                                    fchg_lig))
 
             opt['system_title'] = system_title
 
@@ -627,7 +631,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
     hmr = parameter.BooleanParameter(
         'hmr',
         default=False,
-        description='Hydrogen Mass Repartitioning')
+        description='On enables Hydrogen Mass Repartitioning')
 
     sampler = parameter.StringParameter(
         'sampler',

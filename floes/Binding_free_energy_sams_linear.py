@@ -43,34 +43,34 @@ from YankCubes.yank_templates import number_cubes_binding
 
 cube_list = []
 
-job = WorkFloe('Binding Affinity Sams Linear')
+job = WorkFloe('Binding Affinity Self-Adjusted Mixture Sampling Linear')
 
 job.description = """
-The Absolute Binding Affinity Free Energy protocol (ABFE) performs Binding Affinity calculations 
-on a set of provided ligands and related receptor by using YANK Self-Adjusted Mixture Sampling 
-( http://getyank.org/latest/ ). The ligands need to have coordinates and correct chemistry. 
-Each ligand can have multiple conformers, but each conformer will be treated as a different ligand 
-and prepared to run ABFE. The protein needs to be prepared at MD preparation standard. This includes 
-capping the protein, resolve missing atoms in protein residues and resolve missing protein loops. 
-The parametrization of some "known unknown" non standard protein residues is partially supported. 
-Ligands need to be already posed in the protein binding site. A complex (Bonded State) is formed, 
-solvated and parametrized accordingly to the selected force fields. In a similar fashion the Unbounded 
-state is also prepared. Minimization, Warm up (NVT) and Equilibration (NPT) stages are performed 
-an the Bonded and Unbounded states. In order to minimize Molecular Dynamics (MD) failures along 
-these stages, positional harmonic restraints are applied on the ligand and protein with different 
-force constants. At the end of the equilibration stages the ABFE calculations are run by YANK with 
-the selected parameters. Calculated Binding Affinities for each ligand are output with the related 
-floe reports. 
-   
-Required Input Parameters:
------------
-ligands: Dataset of the prepared ligands
-protein: Dataset of the prepared protein
-
-Outputs:
---------
-out : Dataset of the solvated systems with the calculated binding free energies and 
-      floe reports
+    The Absolute Binding Affinity Free Energy protocol (ABFE) performs Binding Affinity calculations 
+    on a set of provided ligands and related receptor by using YANK Self-Adjusted Mixture Sampling 
+    ( http://getyank.org/latest/ ). The ligands need to have coordinates and correct chemistry. 
+    Each ligand can have multiple conformers, but each conformer will be treated as a different ligand 
+    and prepared to run ABFE. The protein needs to be prepared at MD preparation standard. This includes 
+    capping the protein, resolve missing atoms in protein residues and resolve missing protein loops. 
+    The parametrization of some "known unknown" non standard protein residues is partially supported. 
+    Ligands need to be already posed in the protein binding site. A complex (Bonded State) is formed, 
+    solvated and parametrized accordingly to the selected force fields. In a similar fashion the Unbounded 
+    state is also prepared. Minimization, Warm up (NVT) and Equilibration (NPT) stages are performed 
+    an the Bonded and Unbounded states. In order to minimize Molecular Dynamics (MD) failures along 
+    these stages, positional harmonic restraints are applied on the ligand and protein with different 
+    force constants. At the end of the equilibration stages the ABFE calculations are run by YANK with 
+    the selected parameters. Calculated Binding Affinities for each ligand are output with the related 
+    floe reports. 
+       
+    Required Input Parameters:
+    -----------
+    ligands: Dataset of the prepared ligands
+    protein: Dataset of the prepared protein
+    
+    Outputs:
+    --------
+    out : Dataset of the solvated systems with the calculated binding free energies and 
+          floe reports
 """
 
 job.classification = [['BindingFreeEnergy', 'Yank']]
@@ -128,30 +128,25 @@ ffComplex.promote_parameter('other_forcefield', promoted_name='other_forcefield'
 job.add_cube(ffComplex)
 
 # First Yank Cube used to build the UI interface
-abfe0 = YankBindingFECube("ABFE0", title="ABFE0")
+abfe0 = YankBindingFECube("ABFE0", title="YANK ABFE SAMS 0")
 abfe0.promote_parameter('iterations', promoted_name='iterations',
                         default=1000,
-                        description="Number of Yank iterations. This set for how long run the simulation")
+                        description="Total Number of Yank iterations for the entire floe. "
+                                    "A Yank iteration is 500 MD steps")
 abfe0.promote_parameter('verbose', promoted_name='verbose', default=True)
 abfe0.promote_parameter('temperature', promoted_name='temperature', default=300.0,
                         description='Temperature (Kelvin)')
 abfe0.promote_parameter('pressure', promoted_name='pressure', default=1.0,
                         description='Pressure (atm)')
 abfe0.promote_parameter('hmr', promoted_name='hmr', default=False,
-                        description='Hydrogen Mass Repartitioning')
+                        description='On enables Hydrogen Mass Repartitioning')
 abfe0.promote_parameter('restraints', promoted_name='restraints',
                         default='boresch',
-                        description='Select the restraint types. '
-                                    'Choices: harmonic, boresch')
+                        description='Select the restraint types to apply to the ligand during the '
+                                    'alchemical decoupling. Choices: harmonic, boresch')
 abfe0.set_parameters(sampler='sams')
 abfe0.set_parameters(protocol='windows_sams')
 
-# abfe0.promote_parameter('max_parallel', promoted_name='num_gpus', default=1,
-#                         description='Number of GPUS to make available - '
-#                                     'should be less than the number of ligands')
-# abfe0.promote_parameter('min_parallel', promoted_name='num_gpus', default=1,
-#                         description='Number of GPUS to make available - '
-#                                     'should be less than the number of ligands')
 job.add_cube(abfe0)
 
 # Minimization
@@ -275,7 +270,7 @@ cube_list.append(sync)
 cube_list.append(abfe0)
 
 for i in range(1, number_cubes_binding):
-    abfe = YankBindingFECube("ABFE"+str(i), title="ABFE"+str(i))
+    abfe = YankBindingFECube("ABFE"+str(i), title="YANK ABFE SAMS"+str(i))
     abfe.promote_parameter("iterations", promoted_name="iterations")
     abfe.promote_parameter("verbose", promoted_name="verbose")
     abfe.promote_parameter("temperature", promoted_name="temperature")
@@ -284,14 +279,12 @@ for i in range(1, number_cubes_binding):
     abfe.promote_parameter("hmr", promoted_name="hmr")
     abfe.set_parameters(sampler='sams')
     abfe.set_parameters(protocol='windows_sams')
-    # abfe.promote_parameter("max_parallel", promoted_name="num_gpus")
-    # abfe.promote_parameter("min_parallel", promoted_name="num_gpus")
 
     job.add_cube(abfe)
     cube_list.append(abfe)
 
 ofs = DataSetWriterCube('ofs', title='Out')
-ofs.promote_parameter("data_out", promoted_name="out")
+ofs.promote_parameter("data_out", promoted_name="out", description="Data Set Out Name")
 job.add_cube(ofs)
 cube_list.append(ofs)
 
