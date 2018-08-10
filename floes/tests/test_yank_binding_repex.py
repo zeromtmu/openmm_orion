@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from floes.Binding_free_energy_repex_linear import job as floe
+from floes.Binding_free_energy_repex import job as floe
 
 import os
 

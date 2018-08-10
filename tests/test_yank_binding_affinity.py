@@ -36,7 +36,7 @@ class TestYankBindingFloes(FloeTestCase):
 
     def test_yank_binding_repex_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
-            os.path.join(FLOES_DIR, "Binding_free_energy_repex_linear.py"),
+            os.path.join(FLOES_DIR, "Binding_free_energy_repex.py"),
             run_timeout=8000,
             queue_timeout=1200
         )
@@ -72,7 +72,7 @@ class TestYankBindingFloes(FloeTestCase):
 
     def test_yank_binding_sams_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
-            os.path.join(FLOES_DIR, "Binding_free_energy_sams_linear.py"),
+            os.path.join(FLOES_DIR, "Binding_free_energy_sams.py"),
             run_timeout=8000,
             queue_timeout=1200
         )

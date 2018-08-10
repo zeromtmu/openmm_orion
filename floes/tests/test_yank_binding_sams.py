@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from floes.Binding_free_energy_sams_linear import job as floe
+from floes.Binding_free_energy_sams import job as floe
 
 import os
 
