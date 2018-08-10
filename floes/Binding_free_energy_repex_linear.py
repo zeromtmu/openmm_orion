@@ -148,7 +148,7 @@ abfe0.promote_parameter('restraints', promoted_name='restraints',
 #                                     'should be less than the number of ligands')
 
 # Testing
-abfe0.set_parameters(min_parallel=0)
+# abfe0.set_parameters(min_parallel=0)
 
 abfe0.set_parameters(sampler='repex')
 abfe0.set_parameters(protocol='windows_29')
@@ -287,7 +287,7 @@ for i in range(1, number_cubes_binding):
     abfe.set_parameters(protocol='windows_29')
 
     # Testing
-    abfe.set_parameters(min_parallel=0)
+    # abfe.set_parameters(min_parallel=0)
 
     job.add_cube(abfe)
     cube_list.append(abfe)
