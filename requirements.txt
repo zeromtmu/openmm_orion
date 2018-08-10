@@ -7,9 +7,10 @@ six==1.11.0
 wcwidth==0.1.7
 
 # OE Stack
-OpenEye-Artemis==0.2.1a5
-OpenEye-cuberecord==0.14.7
+OpenEye-Artemis==0.1.10
+OpenEye-cuberecord==0.14.6
 OpenEye-datarecord==0.12.2
+
 OpenEye-ensemble2img==0.1.1
 OpenEye-floe==0.5.18
 OpenEye_oetrajanalysis==0.1.4

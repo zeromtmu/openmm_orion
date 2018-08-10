@@ -159,7 +159,7 @@ class SolvationCube(ParallelMixin, OERecordComputeCube):
         help_text="Molar fractions of each solvent components. The molar fractions are specified"
                   "as comma separated molar fractions strings e.g. 0.5,0.2,0.3")
 
-    verbose = parameter.StringParameter(
+    verbose = parameter.BooleanParameter(
         'verbose',
         required=True,
         default=False,

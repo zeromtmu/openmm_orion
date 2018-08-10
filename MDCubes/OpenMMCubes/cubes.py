@@ -156,7 +156,7 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
     hmr = parameter.BooleanParameter(
         'hmr',
         default=False,
-        description='Enable/Disable Hydrogen Mass Repartitioning')
+        description='On enables Hydrogen Mass Repartitioning')
 
     save_md_stage = parameter.BooleanParameter(
         'save_md_stage',
@@ -410,7 +410,7 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
     hmr = parameter.BooleanParameter(
         'hmr',
         default=False,
-        help_text='Enable/Disable Hydrogen Mass Repartitioning')
+        help_text='On enables Hydrogen Mass Repartitioning')
 
     save_md_stage = parameter.BooleanParameter(
         'save_md_stage',
@@ -707,7 +707,7 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
     hmr = parameter.BooleanParameter(
         'hmr',
         default=False,
-        help_text='Enable/Disable Hydrogen Mass Repartitioning')
+        help_text='On enables Hydrogen Mass Repartitioning')
 
     save_md_stage = parameter.BooleanParameter(
         'save_md_stage',

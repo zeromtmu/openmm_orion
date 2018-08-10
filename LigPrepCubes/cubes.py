@@ -20,6 +20,9 @@ from LigPrepCubes import ff_utils
 from floe.api import ParallelMixin, parameter
 
 from cuberecord import OERecordComputeCube
+
+from cuberecord.ports import  RecordOutputPort
+
 from oeommtools import utils as oeommutils
 
 from Standards import Fields
