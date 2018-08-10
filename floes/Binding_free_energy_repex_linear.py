@@ -127,7 +127,7 @@ ffComplex.promote_parameter('other_forcefield', promoted_name='other_forcefield'
 job.add_cube(ffComplex)
 
 # First Yank Cube used to build the UI interface
-abfe0 = YankBindingFECube("ABFE0", title="ABFE REPEX 0")
+abfe0 = YankBindingFECube("ABFE0", title="YANK ABFE REPEX 0")
 abfe0.promote_parameter('iterations', promoted_name='iterations',
                         default=1000,
                         description="Total Number of Yank iterations for the entire floe. "
@@ -143,6 +143,13 @@ abfe0.promote_parameter('restraints', promoted_name='restraints',
                         default='boresch',
                         description='Select the restraint types to apply to the ligand during the '
                                     'alchemical decoupling. Choices: harmonic, boresch')
+# abfe0.promote_parameter('max_parallel', promoted_name='num_gpus', default=1,
+#                         description='Number of GPUS to make available - '
+#                                     'should be less than the number of ligands')
+
+# Testing
+abfe0.set_parameters(min_parallel=0)
+
 abfe0.set_parameters(sampler='repex')
 abfe0.set_parameters(protocol='windows_29')
 
@@ -278,6 +285,9 @@ for i in range(1, number_cubes_binding):
     abfe.promote_parameter("hmr", promoted_name="hmr")
     abfe.set_parameters(sampler='repex')
     abfe.set_parameters(protocol='windows_29')
+
+    # Testing
+    abfe.set_parameters(min_parallel=0)
 
     job.add_cube(abfe)
     cube_list.append(abfe)
