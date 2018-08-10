@@ -149,30 +149,18 @@ def RequestOEFieldType( record, field):
     else:
         return record.get_value(field)
 
-def MakeClusterInfoText(dataDict):
-    # Generate text string about Clustering information
-    #
-    text = []
-    nFrames = dataDict['nFrames']
-    text.append('Cluster method {}\n'.format( dataDict['ClusterMethod']) )
-    text.append('- Clustered {} frames\n'.format(nFrames) )
-    text.append('- Used alpha={:.2f}\n'.format( dataDict['HDBSCAN_alpha']))
-    #
-    if dataDict['nClusters']<2:
-        text.append('- Produced {} cluster\n'.format( dataDict['nClusters']))
+def ColorblindRGBMarkerColors( nColors=0):
+    palette = [(0, 114, 178), (0, 158, 115), (213, 94, 0), (204, 121, 167),
+        (240, 228, 66), (230, 159, 0), (86, 180, 233), (150, 150, 150)]
+    if nColors<1:
+        return palette
+    elif nColors<9:
+        return palette[:nColors]
     else:
-        text.append('- Produced  {} clusters\n'.format( dataDict['nClusters']))
-    nOutliers = dataDict['ClusterVec'].count(-1)
-    text.append('    with {:4d} outliers\n\n'.format( nOutliers))
-    #
-    text.append(' Cluster Size Status\n')
-    text.append(' ------- ---- ------\n')
-    for i, count in enumerate(dataDict['ClusterCounts']):
-        if nFrames/count>10:
-            text.append('  {:2d}    {:4d}  minor\n'.format( i, count))
-        else:
-            text.append('  {:2d}    {:4d}  major\n'.format( i, count))
-    #
-    return text
+        n = int(nColors/8)
+        moreRGB = palette
+        for i in range(n):
+            moreRGB = moreRGB+palette
+        return( moreRGB[:nColors])
 
 
