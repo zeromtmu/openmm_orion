@@ -27,78 +27,204 @@ from openeye import oechem, oedepict
 import TrjAnalysisCubes.utils as utl
 
 
-_clus_floe_report_template = """
+_clus_floe_report_header = """
 <html>
 <head>
 <style>
 
-  .row {{
+  .cb-floe-report-wrapper * {
+    box-sizing: border-box;
+    font-family: 'Helvetica Neue', Helvetica;
+  }
+
+  .cb-floe-report__row {
     width:100%;
     display:flex;
-  }}
-  .sidebar {{
+  }
+  .cb-floe-report__sidebar {
     width: 25%;
-  }}
-  .content {{
+  }
+  .cb-floe-report__content {
     width: 75%;
-  }}
-  .column > * {{
+  }
+  .cb-floe-report__column > * {
     width: 100%;
     height: auto;
-  }}
-  pre {{
-    white-space: pre-wrap;
-    font-family: 'Helvetica Neue', Helvetica;
+  }
+  .cb-floe-report-element--analysis {
+    /*white-space: pre-wrap;*/
     padding: 0 10px 20px 10px;
-  }}
-  h2 {{
+    font-size: calc(.5vh + .75vw + .25vmin);
+  }
+
+  div.cb-floe-report__analysis-table {
+    width: 100%;
+  }
+
+  div.cb-floe-report__analysis-table-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 5px;
+  }
+
+  div.cb-floe-report__analysis-table-row:nth-child(1) {
+    font-weight: bold;
+    border-bottom: 1px solid black;
+  }
+
+  div.cb-floe-report__analysis-table-row > span:nth-child(1) {
+    flex-basis: 20%;
+    text-align: center;
+  }
+
+  div.cb-floe-report__analysis-table-row > span:nth-child(2) {
+    flex-basis: 15%;
+    text-align: right;
+  }
+
+  div.cb-floe-report__analysis-table-row > span:nth-child(3) {
+    flex-basis: 50%;
+    text-align: left;
+    margin-left: auto;
+  }
+
+  h2.cb-floe-report-element--header {
     margin-bottom: 0;
     text-align: left;
-  }}
-  h3 {{
+  }
+  h3.cb-floe-report-element--header {
     margin-bottom: 0;
     text-align: center;
-  }}
+  }
+
+  /* tab styles */
+  div.cb-floe-report__tab-wrapper input {
+    display: none;
+  }
+
+  div.cb-floe-report__tab-wrapper label {
+    display: block;
+    float: left;
+    padding: 5px 10px;
+    cursor: pointer;
+    border: 2px solid black;
+    margin-right: 2px;
+  }
+
+  div.cb-floe-report__tab-wrapper input:checked + label {
+    background: black;
+    color: white;
+    cursor: default;
+  }
+
+  div.cb-floe-report__tab-wrapper div.cb-floe-report__tab-content {
+    display: none;
+    padding: 5px 10px;
+    clear: left;
+    border: 2px solid black;
+  }
+"""
+
+_clus_floe_report_midHtml0 = """
 </style>
 
 </head>
 <body>
+<div class="cb-floe-report-wrapper">
+  <div class="cb-floe-report__row">
+  <div class="cb-floe-report__column cb-floe-report__sidebar">
+    {query_depiction}
+"""
 
-<div class="row">
-<div class="column sidebar">
-  {query_depiction}
-  {rmsd_hist}
-</div>
+_clus_floe_report_midHtml1 = """
+  </div>
 
-<div class="column content">
-  <h2> Analysis of Short Trajectory MD </h2>
-  {traj}
-</div>
-</div>
+  <div class="cb-floe-report__column cb-floe-report__content">
+    <h2> Analysis of Short Trajectory MD </h2>
 
-<div class="row">
-  <h2 style="text-align: center; width: 100%"> Ligand Clustering based on Active Site Alignment </h2>
-</div>
+    <div class="cb-floe-report__tab-wrapper">
 
-<div class="row">
-<div class="column sidebar">
-  <br/><br/>
-  <pre>
-  {analysis}
-  </pre>
-</div>
+"""
 
-<div class="column content">
-  <h3> Cluster membership of ligand by Trajectory frame </h3>
-  {clusters}
-  <h3> RMSD of ligand compared to initial pose, colored by cluster </h3>
-  {rmsdInit}
-</div>
+_clus_floe_report_midHtml2 = """      </div>
+    </div>
+  </div>
+
+  <div class="cb-floe-report__row">
+    <h2 style="text-align: center; width: 100%"> Ligand Clustering based on Active Site Alignment </h2>
+  </div>
+
+  <div class="cb-floe-report__row">
+    <div class="cb-floe-report__column cb-floe-report__sidebar">
+"""
+
+_clus_floe_report_Trailer = """    </div>
+
+    <div class="cb-floe-report__column cb-floe-report__content">
+      <h3 class="cb-floe-report-element--header"> Cluster membership of ligand by Trajectory frame </h3>
+      {clusters}
+      <h3 class="cb-floe-report-element--header"> RMSD of ligand compared to initial pose, colored by cluster </h3>
+      {rmsdInit}
+    </div>
+  </div>
+
 </div>
 
 </body>
-</html>
-"""
+</html>"""
+
+def MakeClusterInfoText(dataDict, rgbVec):
+    # Generate text string about Clustering information
+    #
+    text = []
+    nFrames = dataDict['nFrames']
+    text.append("""
+      <br/><br/>
+      <div class="cb-floe-report-element--analysis">""")
+    text.append('Clustering by ligand RMSD after alignment by active site C_alphas:\n' )
+    text.append('        <br>- Cluster method {}\n'.format( dataDict['ClusterMethod']) )
+    text.append('        <br>- Using alpha={:.2f}\n'.format( dataDict['HDBSCAN_alpha']))
+    text.append('        <br>- Clustered {} frames\n'.format(nFrames) )
+    #
+    if dataDict['nClusters']<2:
+        text.append('        <br>- Produced {} cluster'.format( dataDict['nClusters']))
+    else:
+        text.append('        <br>- Produced {} clusters'.format( dataDict['nClusters']))
+    nOutliers = dataDict['ClusterVec'].count(-1)
+    text.append(' with {:4d} outliers:\n'.format( nOutliers))
+    #
+    text.append("""
+        <br>
+        <br>
+        <div class="cb-floe-report__analysis-table">
+          <div class="cb-floe-report__analysis-table-row">
+            <span>Cluster</span>
+            <span>Size</span>
+            <span>Status</span>
+          </div>\n
+""")
+    #
+    for i, (count,rgb) in enumerate(zip(dataDict['ClusterCounts'],rgbVec)):
+        status = 'major'
+        if nFrames/count>10:
+            status = 'minor (not depicted)'
+        text.append("""
+          <div class="cb-floe-report__analysis-table-row" style="
+                background-color: rgb({r}, {g}, {b} );
+                color: white;">
+            <span>{clusID}</span>
+            <span>{count}</span>
+            <span>{status}</span>
+          </div>\n""".format( clusID=i, count=count, status=status,
+                            r=rgb[0], g=rgb[1], b=rgb[2]))
+    #
+    text.append("""
+        </div>
+      </div>
+    """)
+    #
+    return text
+
 
 def png_to_data_url(png_data):
     return "<img src='data:image/png;base64," + b64encode(png_data).decode('utf-8') + "'>"
@@ -178,7 +304,7 @@ class MDTrajAnalysisClusterReport(OERecordComputeCube):
             trajHistRMSD_svg = utl.RequestOEField( clusRecord, 'HistSVG', Types.String)
             trajClus_svg = utl.RequestOEField( clusRecord, 'ClusSVG', Types.String)
             rmsdInit_svg = utl.RequestOEField( clusRecord, 'rmsdInitPose', Types.String)
-            #trajHeatRMSD_png = utl.RequestOEField( clusRecord, 'HeatPNG', Types.Blob)
+            clusTrajSVG = utl.RequestOEField( clusRecord, 'ClusTrajSVG', Types.StringVec)
             opt['Logger'].info('{} found the TrajClus plots'.format(system_title) )
 
             # Generate text string about Clustering information
@@ -189,27 +315,67 @@ class MDTrajAnalysisClusterReport(OERecordComputeCube):
             clusData['nClusters'] = utl.RequestOEField(clusRecord, 'nClusters', Types.Int)
             clusData['ClusterVec'] = utl.RequestOEField( clusRecord, 'Clusters', Types.IntVec)
             clusData['ClusterCounts'] = utl.RequestOEField( clusRecord, 'ClusterCounts', Types.IntVec)
-            analysis_txt = utl.MakeClusterInfoText( clusData)
 
             opt['Logger'].info('{} finished writing analysis files'.format(system_title) )
 
+            # prepare the 2D structure depiction
             oedepict.OEPrepareDepiction(ligInitPose)
             img = oedepict.OEImage(400, 300)
             oedepict.OERenderMolecule(img, ligInitPose)
 
-            reportFName = system_title+'_ClusReport.html'
-            with open( reportFName, 'w') as report_file:
-                report_file.write(_clus_floe_report_template.format(
-                    query_depiction=oedepict.OEWriteImageToString("svg", img).decode("utf8"),
-                    rmsd_hist=trim_svg(trajHistRMSD_svg),
-                    analysis="".join(analysis_txt),
-                    clusters=trim_svg(trajClus_svg),
-                    traj=trim_svg(trajSVG),
-                    rmsdInit=trim_svg(rmsdInit_svg),
-                    )
-                )
+            # get the palette of graph marker colors
+            nClustersP1 = clusData['nClusters']+1
+            clusRGB = utl.ColorblindRGBMarkerColors( nClustersP1)
+            clusRGB[-1] = (76, 76, 76)
 
-                report_file.close()
+            # write the report
+            reportFName = system_title+'_ClusReport.html'
+            report_file = open( reportFName, 'w')
+
+            report_file.write(_clus_floe_report_header)
+
+            for i in range(len(clusTrajSVG)+1):
+                report_file.write("""
+              div.cb-floe-report__tab-wrapper input:nth-of-type({clusID}):checked ~ .cb-floe-report__tab-content:nth-of-type({clusID}) {{ display: block; }}
+            """.format( clusID=i+1))
+
+            report_file.write(_clus_floe_report_midHtml0.format(
+                query_depiction=oedepict.OEWriteImageToString("svg", img).decode("utf8")))
+
+            analysis_txt = MakeClusterInfoText( clusData,clusRGB)
+            report_file.write("".join(analysis_txt))
+
+            report_file.write(_clus_floe_report_midHtml1 )
+
+            report_file.write("""      <input type="radio" name="tab" id="cb-floe-report__tab-1-header" checked>
+                  <label class="cb-floe-report__tab-label" for="cb-floe-report__tab-1-header">Overall</label>
+
+            """)
+            for i, (clus,rgb) in enumerate(zip(clusTrajSVG,clusRGB)):
+                report_file.write("""      <input type="radio" name="tab" id="cb-floe-report__tab-{tabID}-header">
+                  <label class="cb-floe-report__tab-label" for="cb-floe-report__tab-{tabID}-header" style="
+                            background-color: rgb({r},{g},{b});
+                            color: white;">Cluster {clusNum}</label>
+
+            """.format( tabID=i+2, clusNum=i, r=rgb[0], g=rgb[1], b=rgb[2]))
+
+            report_file.write("""      <div class="cb-floe-report__tab-content">
+                    {traj}
+                  </div>
+            """.format(traj=trajSVG))
+            for clusSVG in clusTrajSVG:
+                report_file.write("""      <div class="cb-floe-report__tab-content">
+                    {traj}
+                  </div>
+            """.format(traj=clusSVG))
+
+            report_file.write(_clus_floe_report_midHtml2)
+
+            report_file.write(_clus_floe_report_Trailer.format(
+                clusters=trim_svg(trajClus_svg),
+                rmsdInit=trim_svg(rmsdInit_svg)))
+
+            report_file.close()
 
             if in_orion():
                 session = OrionSession()
