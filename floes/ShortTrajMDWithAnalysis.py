@@ -26,6 +26,8 @@ from cuberecord import (DataSetWriterCube,
 from MDCubes.OpenMMCubes.cubes import (OpenMMminimizeCube,
                                        OpenMMNvtCube,
                                        OpenMMNptCube)
+from MDCubes.MDUtils.hypercubes.shard_writer import CollectionWriter
+from MDCubes.MDUtils.cubes import CollectionReader, RecordsShardToRecordConverterParallel
 
 from ComplexPrepCubes.cubes import (ComplexPrepCube,
                                     SolvationCube)
@@ -36,9 +38,12 @@ from ProtPrepCubes.cubes import ProteinSetting
 
 from LigPrepCubes.cubes import (LigandChargeCube,
                                 LigandSetting)
-from MDCubes.MDUtils.hypercubes.shard_writer import CollectionWriter
 
-job = WorkFloe('Short Trajectory MD')
+from TrjAnalysisCubes.TrajToOEMol import TrajToOEMolCube
+from TrjAnalysisCubes.LigBasedTrajClustering import ClusterOETrajCube
+from TrjAnalysisCubes.MDTrajAnalysisFloeReport import MDTrajAnalysisClusterReport
+
+job = WorkFloe('Short Trajectory MD with Analysis')
 
 job.description = """
 
@@ -124,7 +129,7 @@ prod.promote_parameter('pressure', promoted_name='pressure', default=1.0, descri
 prod.promote_parameter('trajectory_interval', promoted_name='prod_trajectory_interval', default=0.002,
                        description='Trajectory saving interval in ns')
 prod.promote_parameter('reporter_interval', promoted_name='prod_reporter_interval', default=0.002,
-                       description='Reporter saving interval is ns')
+                       description='Reporter saving interval in ns')
 # prod.promote_parameter('max_parallel', promoted_name='num_gpus', default=1,
 #                        description='Number of GPUS to make available - should be less than the number of ligands')
 # prod.promote_parameter('min_parallel', promoted_name='num_gpus', default=1,
