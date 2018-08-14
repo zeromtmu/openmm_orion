@@ -207,7 +207,7 @@ def MakeClusterInfoText(dataDict, rgbVec):
     for i, (count,rgb) in enumerate(zip(dataDict['ClusterCounts'],rgbVec)):
         status = 'major'
         if nFrames/count>10:
-            status = 'minor (not depicted)'
+            status = 'minor (no analysis)'
         text.append("""
           <div class="cb-floe-report__analysis-table-row" style="
                 background-color: rgb({r}, {g}, {b} );
