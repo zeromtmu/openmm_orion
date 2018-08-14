@@ -64,6 +64,9 @@ by a warm up (NVT ensemble) and three equilibration stages (NPT ensemble). In th
 minimization, warm up and equilibration stages positional harmonic restraints are
 applied on the ligand and protein. At the end of the equilibration stages a short
 (default 2ns) production run is performed on the unrestrained system.
+The production run is then analyzed in terms of interactions between the
+ligand and the active site and in terms of ligand RMSD after fitting the trajectory
+based on active site C_alphas.
 
 Required Input Parameters:
 --------------------------
@@ -78,7 +81,7 @@ floe report: html page of the Analysis of each ligand.
 # Locally the floe can be invoked by running the terminal command:
 # python floes/ShortTrajMD.py --ligands ligands.oeb --protein protein.oeb --out prod.oeb
 
-job.classification = [['Complex Setup', 'FrosstMD']]
+job.classification = [['Complex Setup', 'FrosstMD', 'MD Traj Analysis']]
 job.tags = [tag for lists in job.classification for tag in lists]
 
 # Ligand setting
@@ -130,13 +133,8 @@ prod.promote_parameter('trajectory_interval', promoted_name='prod_trajectory_int
                        description='Trajectory saving interval in ns')
 prod.promote_parameter('reporter_interval', promoted_name='prod_reporter_interval', default=0.002,
                        description='Reporter saving interval in ns')
-# prod.promote_parameter('max_parallel', promoted_name='num_gpus', default=1,
-#                        description='Number of GPUS to make available - should be less than the number of ligands')
-# prod.promote_parameter('min_parallel', promoted_name='num_gpus', default=1,
-#                        description='Number of GPUS to make available - should be less than the number of ligands')
-# prod.promote_parameter('hmr', promoted_name='hmr', default=False,
-#                        description='Hydrogen Mass Repartitioning')
-
+prod.promote_parameter('hmr', promoted_name='Hydrogen Mass Repartitioning', default=True,
+                       description='Hydrogen Mass Repartitioning is enabled')
 prod.set_parameters(suffix='prod')
 prod.set_parameters(save_md_stage=True)
 
@@ -213,8 +211,14 @@ ofs = CollectionWriter('ofs', title='Out')
 fail = DataSetWriterCube('fail', title='Failures')
 fail.set_parameters(data_out='fail.oedb')
 
+trajCube = TrajToOEMolCube("TrajToOEMolCube")
+clusCube = ClusterOETrajCube("ClusterOETrajCube")
+reportCube = MDTrajAnalysisClusterReport("MDTrajAnalysisClusterReport")
+
+
 job.add_cubes(iligs, ligset, iprot, protset, chargelig, complx, solvate, ff,
-              minComplex, warmup, equil1, equil2, equil3, prod, ofs, fail)
+              minComplex, warmup, equil1, equil2, equil3, prod, ofs, fail,
+              trajCube, clusCube, reportCube)
 
 
 iligs.success.connect(chargelig.intake)
@@ -230,8 +234,11 @@ warmup.success.connect(equil1.intake)
 equil1.success.connect(equil2.intake)
 equil2.success.connect(equil3.intake)
 equil3.success.connect(prod.intake)
-prod.success.connect(ofs.intake)
 prod.failure.connect(fail.intake)
+prod.success.connect(ofs.intake)
+prod.success.connect(trajCube.intake)
+trajCube.success.connect(clusCube.intake)
+clusCube.success.connect(reportCube.intake)
 
 if __name__ == "__main__":
     job.run()

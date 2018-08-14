@@ -9,19 +9,21 @@ from TrjAnalysisCubes.MDTrajAnalysisFloeReport import MDTrajAnalysisClusterRepor
 job = WorkFloe("Analysing Trajectory from Short Trajectory MD")
 #
 job.description = """
-Analysing Trajectory from Short Trajectory MD
-#
-Ex. python floes/STMDTrajAnalysis_floe.py  --in STMD_results.oedb
---out STMD_analysisResults.oedb
-#
-Parameters:
------------
-{none so far}
-#
+
+Analyse the trajectory from Short Trajectory MD in terms of interactions between the
+ligand and the active site and in terms of ligand RMSD after fitting the trajectory
+based on active site C_alphas.
+
+Required Input Parameters:
+--------------------------
+in: Collection of OERecords (one per ligand) of Short Trajectory MD results.
+
 Outputs:
 --------
-STMD_results.oedb
+floe report: html page of the Analysis for each ligand.
 """
+# Ex. python floes/STMDTrajAnalysis_floe.py  --in STMD_results.oedb --out STMD_analysisResults.oedb
+
 #
 #ifs = DataSetReaderCube("ifs")
 #ifs.promote_parameter("data_in", promoted_name="in", title="System Input OERecord", description="OERecord file name")
