@@ -362,12 +362,12 @@ class MDTrajAnalysisClusterReport(OERecordComputeCube):
             report_file.write("""      <div class="cb-floe-report__tab-content">
                     {traj}
                   </div>
-            """.format(traj=trajSVG))
+            """.format(traj=trim_svg(trajSVG)) )
             for clusSVG in clusTrajSVG:
                 report_file.write("""      <div class="cb-floe-report__tab-content">
                     {traj}
                   </div>
-            """.format(traj=clusSVG))
+            """.format(traj=trim_svg(clusSVG)) )
 
             report_file.write(_clus_floe_report_midHtml2)
 
