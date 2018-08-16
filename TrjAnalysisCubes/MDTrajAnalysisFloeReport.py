@@ -380,7 +380,9 @@ class MDTrajAnalysisClusterReport(OERecordComputeCube):
             if in_orion():
                 session = OrionSession()
 
-                file_upload = File.upload(session, "{} STMD Report".format(system_title), "./"+reportFName)
+                ligName = ligInitPose.GetTitle()
+                id_plmd = utl.RequestOEField( record, 'ID_PLMD', Types.Int)
+                file_upload = File.upload(session, "Report{} {}".format(id_plmd,ligName), "./"+reportFName)
                 session.tag_resource(file_upload, "floe_report")
                 job_id = environ.get('ORION_JOB_ID')
                 if job_id:
