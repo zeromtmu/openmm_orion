@@ -133,8 +133,8 @@ prod.promote_parameter('trajectory_interval', promoted_name='prod_trajectory_int
                        description='Trajectory saving interval in ns')
 prod.promote_parameter('reporter_interval', promoted_name='prod_reporter_interval', default=0.002,
                        description='Reporter saving interval in ns')
-prod.promote_parameter('hmr', promoted_name='Hydrogen Mass Repartitioning', default=True,
-                       description='Hydrogen Mass Repartitioning is enabled')
+prod.promote_parameter('hmr', title='Use Hydrogen Mass Repartitioning', default=True,
+                       description='Give hydrogens more mass to speed up the MD')
 prod.set_parameters(suffix='prod')
 prod.set_parameters(save_md_stage=True)
 
@@ -146,7 +146,7 @@ minComplex.set_parameters(restraintWt=5.0)
 minComplex.set_parameters(steps=1000)
 minComplex.set_parameters(center=True)
 minComplex.set_parameters(save_md_stage=True)
-minComplex.promote_parameter("hmr", promoted_name="hmr")
+minComplex.promote_parameter("hmr", default=True)
 
 
 # NVT simulation. Here the assembled system is warmed up to the final selected temperature
@@ -158,7 +158,7 @@ warmup.set_parameters(restraintWt=2.0)
 warmup.set_parameters(trajectory_interval=0.0)
 warmup.set_parameters(reporter_interval=0.001)
 warmup.set_parameters(suffix='warmup')
-warmup.promote_parameter("hmr", promoted_name="hmr")
+warmup.promote_parameter("hmr", default=True)
 
 
 # The system is equilibrated at the right pressure and temperature in 3 stages
@@ -171,7 +171,7 @@ equil1 = OpenMMNptCube('equil1', title='System Equilibration I')
 equil1.set_parameters(time=0.01)
 equil1.promote_parameter("temperature", promoted_name="temperature")
 equil1.promote_parameter("pressure", promoted_name="pressure")
-equil1.promote_parameter("hmr", promoted_name="hmr")
+equil1.promote_parameter("hmr", default=True)
 equil1.set_parameters(restraints="noh (ligand or protein)")
 equil1.set_parameters(restraintWt=2.0)
 equil1.set_parameters(trajectory_interval=0.0)
@@ -184,7 +184,7 @@ equil2 = OpenMMNptCube('equil2', title='System Equilibration II')
 equil2.set_parameters(time=0.02)
 equil2.promote_parameter("temperature", promoted_name="temperature")
 equil2.promote_parameter("pressure", promoted_name="pressure")
-equil2.promote_parameter("hmr", promoted_name="hmr")
+equil2.promote_parameter("hmr", default=True)
 equil2.set_parameters(restraints="noh (ligand or protein)")
 equil2.set_parameters(restraintWt=0.5)
 equil2.set_parameters(trajectory_interval=0.0)
@@ -196,7 +196,7 @@ equil3 = OpenMMNptCube('equil3', title='System Equilibration III')
 equil3.set_parameters(time=0.03)
 equil3.promote_parameter("temperature", promoted_name="temperature")
 equil3.promote_parameter("pressure", promoted_name="pressure")
-equil3.promote_parameter("hmr", promoted_name="hmr")
+equil3.promote_parameter("hmr", default=True)
 equil3.set_parameters(restraints="ca_protein or (noh ligand)")
 equil3.set_parameters(restraintWt=0.1)
 equil3.set_parameters(trajectory_interval=0.0)
