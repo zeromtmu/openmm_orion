@@ -2,7 +2,7 @@
 # Copyright (C) 2018 OpenEye Scientific Software, Inc.
 #############################################################################
 import numpy as np
-import openeye.oechem as oechem
+from openeye import oechem, oedepict, oegrapheme
 import mdtraj as md
 from datarecord import (Types, OEField, OERecord)
 
@@ -163,4 +163,46 @@ def ColorblindRGBMarkerColors( nColors=0):
             moreRGB = moreRGB+palette
         return( moreRGB[:nColors])
 
+def PoseInteractionsSVG(ligand, proteinOrig, width=400, height=300):
+    """Generate a OEGrapheme interaction plot for a protein-ligand complex.
+    The input protein may have other non-protein components as well so
+    the input protein is first split into components to isolate the protein
+    only for the plot. This may have to be changed if other components need
+    to be included in the plot.
+    """
+    # perceive residue hierarchy of total system
+    if not oechem.OEHasResidues(proteinOrig):
+        oechem.OEPerceiveResidues(proteinOrig, oechem.OEPreserveResInfo_All)
+        print('Perceiving residues')
+    # split the total system into components
+    ligandPsuedo = oechem.OEMol()
+    protein = oechem.OEMol()
+    water = oechem.OEMol()
+    other = oechem.OEMol()
+    #sopts = oechem.OESplitMolComplexOptions('MOL')
+    sopts = oechem.OESplitMolComplexOptions()
+    oechem.OESplitMolComplex(ligandPsuedo, protein, water, other, proteinOrig, sopts)
+    #
+    # make the OEHintInteractionContainer
+    asite = oechem.OEInteractionHintContainer(protein, ligand)
+    if not asite.IsValid():
+        oechem.OEThrow.Fatal("Cannot initialize active site!")
+    # do the perceiving
+    oechem.OEPerceiveInteractionHints(asite)
+    # set the depiction options
+    opts = oegrapheme.OE2DActiveSiteDisplayOptions(width, height)
+    opts.SetRenderInteractiveLegend(True)
+    magnifyresidue = 1.0
+    opts.SetSVGMagnifyResidueInHover(magnifyresidue)
+    # make the depiction
+    oegrapheme.OEPrepareActiveSiteDepiction(asite)
+    adisp = oegrapheme.OE2DActiveSiteDisplay(asite, opts)
+    # make the image
+    image = oedepict.OEImage(width, height)
+    oegrapheme.OERenderActiveSite(image, adisp)
+    # Add a legend
+    #iconscale = 0.5
+    #oedepict.OEAddInteractiveIcon(image, oedepict.OEIconLocation_TopRight, iconscale)
+    svgBytes = oedepict.OEWriteImageToString("svg", image)
 
+    return svgBytes.decode("utf-8")

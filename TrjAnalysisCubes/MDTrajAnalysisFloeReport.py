@@ -280,6 +280,8 @@ class MDTrajAnalysisClusterReport(OERecordComputeCube):
             opt['Logger'].info('{} Attempting to extract MD Traj Analysis results'
                 .format(system_title) )
             ligInitPose = utl.RequestOEFieldType( record, Fields.ligand)
+            protInitPose = utl.RequestOEFieldType( record, Fields.protein)
+            asiteSVG = utl.PoseInteractionsSVG( ligInitPose, protInitPose, width=400, height=265)
 
             # Extract the traj SVG from the OETraj record
             analysesDone = utl.RequestOEField( record, 'AnalysesDone', Types.StringVec)
@@ -334,7 +336,7 @@ class MDTrajAnalysisClusterReport(OERecordComputeCube):
 
             report_file.write(_clus_floe_report_header)
 
-            for i in range(len(clusTrajSVG)+1):
+            for i in range(len(clusTrajSVG)+2):
                 report_file.write("""
               div.cb-floe-report__tab-wrapper input:nth-of-type({clusID}):checked ~ .cb-floe-report__tab-content:nth-of-type({clusID}) {{ display: block; }}
             """.format( clusID=i+1))
@@ -351,13 +353,19 @@ class MDTrajAnalysisClusterReport(OERecordComputeCube):
                   <label class="cb-floe-report__tab-label" for="cb-floe-report__tab-1-header">Overall</label>
 
             """)
+            CurrentTabId = 1
             for i, (clus,rgb) in enumerate(zip(clusTrajSVG,clusRGB)):
+                CurrentTabId = i+2
                 report_file.write("""      <input type="radio" name="tab" id="cb-floe-report__tab-{tabID}-header">
                   <label class="cb-floe-report__tab-label" for="cb-floe-report__tab-{tabID}-header" style="
                             background-color: rgb({r},{g},{b});
                             color: white;">Cluster {clusNum}</label>
 
-            """.format( tabID=i+2, clusNum=i, r=rgb[0], g=rgb[1], b=rgb[2]))
+            """.format( tabID=CurrentTabId, clusNum=i, r=rgb[0], g=rgb[1], b=rgb[2]))
+            report_file.write("""      <input type="radio" name="tab" id="cb-floe-report__tab-{tabID}-header">
+                  <label class="cb-floe-report__tab-label" for="cb-floe-report__tab-{tabID}-header">Initial Pose</label>
+
+            """.format( tabID=CurrentTabId+1, clusNum=i, r=rgb[0], g=rgb[1], b=rgb[2]))
 
             report_file.write("""      <div class="cb-floe-report__tab-content">
                     {traj}
@@ -368,6 +376,10 @@ class MDTrajAnalysisClusterReport(OERecordComputeCube):
                     {traj}
                   </div>
             """.format(traj=trim_svg(clusSVG)) )
+            report_file.write("""      <div class="cb-floe-report__tab-content">
+                    {traj}
+                  </div>
+            """.format(traj=trim_svg(asiteSVG)) )
 
             report_file.write(_clus_floe_report_midHtml2)
 
