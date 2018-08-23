@@ -125,8 +125,56 @@ _clus_floe_report_header = """
   }
 """
 
-_clus_floe_report_midHtml0 = """
+_clus_floe_report_header2 = """
 </style>
+
+<script type="text/javascript">
+  document.addEventListener('DOMContentLoaded', function() {
+    var svgs = document.querySelectorAll('.cb-floe-report__tab-content svg');
+
+    // Trigger a click on the buttons in all other SVGs that have a corresponding index
+    function syncOtherButtons(svgs, idxSVG, idxBtn) {
+      svgs.forEach(function(element, idxA, listA) {
+        if (idxA == idxSVG) return false;
+        var buttons = element.querySelectorAll('g[id^="tab_button_"]');
+        buttons.forEach(function(button, idxB, listB) {
+          if (idxB !== idxBtn) return false;
+          var evt = new Event('click');
+          evt.detail = evt.detail || {};
+          evt.detail.isSynthetic = true;
+          button.dispatchEvent(evt);
+        });
+      });
+    };
+
+    function listenForClick(e) {
+      e.detail = e.detail || {};
+      // use a flag to prevent scripted click events from causing infinite recursion!
+      if (e.detail && !e.detail.isSynthetic) {
+        syncOtherButtons(svgs, idxSVG, idxBtn);
+        e.stopPropagation();
+      }
+    }
+
+    // When a button inside an SVG is clicked, trigger clicks on the others
+    svgs.forEach(function(element, idxSVG, listA) {
+      var buttons = element.querySelectorAll('g[id^="tab_button_"]');
+      buttons.forEach(function(button, idxBtn, listB) {
+        button.addEventListener('click', function(e) {
+          e.detail = e.detail || {};
+          // use a flag to prevent scripted click events from causing infinite recursion!
+          if (e.detail && !e.detail.isSynthetic) {
+            syncOtherButtons(svgs, idxSVG, idxBtn);
+            e.stopPropagation();
+          }
+        });
+      });
+    });
+  });
+</script>
+"""
+
+_clus_floe_report_midHtml0 = """
 
 </head>
 <body>
@@ -341,6 +389,8 @@ class MDTrajAnalysisClusterReport(OERecordComputeCube):
               div.cb-floe-report__tab-wrapper input:nth-of-type({clusID}):checked ~ .cb-floe-report__tab-content:nth-of-type({clusID}) {{ display: block; }}
             """.format( clusID=i+1))
 
+            report_file.write(_clus_floe_report_header2)
+
             report_file.write(_clus_floe_report_midHtml0.format(
                 query_depiction=oedepict.OEWriteImageToString("svg", img).decode("utf8")))
 
@@ -393,7 +443,7 @@ class MDTrajAnalysisClusterReport(OERecordComputeCube):
                 session = OrionSession()
 
                 ligName = ligInitPose.GetTitle()
-                id_plmd = utl.RequestOEField( record, 'ID_PLMD', Types.Int)
+                id_plmd = utl.RequestOEFieldType( record, Fields.id)
                 file_upload = File.upload(session, "Report{} {}".format(id_plmd,ligName), "./"+reportFName)
                 session.tag_resource(file_upload, "floe_report")
                 job_id = environ.get('ORION_JOB_ID')

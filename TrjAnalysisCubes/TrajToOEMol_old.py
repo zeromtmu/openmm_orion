@@ -134,6 +134,9 @@ class TrajToOEMolCube_old(ParallelMixin, OERecordComputeCube):
             # set Fields.protein to initial protein pose
             protInitPose = utl.RequestOEField( record, 'Protein', Types.Chem.Mol)
             record.set_value(Fields.protein, protInitPose)
+            # set Fields.id to ID_PLMD
+            id_plmd = utl.RequestOEField( record, 'ID_PLMD', Types.Int)
+            record.set_value(Fields.id, id_plmd)
 
             # Overwrite MDStages with only first (setup) and last (production) stages
             newMDStages = [ md_stage0_record, md_stageLast_record]
