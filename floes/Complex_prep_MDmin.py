@@ -20,8 +20,8 @@
 
 from floe.api import WorkFloe
 
-from cuberecord import (DataSetWriterCube,
-                        DataSetReaderCube)
+from cuberecord import (DatasetWriterCube,
+                        DatasetReaderCube)
 
 from LigPrepCubes.cubes import (LigandChargeCube,
                                 LigandSetting)
@@ -58,7 +58,7 @@ job.classification = [['Simulation']]
 job.tags = [tag for lists in job.classification for tag in lists]
 
 # Ligand setting
-iligs = DataSetReaderCube("Ligand Reader", title="Ligand Reader")
+iligs = DatasetReaderCube("Ligand Reader", title="Ligand Reader")
 iligs.promote_parameter("data_in", promoted_name="ligands", title="Ligand Input File", description="Ligand file name")
 
 chargelig = LigandChargeCube("LigCharge", title="Ligand Charge")
@@ -67,7 +67,7 @@ chargelig.promote_parameter('charge_ligands', promoted_name='charge_ligands',
 
 ligset = LigandSetting("LigandSetting")
 
-iprot = DataSetReaderCube("Protein Reader", title="Protein Reader")
+iprot = DatasetReaderCube("Protein Reader", title="Protein Reader")
 iprot.promote_parameter("data_in", promoted_name="protein", title="Protein Input File", description="Protein file name")
 
 protset = ProteinSetting("ProteinSetting")
@@ -88,10 +88,10 @@ ff = ForceFieldCube("ForceField", title="System Parametrization")
 minimize = OpenMMminimizeCube('minComplex', title="System Minimization")
 minimize.promote_parameter('steps', promoted_name='steps', default=0)
 
-ofs = DataSetWriterCube('ofs', title='Out')
+ofs = DatasetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")
 
-fail = DataSetWriterCube('fail', title='Failures')
+fail = DatasetWriterCube('fail', title='Failures')
 fail.set_parameters(data_out='fail.oedb')
 
 job.add_cubes(iligs, chargelig, ligset, iprot, protset, complx, solvate, ff, minimize, ofs, fail)

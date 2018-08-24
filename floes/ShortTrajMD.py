@@ -20,8 +20,8 @@
 
 from floe.api import WorkFloe
 
-from cuberecord import (DataSetWriterCube,
-                        DataSetReaderCube)
+from cuberecord import (DatasetWriterCube,
+                        DatasetReaderCube)
 
 from MDCubes.OpenMMCubes.cubes import (OpenMMminimizeCube,
                                        OpenMMNvtCube,
@@ -77,7 +77,7 @@ job.classification = [['Complex Setup', 'FrosstMD']]
 job.tags = [tag for lists in job.classification for tag in lists]
 
 # Ligand setting
-iligs = DataSetReaderCube("LigandReader", title="Ligand Reader")
+iligs = DatasetReaderCube("LigandReader", title="Ligand Reader")
 iligs.promote_parameter("data_in", promoted_name="ligands", title="Ligand Input File", description="Ligand file name")
 
 chargelig = LigandChargeCube("LigCharge", title="Ligand Charge")
@@ -88,7 +88,7 @@ ligset = LigandSetting("LigandSetting", title="Ligand Setting")
 
 # Protein Reading cube. The protein prefix parameter is used to select a name for the
 # output system files
-iprot = DataSetReaderCube("ProteinReader", title="Protein Reader")
+iprot = DatasetReaderCube("ProteinReader", title="Protein Reader")
 iprot.promote_parameter("data_in", promoted_name="protein", title='Protein Input File',
                         description="Protein file name")
 
@@ -200,12 +200,12 @@ equil3.set_parameters(trajectory_interval=0.0)
 equil3.set_parameters(reporter_interval=0.001)
 equil3.set_parameters(suffix='equil3')
 
-# ofs = DataSetWriterCube('ofs', title='Out')
+# ofs = DatasetWriterCube('ofs', title='Out')
 # ofs.promote_parameter("data_out", promoted_name="out")
 
 ofs = CollectionWriter('ofs', title='Out')
 
-fail = DataSetWriterCube('fail', title='Failures')
+fail = DatasetWriterCube('fail', title='Failures')
 fail.set_parameters(data_out='fail.oedb')
 
 job.add_cubes(iligs, ligset, iprot, protset, chargelig, complx, solvate, ff,

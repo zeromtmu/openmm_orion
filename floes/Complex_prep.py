@@ -19,7 +19,7 @@
 
 from floe.api import WorkFloe
 
-from cuberecord import DataSetWriterCube, DataSetReaderCube
+from cuberecord import DatasetWriterCube, DatasetReaderCube
 from LigPrepCubes.cubes import LigandSetting
 from LigPrepCubes.cubes import LigandChargeCube
 
@@ -54,7 +54,7 @@ job.classification = [['Simulation']]
 job.tags = [tag for lists in job.classification for tag in lists]
 
 # Ligand setting
-iligs = DataSetReaderCube("Ligand Reader", title="Ligand Reader")
+iligs = DatasetReaderCube("Ligand Reader", title="Ligand Reader")
 iligs.promote_parameter("data_in", promoted_name="ligands", title="Ligand Input File", description="Ligand file name")
 
 chargelig = LigandChargeCube("LigCharge", title='Ligand Charge')
@@ -64,7 +64,7 @@ chargelig.promote_parameter('charge_ligands', promoted_name='charge_ligands',
 
 ligset = LigandSetting("LigandSetting")
 
-iprot = DataSetReaderCube("Protein Reader", title="Protein Reader")
+iprot = DatasetReaderCube("Protein Reader", title="Protein Reader")
 iprot.promote_parameter("data_in", promoted_name="protein", title="Protein Input File", description="Protein file name")
 
 protset = ProteinSetting("ProteinSetting")
@@ -83,10 +83,10 @@ ff = ForceFieldCube("ForceField", title="System Parametrization")
 ff.promote_parameter('ligand_forcefield', promoted_name='ligand_ff', default='GAFF2')
 ff.promote_parameter('other_forcefield', promoted_name='other_ff', default='GAFF2')
 
-ofs = DataSetWriterCube('ofs', title='OFS-Success')
+ofs = DatasetWriterCube('ofs', title='OFS-Success')
 ofs.promote_parameter("data_out", promoted_name="out")
 
-fail = DataSetWriterCube('fail', title='OFS-Failure')
+fail = DatasetWriterCube('fail', title='OFS-Failure')
 fail.set_parameters(data_out='fail.oeb.gz')
 
 job.add_cubes(iligs, chargelig, ligset, iprot, protset, complx, solvate, ff, ofs, fail)
