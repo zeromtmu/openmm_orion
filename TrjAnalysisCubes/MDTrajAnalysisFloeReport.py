@@ -129,7 +129,7 @@ _clus_floe_report_header2 = """
 </style>
 
 <script type="text/javascript">
-  document.addEventListener('DOMContentLoaded', function() {
+  // fix2018aug24 document.addEventListener('DOMContentLoaded', function() {
     var svgs = document.querySelectorAll('.cb-floe-report__tab-content svg');
 
     // Trigger a click on the buttons in all other SVGs that have a corresponding index
@@ -170,7 +170,7 @@ _clus_floe_report_header2 = """
         });
       });
     });
-  });
+  // fix2018aug24 });
 </script>
 """
 
