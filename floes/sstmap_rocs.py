@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from floe.api import WorkFloe
 
-from cuberecord import DataSetWriterCube, DataSetReaderCube
+from cuberecord import DatasetWriterCube, DatasetReaderCube
 
 from ProtPrepCubes.cubes import ProteinSetting
 
@@ -37,7 +37,7 @@ job.classification = [['Simulation']]
 job.tags = [tag for lists in job.classification for tag in lists]
 
 
-iprot = DataSetReaderCube("Protein Reader", title="Protein Reader")
+iprot = DatasetReaderCube("Protein Reader", title="Protein Reader")
 iprot.promote_parameter("data_in", promoted_name="protein", title="Protein Input File", description="Protein file name")
 
 protset = ProteinSetting("ProteinSetting")
@@ -140,10 +140,10 @@ prod.promote_parameter('suffix', promoted_name='prod_outfname', default='prod',
 # prod.promote_parameter('restraintWt', promoted_name='prod_restraintWt', default=2.5,
 #                        description='Restraint weight')
 
-ofs = DataSetWriterCube('ofs', title='Out')
+ofs = DatasetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")
 
-fail = DataSetWriterCube('fail', title='Failures')
+fail = DatasetWriterCube('fail', title='Failures')
 fail.set_parameters(data_out='fail.oedb')
 
 job.add_cubes(iprot, protset, solvate, ff, min, warmup,

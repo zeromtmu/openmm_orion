@@ -19,7 +19,7 @@
 
 from floe.api import WorkFloe
 from MDCubes.OpenMMCubes.cubes import OpenMMNvtCube
-from cuberecord import DataSetReaderCube, DataSetWriterCube
+from cuberecord import DatasetReaderCube, DatasetWriterCube
 
 job = WorkFloe("NVT Simulation")
 
@@ -45,7 +45,7 @@ ofs: Outputs the constant temperature and volume system
 job.classification = [['NVT']]
 job.tags = [tag for lists in job.classification for tag in lists]
 
-ifs = DataSetReaderCube("SystemReader", title="System Reader")
+ifs = DatasetReaderCube("SystemReader", title="System Reader")
 ifs.promote_parameter("data_in", promoted_name="system", title='System Input File',
                       description="System input file")
 
@@ -64,10 +64,10 @@ nvt.promote_parameter('trajectory_interval', promoted_name='trajectory_interval'
 nvt.promote_parameter('reporter_interval', promoted_name='reporter_interval', default=0.001,
                       description='Reporter saving interval in ns')
 
-ofs = DataSetWriterCube('ofs', title='Out')
+ofs = DatasetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")
 
-fail = DataSetWriterCube('fail', title='Failures')
+fail = DatasetWriterCube('fail', title='Failures')
 fail.set_parameters(data_out='fail.oedb')
 
 job.add_cubes(ifs, nvt, ofs, fail)

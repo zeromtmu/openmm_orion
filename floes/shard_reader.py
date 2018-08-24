@@ -22,7 +22,7 @@ from floe.api import WorkFloe
 from MDCubes.MDUtils.cubes import (CollectionReader,
                                    RecordsShardToRecordConverterParallel)
 
-from cuberecord import DataSetWriterCube
+from cuberecord import DatasetWriterCube
 
 
 wf = WorkFloe('Shard Collection Reader')
@@ -36,7 +36,7 @@ reader.promote_parameter(
 
 converter = RecordsShardToRecordConverterParallel('Converter')
 
-ofs = DataSetWriterCube("ofs")
+ofs = DatasetWriterCube("ofs")
 ofs.promote_parameter("data_out", promoted_name="out")
 
 wf.add_cubes(reader, converter, ofs)
