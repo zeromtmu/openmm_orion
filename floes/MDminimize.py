@@ -19,7 +19,7 @@
 
 from floe.api import WorkFloe
 from MDCubes.OpenMMCubes.cubes import OpenMMminimizeCube
-from cuberecord import DataSetReaderCube, DataSetWriterCube
+from cuberecord import DatasetReaderCube, DatasetWriterCube
 
 job = WorkFloe("Minimize")
 
@@ -44,17 +44,17 @@ ofs: Outputs the minimized system
 job.classification = [['Simulation']]
 job.tags = [tag for lists in job.classification for tag in lists]
 
-ifs = DataSetReaderCube("SystemReader", title="System Reader")
+ifs = DatasetReaderCube("SystemReader", title="System Reader")
 ifs.promote_parameter("data_in", promoted_name="system", title='System Input File',
                       description="System input file")
 
 min = OpenMMminimizeCube('Minimize', title="System Minimization")
 min.promote_parameter('steps', promoted_name='steps', default=0)
 
-ofs = DataSetWriterCube('ofs', title='Out')
+ofs = DatasetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")
 
-fail = DataSetWriterCube('fail', title='Failures')
+fail = DatasetWriterCube('fail', title='Failures')
 fail.set_parameters(data_out='fail.oedb')
 
 job.add_cubes(ifs, min, ofs, fail)

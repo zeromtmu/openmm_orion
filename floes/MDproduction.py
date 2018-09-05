@@ -19,9 +19,9 @@
 
 from floe.api import WorkFloe
 from MDCubes.OpenMMCubes.cubes import OpenMMNptCube
-from cuberecord import DataSetReaderCube, DataSetWriterCube
+from cuberecord import DatasetReaderCube, DatasetWriterCube
 
-job = WorkFloe("NPT Simulation")
+job = WorkFloe("NPT Production")
 
 job.description = """
 NPT simulation of an OpenMM-ready System
@@ -46,7 +46,7 @@ ofs: Outputs the constant temperature and pressure system
 job.classification = [['NPT']]
 job.tags = [tag for lists in job.classification for tag in lists]
 
-ifs = DataSetReaderCube("SystemReader", title="System Reader")
+ifs = DatasetReaderCube("SystemReader", title="System Reader")
 ifs.promote_parameter("data_in", promoted_name="system", title='System Input File',
                       description="System input file")
 
@@ -65,10 +65,10 @@ npt.promote_parameter('reporter_interval', promoted_name='reporter_interval', de
                       description='Reporter saving interval in ns')
 npt.set_parameters(suffix='prod')
 
-ofs = DataSetWriterCube('ofs', title='Out')
+ofs = DatasetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")
 
-fail = DataSetWriterCube('fail', title='Failures')
+fail = DatasetWriterCube('fail', title='Failures')
 fail.set_parameters(data_out='fail.oedb')
 
 job.add_cubes(ifs, npt, ofs, fail)

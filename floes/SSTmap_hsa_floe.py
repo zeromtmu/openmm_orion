@@ -18,7 +18,7 @@
 # or its use.
 
 from floe.api import WorkFloe
-from cuberecord import DataSetWriterCube, DataSetReaderCube
+from cuberecord import DatasetWriterCube, DatasetReaderCube
 from TrjAnalysisCubes.sstmap_cubes import SSTMapHsa
 
 
@@ -46,18 +46,18 @@ job.classification = [
 job.tags = [tag for lists in job.classification for tag in lists]
 
 
-ifs = DataSetReaderCube("ifs", title="System Reader")
+ifs = DatasetReaderCube("ifs", title="System Reader")
 ifs.promote_parameter("data_in", promoted_name="system")
 
-ligand_ifs = DataSetReaderCube("ligand_ifs", title="Ligand Reader")
+ligand_ifs = DatasetReaderCube("ligand_ifs", title="Ligand Reader")
 ligand_ifs.promote_parameter("data_in", promoted_name="ligand")
 
 sstmap_hsa = SSTMapHsa("sstmap_hsa")
 
-ofs = DataSetWriterCube("ofs", title="Out")
+ofs = DatasetWriterCube("ofs", title="Out")
 ofs.promote_parameter("data_out", promoted_name="out")
 
-fail = DataSetWriterCube("fail", title="Fail")
+fail = DatasetWriterCube("fail", title="Fail")
 fail.set_parameters(data_out="fail.oedb")
 
 job.add_cubes(ifs, ligand_ifs, ofs, fail, sstmap_hsa)

@@ -214,6 +214,8 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
             total_time_per_iteration = resources['k80']['w29']['intercept'] + resources['k80']['w29']['slope'] * system.NumAtoms()
 
             iterations_per_cube = int(max_cube_running_time/total_time_per_iteration)
+            # # TODO DEBUGGING REMOVE NEXT LINE
+            # iterations_per_cube = 5
 
             # Calculate the new number of iterations to run
             if current_iterations + iterations_per_cube > opt['iterations']:
@@ -568,7 +570,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
     iterations = parameter.IntegerParameter(
         'iterations',
-        default=13,
+        default=1000,
         help_text="Total Number of Yank iterations for the entire floe. "
                   "A Yank iteration is 500 MD steps")
 
@@ -700,6 +702,9 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                 raise ValueError("The selected sampling method is not supported: {}".format(opt['sampler']))
 
             iterations_per_cube = int(max_cube_running_time/total_time_per_iteration)
+
+            # # TODO DEBUGGING REMOVE NEXT LINE
+            # iterations_per_cube = 5
 
             # Calculate the new number of iterations to run
             if current_iterations + iterations_per_cube > opt['iterations']:
