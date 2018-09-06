@@ -147,9 +147,6 @@ abfe.promote_parameter('restraints', promoted_name='restraints',
                                    'alchemical decoupling. Choices: harmonic, boresch')
 
 abfe.set_parameters(verbose=False)
-
-# Testing
-abfe.set_parameters(min_parallel=0)
 abfe.set_parameters(sampler='sams')
 abfe.set_parameters(protocol='windows_sams')
 job.add_cube(abfe)
