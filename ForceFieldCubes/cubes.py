@@ -15,7 +15,6 @@
 # liable for any damages or liability in connection with the Sample Code
 # or its use.
 
-
 import traceback
 from floe.api import (ParallelMixin,
                       parameter)
@@ -30,12 +29,13 @@ import parmed
 
 from openeye import oechem
 
-# from MDCubes.OpenMMCubes import utils as pack_utils
 from oeommtools import data_utils as pack_utils
 
 from Standards import (MDStageNames,
                        Fields,
                        MDRecords)
+
+from MDCubes.mdutils import MDStructure
 
 from simtk.openmm import app
 from simtk import unit
@@ -227,8 +227,14 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
             record.set_value(Fields.primary_molecule, system_reassembled)
             record.set_value(Fields.title, system_title)
 
+            mdstructure = MDStructure(system_structure)
+
+            record.set_value(Fields.md_structure, mdstructure)
+
+            mdstate = mdstructure.get_state()
+
             md_stage = MDRecords.MDStageRecord(MDStageNames.SETUP,
-                                               MDRecords.MDSystemRecord(system_reassembled, system_structure))
+                                               MDRecords.MDSystemRecord(system_reassembled, mdstate))
 
             record.set_value(Fields.md_stages, [md_stage])
 

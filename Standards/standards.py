@@ -17,7 +17,7 @@
 
 from floe.api.orion import in_orion
 
-from Standards.utils import ParmedData
+from Standards.utils import ParmedData, MDStructureData, MDStateData
 
 from datarecord import OEPrimaryMolField
 
@@ -70,10 +70,13 @@ class Fields:
     # Log Info
     log_data = OEField('Log_data_OPLMD', Types.String)
 
+    # MD State
+    md_state = OEField("MDState_OPLMD", MDStateData)
+
     # MD System Field
     md_system = OEField("MDSystem_OPLMD", Types.Record)
 
-    md_system.get_type()
+    md_structure = OEField("MDStructure_OPLMD", MDStructureData)
 
     # Trajectory
     if in_orion():
@@ -98,10 +101,10 @@ class Fields:
 class MDRecords:
     class MDSystemRecord(OERecord):
 
-        def __init__(self, molecule, structure):
+        def __init__(self, molecule, state):
             super().__init__()
             self.set_value(Fields.topology, molecule)
-            self.set_value(Fields.structure, structure)
+            self.set_value(Fields.md_state, state)
 
     class MDStageRecord(OERecord):
 
