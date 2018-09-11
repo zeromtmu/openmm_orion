@@ -145,8 +145,7 @@ abfe.promote_parameter('restraints', promoted_name='restraints',
                         default='boresch',
                        description='Select the restraint types to apply to the ligand during the '
                                    'alchemical decoupling. Choices: harmonic, boresch')
-
-abfe.set_parameters(verbose=False)
+abfe.promote_parameter('verbose', promoted_name='verbose', default=False, description="Yank verbose mode on/off")
 abfe.set_parameters(sampler='sams')
 abfe.set_parameters(protocol='windows_sams')
 job.add_cube(abfe)

@@ -14,57 +14,59 @@
 # PARTICULAR PURPOSE AND NONINFRINGEMENT. In no event shall OpenEye be
 # liable for any damages or liability in connection with the Sample Code
 # or its use.
-
-import os
-from orionclient.session import OrionSession
-from artemis.wrappers import WorkFloeWrapper, DatasetWrapper, OutputDatasetWrapper
-from artemis.test import FloeTestCase
-from artemis.decorators import package
-
-import MDOrion
-
-PACKAGE_DIR = os.path.dirname(os.path.dirname(MDOrion.__file__))
-
-FILE_DIR = os.path.join(PACKAGE_DIR, "tests", "data")
-FLOES_DIR = os.path.join(PACKAGE_DIR, "floes")
-
-session = OrionSession()
-
-
-@package(PACKAGE_DIR)
-class TestMDOrionFloes(FloeTestCase):
-
-    def test_compex_prep_floe(self):
-        workfloe = WorkFloeWrapper.get_workfloe(
-            os.path.join(FLOES_DIR, "ShortTrajMD.py"),
-            run_timeout=8000,
-            queue_timeout=1200
-        )
-
-        ligand_file = DatasetWrapper.get_dataset(
-            os.path.join(
-                FILE_DIR,
-                "MCL1_lig26.oeb"
-            )
-        )
-
-        protein_file = DatasetWrapper.get_dataset(
-            os.path.join(
-                FILE_DIR,
-                "MCL1_protein_ACE_NMA_caps.pdb"
-            )
-        )
-
-        output_file = OutputDatasetWrapper(extension=".oedb")
-
-        workfloe.start(
-            {
-                "promoted": {
-                    "ligands": ligand_file.identifier,
-                    "protein": protein_file.identifier,
-                    "out": output_file.identifier
-                }
-            }
-        )
-
-        self.assertWorkFloeComplete(workfloe)
+#
+# import os
+# from orionclient.session import OrionSession
+# from artemis.wrappers import WorkFloeWrapper, DatasetWrapper, OutputDatasetWrapper
+# from artemis.test import FloeTestCase
+# from artemis.decorators import package
+# import pytest
+#
+# import MDOrion
+#
+# PACKAGE_DIR = os.path.dirname(os.path.dirname(MDOrion.__file__))
+#
+# FILE_DIR = os.path.join(PACKAGE_DIR, "tests", "data")
+# FLOES_DIR = os.path.join(PACKAGE_DIR, "floes")
+#
+# session = OrionSession()
+#
+#
+# @package(PACKAGE_DIR)
+# class TestMDOrionFloes(FloeTestCase):
+#
+#     @pytest.mark.slow
+#     def test_STMD_floe(self):
+#         workfloe = WorkFloeWrapper.get_workfloe(
+#             os.path.join(FLOES_DIR, "ShortTrajMD.py"),
+#             run_timeout=8000,
+#             queue_timeout=1200
+#         )
+#
+#         ligand_file = DatasetWrapper.get_dataset(
+#             os.path.join(
+#                 FILE_DIR,
+#                 "MCL1_lig26.oeb"
+#             )
+#         )
+#
+#         protein_file = DatasetWrapper.get_dataset(
+#             os.path.join(
+#                 FILE_DIR,
+#                 "MCL1_protein_ACE_NMA_caps.pdb"
+#             )
+#         )
+#
+#         output_file = OutputDatasetWrapper(extension=".oedb")
+#
+#         workfloe.start(
+#             {
+#                 "promoted": {
+#                     "ligands": ligand_file.identifier,
+#                     "protein": protein_file.identifier,
+#                     "out": output_file.identifier
+#                 }
+#             }
+#         )
+#
+#         self.assertWorkFloeComplete(workfloe)

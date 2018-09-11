@@ -28,6 +28,8 @@ import MDOrion
 from Standards import Fields
 from oeommtools import utils as oeommutils
 
+import pytest
+
 PACKAGE_DIR = os.path.dirname(os.path.dirname(MDOrion.__file__))
 
 FILE_DIR = os.path.join(PACKAGE_DIR, "tests", "data")
@@ -39,6 +41,7 @@ session = OrionSession()
 @package(PACKAGE_DIR)
 class TestMDOrionFloes(FloeTestCase):
 
+    @pytest.mark.fast
     def test_compex_prep_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "Complex_prep.py"),
@@ -105,8 +108,8 @@ class TestMDOrionFloes(FloeTestCase):
             protein_split, ligand_split, water, excipients = oeommutils.split(complx)
             self.assertEqual(protein_split.NumAtoms(), 2432)
             self.assertEqual(ligand_split.NumAtoms(), 43)
-            self.assertEqual(water.NumAtoms(), 20091)
-            self.assertEqual(excipients.NumAtoms(), 3)
+            self.assertEqual(water.NumAtoms(), 20022)
+            self.assertEqual(excipients.NumAtoms(), 17)
 
             stages = record.get_value(Fields.md_stages)
             self.assertEqual(len(stages), 1)
