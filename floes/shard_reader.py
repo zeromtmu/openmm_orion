@@ -25,7 +25,7 @@ from MDCubes.MDUtils.cubes import (CollectionReader,
 from cuberecord import DatasetWriterCube
 
 
-wf = WorkFloe('Shard Collection Reader')
+wf = WorkFloe('Shard Reader')
 
 reader = CollectionReader('Collection Reader')
 reader.promote_parameter(

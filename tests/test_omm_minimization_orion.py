@@ -21,6 +21,8 @@ from artemis.wrappers import WorkFloeWrapper, DatasetWrapper, OutputDatasetWrapp
 from artemis.test import FloeTestCase
 from artemis.decorators import package
 
+import pytest
+
 from openeye.oechem import oeifstream
 from datarecord import read_mol_record
 
@@ -81,6 +83,7 @@ def calculate_eng(mdData):
 @package(PACKAGE_DIR)
 class TestMDOrionFloes(FloeTestCase):
 
+    @pytest.mark.fast
     def test_omm_minimization_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "MDminimize.py"),

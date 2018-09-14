@@ -21,6 +21,8 @@ from artemis.wrappers import WorkFloeWrapper, DatasetWrapper, OutputDatasetWrapp
 from artemis.test import FloeTestCase
 from artemis.decorators import package
 
+import pytest
+
 from openeye.oechem import oeifstream
 from datarecord import read_mol_record
 
@@ -100,6 +102,7 @@ def calculate_VT(mdData):
 @package(PACKAGE_DIR)
 class TestMDOrionFloes(FloeTestCase):
 
+    @pytest.mark.moderate
     def test_omm_nvt_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "MDnvt.py"),
