@@ -122,7 +122,6 @@ class TestMDOrionFloes(FloeTestCase):
             {
                 "promoted": {
                     "system": system.identifier,
-                    "restraints": "",
                     "nanoseconds": 0.01,
                     "temperature": 300.0,
                     "pressure": 1.0,
@@ -135,6 +134,7 @@ class TestMDOrionFloes(FloeTestCase):
                     "npt": {
                         "save_md_stage": True,
                         "constraints": "HBonds",
+                        "restraints": "",
                         "nonbondedMethod": "PME",
                         "nonbondedCutoff": 10.0
                     }
