@@ -17,32 +17,32 @@
 # liable for any damages or liability in connection with the Sample Code
 # or its use.
 
-from floe.api import WorkFloe
+# from floe.api import WorkFloe
 
-from MDCubes.MDUtils.cubes import (CollectionReader,
-                                   RecordsShardToRecordConverterParallel)
+# from MDCubes.MDUtils.cubes import (CollectionReader,
+#                                    RecordsShardToRecordConverterParallel)
 
-from cuberecord import DatasetWriterCube
+# from cuberecord import DatasetWriterCube
 
 
-wf = WorkFloe('Shard Reader')
+# wf = WorkFloe('Shard Reader')
 
-reader = CollectionReader('Collection Reader')
-reader.promote_parameter(
-    'collection',
-    promoted_name='collection',
-    description="Identifier of Collection, recommended to use ocli to find collections"
-)
+# reader = CollectionReader('Collection Reader')
+# reader.promote_parameter(
+#     'collection',
+#     promoted_name='collection',
+#     description="Identifier of Collection, recommended to use ocli to find collections"
+# )
 
-converter = RecordsShardToRecordConverterParallel('Converter')
+# converter = RecordsShardToRecordConverterParallel('Converter')
 
-ofs = DatasetWriterCube("ofs")
-ofs.promote_parameter("data_out", promoted_name="out")
+# ofs = DatasetWriterCube("ofs")
+# ofs.promote_parameter("data_out", promoted_name="out")
 
-wf.add_cubes(reader, converter, ofs)
+# wf.add_cubes(reader, converter, ofs)
 
-reader.success.connect(converter.intake)
-converter.success.connect(ofs.intake)
+# reader.success.connect(converter.intake)
+# converter.success.connect(ofs.intake)
 
-if __name__ == "__main__":
-    wf.run()
+# if __name__ == "__main__":
+#     wf.run()
