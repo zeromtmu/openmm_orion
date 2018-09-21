@@ -41,6 +41,8 @@ from MDCubes.MDUtils.hypercubes.shard_writer import CollectionWriter
 job = WorkFloe('Short Trajectory MD')
 
 job.description = """
+NOTE: this is an Alpha Test version.
+We are actively working on improving the MD sampling.
 
 The Short Trajectory MD (STMD) protocol performs MD simulations given a set of
 prepared ligands and a prepared protein as input.

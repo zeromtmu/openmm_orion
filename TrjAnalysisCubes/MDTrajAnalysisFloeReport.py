@@ -51,6 +51,12 @@ _clus_floe_report_header = """
     width: 100%;
     height: auto;
   }
+  .cb-floe-report__dev-alert {
+    background-color: rgb(255, 80, 80);
+    color: white;
+    padding: .5em;
+    font-weight: normal;
+  }
   .cb-floe-report-element--analysis {
     /*white-space: pre-wrap;*/
     padding: 0 10px 20px 10px;
@@ -95,6 +101,9 @@ _clus_floe_report_header = """
   h3.cb-floe-report-element--header {
     margin-bottom: 0;
     text-align: center;
+  }
+  h3 small{
+    color: white !important;
   }
 
   /* tab styles */
@@ -179,6 +188,11 @@ _clus_floe_report_midHtml0 = """
 </head>
 <body>
 <div class="cb-floe-report-wrapper">
+  <h3 class="cb-floe-report__dev-alert">
+    NOTE: this is an Alpha Test version.
+    <br>
+    <small>We are actively working on improving the MD sampling.</small>
+  </h3>
   <div class="cb-floe-report__row">
   <div class="cb-floe-report__column cb-floe-report__sidebar">
     {query_depiction}
@@ -239,11 +253,10 @@ def MakeClusterInfoText(dataDict, rgbVec):
     else:
         text.append('        <br>- Produced {} clusters'.format( dataDict['nClusters']))
     nOutliers = dataDict['ClusterVec'].count(-1)
-    text.append(' with {:4d} outliers:\n'.format( nOutliers))
+    text.append(' with {:4d} outliers\n'.format( nOutliers))
+    text.append('<br><br>Clusters larger than 2%: ' )
     #
     text.append("""
-        <br>
-        <br>
         <div class="cb-floe-report__analysis-table">
           <div class="cb-floe-report__analysis-table-row">
             <span>Cluster</span>
@@ -253,17 +266,20 @@ def MakeClusterInfoText(dataDict, rgbVec):
 """)
     #
     for i, (count,rgb) in enumerate(zip(dataDict['ClusterCounts'],rgbVec)):
+        percent = int(100*count/nFrames)
+        if percent<2:
+            continue
         status = 'major'
-        if nFrames/count>10:
+        if percent<10:
             status = 'minor (no analysis)'
         text.append("""
           <div class="cb-floe-report__analysis-table-row" style="
                 background-color: rgb({r}, {g}, {b} );
                 color: white;">
             <span>{clusID}</span>
-            <span>{count}</span>
+            <span>{percent}%</span>
             <span>{status}</span>
-          </div>\n""".format( clusID=i, count=count, status=status,
+          </div>\n""".format( clusID=i, percent=percent, status=status,
                             r=rgb[0], g=rgb[1], b=rgb[2]))
     #
     text.append("""
