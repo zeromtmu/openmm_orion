@@ -64,13 +64,15 @@ class TestMDOrionFloes(FloeTestCase):
         )
 
         output_file = OutputDatasetWrapper(extension=".oedb")
+        fail_output_file = OutputDatasetWrapper(extension=".oedb")
 
         workfloe.start(
             {
                 "promoted": {
                     "ligands": ligand_file.identifier,
                     "protein": protein_file.identifier,
-                    "out": output_file.identifier
+                    "out": output_file.identifier,
+                    "fail": fail_output_file.identifier
                 }
             }
         )

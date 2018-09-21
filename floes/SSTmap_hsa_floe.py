@@ -23,6 +23,8 @@ from TrjAnalysisCubes.sstmap_cubes import SSTMapHsa
 
 
 job = WorkFloe("SSTMAP HSA")
+job.classification = [['Water Thermodynamics', 'SSTMAP']]
+job.tags = [tag for lists in job.classification for tag in lists]
 
 job.description = """
  Testing Floe
@@ -39,13 +41,6 @@ job.description = """
  ofs: Output file
  """
 
-job.classification = [
-    ["OpenEye", "Example"],
-    ["OpenEye", "Custom"]
-]
-job.tags = [tag for lists in job.classification for tag in lists]
-
-
 ifs = DatasetReaderCube("ifs", title="System Reader")
 ifs.promote_parameter("data_in", promoted_name="system")
 
@@ -58,7 +53,7 @@ ofs = DatasetWriterCube("ofs", title="Out")
 ofs.promote_parameter("data_out", promoted_name="out")
 
 fail = DatasetWriterCube("fail", title="Fail")
-fail.set_parameters(data_out="fail.oedb")
+fail.promote_parameter("data_out", promoted_name="fail")
 
 job.add_cubes(ifs, ligand_ifs, ofs, fail, sstmap_hsa)
 

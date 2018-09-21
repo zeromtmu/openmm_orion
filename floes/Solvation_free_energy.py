@@ -155,7 +155,7 @@ ofs.promote_parameter("data_out", promoted_name="out")
 job.add_cube(ofs)
 
 fail = DatasetWriterCube('fail', title='Failures')
-fail.set_parameters(data_out='fail.oedb')
+fail.promote_parameter("data_out", promoted_name="fail")
 job.add_cube(fail)
 
 iligs.success.connect(chargelig.intake)

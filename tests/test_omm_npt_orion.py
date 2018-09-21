@@ -117,24 +117,26 @@ class TestMDOrionFloes(FloeTestCase):
         )
 
         output_file = OutputDatasetWrapper(extension=".oedb")
+        fail_output_file = OutputDatasetWrapper(extension=".oedb")
 
         workfloe.start(
             {
                 "promoted": {
                     "system": system.identifier,
-                    "restraints": "",
                     "nanoseconds": 0.01,
                     "temperature": 300.0,
                     "pressure": 1.0,
                     "trajectory_interval": 0.0,
                     "reporter_interval": 0.0,
-                    "out": output_file.identifier
+                    "out": output_file.identifier,
+                    "fail": fail_output_file.identifier
                 },
 
                 "cube": {
                     "npt": {
                         "save_md_stage": True,
                         "constraints": "HBonds",
+                        "restraints": "",
                         "nonbondedMethod": "PME",
                         "nonbondedCutoff": 10.0
                     }

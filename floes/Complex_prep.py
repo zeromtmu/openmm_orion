@@ -19,7 +19,9 @@
 
 from floe.api import WorkFloe
 
-from cuberecord import DatasetWriterCube, DatasetReaderCube
+from cuberecord import (DatasetWriterCube,
+                        DatasetReaderCube)
+
 from LigPrepCubes.cubes import LigandSetting
 from LigPrepCubes.cubes import LigandChargeCube
 
@@ -87,7 +89,7 @@ ofs = DatasetWriterCube('ofs', title='OFS-Success')
 ofs.promote_parameter("data_out", promoted_name="out")
 
 fail = DatasetWriterCube('fail', title='OFS-Failure')
-fail.set_parameters(data_out='fail.oeb.gz')
+fail.promote_parameter("data_out", promoted_name="fail")
 
 job.add_cubes(iligs, chargelig, ligset, iprot, protset, complx, solvate, ff, ofs, fail)
 

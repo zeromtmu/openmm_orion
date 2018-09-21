@@ -36,7 +36,6 @@ from ProtPrepCubes.cubes import ProteinSetting
 
 from LigPrepCubes.cubes import (LigandChargeCube,
                                 LigandSetting)
-from MDCubes.MDUtils.hypercubes.shard_writer import CollectionWriter
 
 job = WorkFloe('Short Trajectory MD')
 
@@ -202,13 +201,19 @@ equil3.set_parameters(trajectory_interval=0.0)
 equil3.set_parameters(reporter_interval=0.001)
 equil3.set_parameters(suffix='equil3')
 
+<<<<<<< HEAD
 # ofs = DatasetWriterCube('ofs', title='Out')
 # ofs.promote_parameter("data_out", promoted_name="out")
 
 ofs = CollectionWriter('ofs', title='Out')
+=======
+ofs = DatasetWriterCube('ofs', title='Out')
+ofs.promote_parameter("data_out", promoted_name="out")
+>>>>>>> gcalabro_data_record
 
 fail = DatasetWriterCube('fail', title='Failures')
-fail.set_parameters(data_out='fail.oedb')
+fail.promote_parameter("data_out", promoted_name="fail")
+
 
 job.add_cubes(iligs, ligset, iprot, protset, chargelig, complx, solvate, ff,
               minComplex, warmup, equil1, equil2, equil3, prod, ofs, fail)

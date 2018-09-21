@@ -7,8 +7,8 @@ six==1.11.0
 wcwidth==0.1.7
 
 # OE Stack
-OpenEye-Artemis==0.1.10
+OpenEye-Artemis==0.3.0
 OpenEye-ensemble2img==0.1.1
 OpenEye_oetrajanalysis==0.1.4
-OpenEye-orionplatform==0.1.2
+OpenEye-orionplatform==0.1.5
 Openeye-toolkits==2018.2.1

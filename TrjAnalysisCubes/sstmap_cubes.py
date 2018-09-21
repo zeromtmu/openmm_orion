@@ -57,7 +57,7 @@ class SSTMapHsa(ParallelMixin, OERecordComputeCube):
         For more details, please visit
         sstmap.org @ https://github.com/KurtzmanLab/SSTMap
         """
-    classifications = ["SSTMap Analysis", "SSTMap HSA"]
+    classifications = [["SSTMap Analysis", "SSTMap HSA"]]
 
     tags = [tag for lists in classifications for tag in lists]
 
@@ -344,7 +344,8 @@ class SSTMapGist(ParallelMixin, OERecordComputeCube):
         For more details, please visit
         sstmap.org @ https://github.com/KurtzmanLab/SSTMap
         """
-    classifications = ["SSTMap Analysis", "GIST"]
+    classifications = [["SSTMap Analysis", "GIST"]]
+
     tags = [tag for lists in classifications for tag in lists]
 
     # Override defaults for some parameters
