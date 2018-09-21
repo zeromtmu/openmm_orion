@@ -102,7 +102,7 @@ _clus_floe_report_header = """
     margin-bottom: 0;
     text-align: center;
   }
-  h3 small{
+  .cb-floe-report__dev-alert small{
     color: white !important;
   }
 

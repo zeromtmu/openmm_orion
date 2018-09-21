@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 from floe.api import WorkFloe
 from cuberecord import DatasetWriterCube, DatasetReaderCube
-from MDCubes.MDUtils.cubes import CollectionReader, RecordsShardToRecordConverterParallel
 from TrjAnalysisCubes.MDTrajAnalysisFloeReport import MDTrajAnalysisClusterReport
 #
 job = WorkFloe("Testing writing out traj analysis results")
@@ -20,8 +19,6 @@ Outputs:
 --------
 ofs: Output file
 """
-#
-#ifs = CollectionReader("ifs")
 #
 ifs = DatasetReaderCube("ifs")
 ifs.promote_parameter("data_in", promoted_name="in", title="System Input OERecord", description="OERecord file name")
