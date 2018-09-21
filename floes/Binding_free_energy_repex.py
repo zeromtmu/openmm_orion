@@ -262,7 +262,7 @@ equilLigand.set_parameters(reporter_interval=0.0)
 equilLigand.set_parameters(suffix='equil')
 job.add_cube(equilLigand)
 
-sync = SyncBindingFECube("SyncCube", title="Unbounded and Bonded Synchronization")
+sync = SyncBindingFECube("SyncCube", title="Un-Bound and Bound Synchronization")
 job.add_cube(sync)
 
 ofs = DatasetWriterCube('ofs', title='Out')
@@ -270,7 +270,7 @@ ofs.promote_parameter("data_out", promoted_name="out")
 job.add_cube(ofs)
 
 fail = DatasetWriterCube('fail', title='Failures')
-fail.set_parameters(data_out='fail.oedb')
+fail.promote_parameter("data_out", promoted_name="fail")
 job.add_cube(fail)
 
 

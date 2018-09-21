@@ -131,12 +131,14 @@ class TestMDOrionFloes(FloeTestCase):
             eng_i = calculate_eng(mdData)
 
         output_file = OutputDatasetWrapper(extension=".oedb")
+        fail_output_file = OutputDatasetWrapper(extension=".oedb")
 
         workfloe.start(
             {
                 "promoted": {
                     "system": system.identifier,
-                    "out": output_file.identifier
+                    "out": output_file.identifier,
+                    "fail": fail_output_file.identifier
                 },
 
                 "cube": {

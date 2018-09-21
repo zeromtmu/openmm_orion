@@ -92,7 +92,7 @@ ofs = DatasetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")
 
 fail = DatasetWriterCube('fail', title='Failures')
-fail.set_parameters(data_out='fail.oedb')
+fail.promote_parameter("data_out", promoted_name="fail")
 
 job.add_cubes(iligs, chargelig, ligset, iprot, protset, complx, solvate, ff, minimize, ofs, fail)
 

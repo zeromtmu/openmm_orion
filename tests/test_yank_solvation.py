@@ -52,13 +52,15 @@ class TestYankSolvationOrionFloes(FloeTestCase):
         )
 
         output_file = OutputDatasetWrapper(extension=".oedb")
+        fail_output_file = OutputDatasetWrapper(extension=".oedb")
 
         workfloe.start(
             {
                 "promoted": {
                     "ligands": ligand_file.identifier,
                     "iterations": 10,
-                    "out": output_file.identifier
+                    "out": output_file.identifier,
+                    "fail": fail_output_file.identifier
                 }
             }
         )
@@ -81,13 +83,15 @@ class TestYankSolvationOrionFloes(FloeTestCase):
         )
 
         output_file = OutputDatasetWrapper(extension=".oedb")
+        fail_output_file = OutputDatasetWrapper(extension=".oedb")
 
         workfloe.start(
             {
                 "promoted": {
                     "ligands": ligand_file.identifier,
                     "iterations": 10,
-                    "out": output_file.identifier
+                    "out": output_file.identifier,
+                    "fail": fail_output_file.identifier
                 }
             }
         )

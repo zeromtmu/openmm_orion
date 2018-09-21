@@ -59,6 +59,7 @@ class TestYankBindingFloes(FloeTestCase):
         )
 
         output_file = OutputDatasetWrapper(extension=".oedb")
+        fail_output_file = OutputDatasetWrapper(extension=".oedb")
 
         workfloe.start(
             {
@@ -66,7 +67,8 @@ class TestYankBindingFloes(FloeTestCase):
                     "ligands": ligand_file.identifier,
                     "protein": protein_file.identifier,
                     "iterations": 5,
-                    "out": output_file.identifier
+                    "out": output_file.identifier,
+                    "fail": fail_output_file.identifier
                 }
             }
         )
@@ -96,6 +98,7 @@ class TestYankBindingFloes(FloeTestCase):
         )
 
         output_file = OutputDatasetWrapper(extension=".oedb")
+        fail_output_file = OutputDatasetWrapper(extension=".oedb")
 
         workfloe.start(
             {
@@ -103,7 +106,8 @@ class TestYankBindingFloes(FloeTestCase):
                     "ligands": ligand_file.identifier,
                     "protein": protein_file.identifier,
                     "iterations": 5,
-                    "out": output_file.identifier
+                    "out": output_file.identifier,
+                    "fail": fail_output_file.identifier
                 }
             }
         )
@@ -133,6 +137,7 @@ class TestYankBindingFloes(FloeTestCase):
         )
 
         output_file = OutputDatasetWrapper(extension=".oedb")
+        fail_output_file = OutputDatasetWrapper(extension=".oedb")
 
         workfloe.start(
             {
@@ -140,7 +145,8 @@ class TestYankBindingFloes(FloeTestCase):
                     "ligands": ligand_file.identifier,
                     "protein": protein_file.identifier,
                     "iterations": 5,
-                    "out": output_file.identifier
+                    "out": output_file.identifier,
+                    "fail": fail_output_file.identifier
                 }
             }
         )
@@ -170,6 +176,7 @@ class TestYankBindingFloes(FloeTestCase):
         )
 
         output_file = OutputDatasetWrapper(extension=".oedb")
+        fail_output_file = OutputDatasetWrapper(extension=".oedb")
 
         workfloe.start(
             {
@@ -177,7 +184,8 @@ class TestYankBindingFloes(FloeTestCase):
                     "ligands": ligand_file.identifier,
                     "protein": protein_file.identifier,
                     "iterations": 5,
-                    "out": output_file.identifier
+                    "out": output_file.identifier,
+                    "fail": fail_output_file.identifier
                 }
             }
         )

@@ -118,6 +118,7 @@ class TestMDOrionFloes(FloeTestCase):
         )
 
         output_file = OutputDatasetWrapper(extension=".oedb")
+        fail_output_file = OutputDatasetWrapper(extension=".oedb")
 
         workfloe.start(
             {
@@ -127,7 +128,8 @@ class TestMDOrionFloes(FloeTestCase):
                     "temperature": 300.0,
                     "trajectory_interval": 0.0,
                     "reporter_interval": 0.0,
-                    "out": output_file.identifier
+                    "out": output_file.identifier,
+                    "fail": fail_output_file.identifier
                 },
 
                 "cube": {
