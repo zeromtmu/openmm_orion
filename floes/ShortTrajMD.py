@@ -201,15 +201,8 @@ equil3.set_parameters(trajectory_interval=0.0)
 equil3.set_parameters(reporter_interval=0.001)
 equil3.set_parameters(suffix='equil3')
 
-<<<<<<< HEAD
-# ofs = DatasetWriterCube('ofs', title='Out')
-# ofs.promote_parameter("data_out", promoted_name="out")
-
-ofs = CollectionWriter('ofs', title='Out')
-=======
 ofs = DatasetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")
->>>>>>> gcalabro_data_record
 
 fail = DatasetWriterCube('fail', title='Failures')
 fail.promote_parameter("data_out", promoted_name="fail")

@@ -26,8 +26,6 @@ from cuberecord import (DatasetWriterCube,
 from MDCubes.OpenMMCubes.cubes import (OpenMMminimizeCube,
                                        OpenMMNvtCube,
                                        OpenMMNptCube)
-from MDCubes.MDUtils.hypercubes.shard_writer import CollectionWriter
-from MDCubes.MDUtils.cubes import CollectionReader, RecordsShardToRecordConverterParallel
 
 from ComplexPrepCubes.cubes import (ComplexPrepCube,
                                     SolvationCube)
@@ -77,7 +75,6 @@ protein (file): dataset of the prepared protein structure.
 
 Outputs:
 --------
-out: Collection of OERecords (one per ligand) of MD and Analysis results.
 floe report: html page of the Analysis of each ligand.
 """
 # Locally the floe can be invoked by running the terminal command:
@@ -208,10 +205,8 @@ equil3.set_parameters(suffix='equil3')
 # ofs = DatasetWriterCube('ofs', title='Out')
 # ofs.promote_parameter("data_out", promoted_name="out")
 
-ofs = CollectionWriter('ofs', title='Out')
-
 fail = DatasetWriterCube('fail', title='Failures')
-fail.set_parameters(data_out='fail.oedb')
+fail.promote_parameter("data_out", promoted_name="fail")
 
 trajCube = TrajToOEMolCube("TrajToOEMolCube")
 clusCube = ClusterOETrajCube("ClusterOETrajCube")
@@ -219,7 +214,7 @@ reportCube = MDTrajAnalysisClusterReport("MDTrajAnalysisClusterReport")
 
 
 job.add_cubes(iligs, ligset, iprot, protset, chargelig, complx, solvate, ff,
-              minComplex, warmup, equil1, equil2, equil3, prod, ofs, fail,
+              minComplex, warmup, equil1, equil2, equil3, prod, fail,
               trajCube, clusCube, reportCube)
 
 
@@ -237,7 +232,6 @@ equil1.success.connect(equil2.intake)
 equil2.success.connect(equil3.intake)
 equil3.success.connect(prod.intake)
 prod.failure.connect(fail.intake)
-prod.success.connect(ofs.intake)
 prod.success.connect(trajCube.intake)
 trajCube.success.connect(clusCube.intake)
 clusCube.success.connect(reportCube.intake)
