@@ -5,11 +5,3 @@ include env.yaml
 
 graft floes
 graft MDCubes
-
-include ForceFieldCubes/*.py
-include ForceFieldCubes/ffext/*
-
-
-
-
-

@@ -37,7 +37,11 @@ from ProtPrepCubes.cubes import ProteinSetting
 from LigPrepCubes.cubes import (LigandChargeCube,
                                 LigandSetting)
 
-job = WorkFloe('Short Trajectory MD')
+from TrjAnalysisCubes.TrajToOEMol import TrajToOEMolCube
+from TrjAnalysisCubes.LigBasedTrajClustering import ClusterOETrajCube
+from TrjAnalysisCubes.MDTrajAnalysisFloeReport import MDTrajAnalysisClusterReport
+
+job = WorkFloe('Short Trajectory MD with Analysis')
 
 job.description = """
 NOTE: this is an Alpha Test version.
@@ -60,6 +64,9 @@ by a warm up (NVT ensemble) and three equilibration stages (NPT ensemble). In th
 minimization, warm up and equilibration stages positional harmonic restraints are
 applied on the ligand and protein. At the end of the equilibration stages a short
 (default 2ns) production run is performed on the unrestrained system.
+The production run is then analyzed in terms of interactions between the
+ligand and the active site and in terms of ligand RMSD after fitting the trajectory
+based on active site C_alphas.
 
 Required Input Parameters:
 --------------------------
@@ -68,13 +75,12 @@ protein (file): dataset of the prepared protein structure.
 
 Outputs:
 --------
-out: Collection of OERecords (one per ligand) of MD and Analysis results.
 floe report: html page of the Analysis of each ligand.
 """
 # Locally the floe can be invoked by running the terminal command:
 # python floes/ShortTrajMD.py --ligands ligands.oeb --protein protein.oeb --out prod.oeb
 
-job.classification = [['Complex Setup', 'FrosstMD']]
+job.classification = [['Complex Setup', 'FrosstMD', 'MD Traj Analysis']]
 job.tags = [tag for lists in job.classification for tag in lists]
 
 # Ligand setting
@@ -100,7 +106,6 @@ protset.promote_parameter("protein_prefix", promoted_name="protein_prefix", defa
 complx = ComplexPrepCube("Complex", title="Complex Preparation")
 
 # The solvation cube is used to solvate the system and define the ionic strength of the solution
-# solvate = HydrationCube("Hydration")
 
 solvate = SolvationCube("Hydration", title="System Hydration")
 solvate.promote_parameter('density', promoted_name='density', default=1.03,
@@ -125,14 +130,9 @@ prod.promote_parameter('pressure', promoted_name='pressure', default=1.0, descri
 prod.promote_parameter('trajectory_interval', promoted_name='prod_trajectory_interval', default=0.002,
                        description='Trajectory saving interval in ns')
 prod.promote_parameter('reporter_interval', promoted_name='prod_reporter_interval', default=0.002,
-                       description='Reporter saving interval is ns')
-# prod.promote_parameter('max_parallel', promoted_name='num_gpus', default=1,
-#                        description='Number of GPUS to make available - should be less than the number of ligands')
-# prod.promote_parameter('min_parallel', promoted_name='num_gpus', default=1,
-#                        description='Number of GPUS to make available - should be less than the number of ligands')
-# prod.promote_parameter('hmr', promoted_name='hmr', default=False,
-#                        description='Hydrogen Mass Repartitioning')
-
+                       description='Reporter saving interval in ns')
+prod.promote_parameter('hmr', title='Use Hydrogen Mass Repartitioning', default=True,
+                       description='Give hydrogens more mass to speed up the MD')
 prod.set_parameters(suffix='prod')
 prod.set_parameters(save_md_stage=True)
 
@@ -144,7 +144,7 @@ minComplex.set_parameters(restraintWt=5.0)
 minComplex.set_parameters(steps=1000)
 minComplex.set_parameters(center=True)
 minComplex.set_parameters(save_md_stage=True)
-minComplex.promote_parameter("hmr", promoted_name="hmr")
+minComplex.promote_parameter("hmr", default=True)
 
 
 # NVT simulation. Here the assembled system is warmed up to the final selected temperature
@@ -156,7 +156,7 @@ warmup.set_parameters(restraintWt=2.0)
 warmup.set_parameters(trajectory_interval=0.0)
 warmup.set_parameters(reporter_interval=0.001)
 warmup.set_parameters(suffix='warmup')
-warmup.promote_parameter("hmr", promoted_name="hmr")
+warmup.promote_parameter("hmr", default=True)
 
 
 # The system is equilibrated at the right pressure and temperature in 3 stages
@@ -169,7 +169,7 @@ equil1 = OpenMMNptCube('equil1', title='System Equilibration I')
 equil1.set_parameters(time=0.01)
 equil1.promote_parameter("temperature", promoted_name="temperature")
 equil1.promote_parameter("pressure", promoted_name="pressure")
-equil1.promote_parameter("hmr", promoted_name="hmr")
+equil1.promote_parameter("hmr", default=True)
 equil1.set_parameters(restraints="noh (ligand or protein)")
 equil1.set_parameters(restraintWt=2.0)
 equil1.set_parameters(trajectory_interval=0.0)
@@ -182,7 +182,7 @@ equil2 = OpenMMNptCube('equil2', title='System Equilibration II')
 equil2.set_parameters(time=0.02)
 equil2.promote_parameter("temperature", promoted_name="temperature")
 equil2.promote_parameter("pressure", promoted_name="pressure")
-equil2.promote_parameter("hmr", promoted_name="hmr")
+equil2.promote_parameter("hmr", default=True)
 equil2.set_parameters(restraints="noh (ligand or protein)")
 equil2.set_parameters(restraintWt=0.5)
 equil2.set_parameters(trajectory_interval=0.0)
@@ -194,22 +194,27 @@ equil3 = OpenMMNptCube('equil3', title='System Equilibration III')
 equil3.set_parameters(time=0.03)
 equil3.promote_parameter("temperature", promoted_name="temperature")
 equil3.promote_parameter("pressure", promoted_name="pressure")
-equil3.promote_parameter("hmr", promoted_name="hmr")
+equil3.promote_parameter("hmr", default=True)
 equil3.set_parameters(restraints="ca_protein or (noh ligand)")
 equil3.set_parameters(restraintWt=0.1)
 equil3.set_parameters(trajectory_interval=0.0)
 equil3.set_parameters(reporter_interval=0.001)
 equil3.set_parameters(suffix='equil3')
 
-ofs = DatasetWriterCube('ofs', title='Out')
-ofs.promote_parameter("data_out", promoted_name="out")
+# ofs = DatasetWriterCube('ofs', title='Out')
+# ofs.promote_parameter("data_out", promoted_name="out")
 
 fail = DatasetWriterCube('fail', title='Failures')
 fail.promote_parameter("data_out", promoted_name="fail")
 
+trajCube = TrajToOEMolCube("TrajToOEMolCube")
+clusCube = ClusterOETrajCube("ClusterOETrajCube")
+reportCube = MDTrajAnalysisClusterReport("MDTrajAnalysisClusterReport")
+
 
 job.add_cubes(iligs, ligset, iprot, protset, chargelig, complx, solvate, ff,
-              minComplex, warmup, equil1, equil2, equil3, prod, ofs, fail)
+              minComplex, warmup, equil1, equil2, equil3, prod, fail,
+              trajCube, clusCube, reportCube)
 
 
 iligs.success.connect(chargelig.intake)
@@ -225,8 +230,10 @@ warmup.success.connect(equil1.intake)
 equil1.success.connect(equil2.intake)
 equil2.success.connect(equil3.intake)
 equil3.success.connect(prod.intake)
-prod.success.connect(ofs.intake)
 prod.failure.connect(fail.intake)
+prod.success.connect(trajCube.intake)
+trajCube.success.connect(clusCube.intake)
+clusCube.success.connect(reportCube.intake)
 
 if __name__ == "__main__":
     job.run()

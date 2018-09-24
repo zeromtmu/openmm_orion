@@ -38,21 +38,21 @@ from MDCubes.OpenMMCubes.cubes import (OpenMMminimizeCube,
 job = WorkFloe("Solvation Free Energy")
 
 job.description = """
-    The Solvation Free Energy protocol performs Solvation Free Energy Calculations (SFEC) on 
-    a set of provided ligands by using YANK ( http://getyank.org/latest/ ). The ligands need 
+    The Solvation Free Energy protocol performs Solvation Free Energy Calculations (SFEC) on
+    a set of provided ligands by using YANK ( http://getyank.org/latest/ ). The ligands need
     to have coordinates, correct chemistry and must be neutral. Each ligand can have multiple
     conformers, but each conformer will be treated as a different ligand and prepared to run SFEC.
     The ligands are solvated in the selected mixture (default water) and parametrized accordingly
     to the provided force field. A minimization stage is performed on the system followed by a warm up
-    (NVT ensemble) and an equilibration stage (NPT ensemble). In the minimization, warm up 
-    and equilibration stage positional harmonic restraints are applied to the ligands with different 
-    force constants. At the end of the equilibration stage the SFEC calculation is run by YANK 
-    with the selected parameters. Solvation Free Energy values and floe reports are output.    
-    
+    (NVT ensemble) and an equilibration stage (NPT ensemble). In the minimization, warm up
+    and equilibration stage positional harmonic restraints are applied to the ligands with different
+    force constants. At the end of the equilibration stage the SFEC calculation is run by YANK
+    with the selected parameters. Solvation Free Energy values and floe reports are output.
+
     Required Input Parameters:
     -----------
     ligands: Dataset of the prepared ligands
-    
+
     Outputs:
     --------
     out : Dataset of the solvated systems with the calculated solvation free energies and

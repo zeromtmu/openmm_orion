@@ -57,12 +57,12 @@ job.description = """
     applied on the ligand and protein with different force constants. At the end of the equilibration stages
     the ABFE calculations are run by YANK with the selected parameters. Calculated Binding Affinities
     for each ligand are output with the related floe reports.
-    
+
     Required Input Parameters:
     -----------
     ligands: Dataset of the prepared ligands
     protein: Dataset of the prepared protein
-    
+
     Outputs:
     --------
     out : Dataset of the solvated systems with the calculated binding free energies and

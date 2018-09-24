@@ -2,8 +2,9 @@
 # Copyright (C) 2018 OpenEye Scientific Software, Inc.
 #############################################################################
 import numpy as np
-import openeye.oechem as oechem
+from openeye import oechem, oedepict, oegrapheme
 import mdtraj as md
+from datarecord import (Types, OEField, OERecord)
 
 def GetCardinalOrderOfProteinResNums( mol):
     # make map of protein res nums to the residue cardinal order index
@@ -132,3 +133,76 @@ def ExtractAlignedProtLigTraj_hdf5( mol, traj_hdf5Filename, fromLigCutoff=5.0, s
         conf = protTraj.NewConf( confxyz)
     return protTraj, ligTraj
 
+def RequestOEField( record, field, rType):
+    if not record.has_value(OEField(field,rType)):
+        #opt['Logger'].warn('Missing record field {}'.format( field))
+        print( 'Missing record field {}'.format( field))
+        raise ValueError('The record does not have field {}'.format( field))
+    else:
+        return record.get_value(OEField(field,rType))
+
+def RequestOEFieldType( record, field):
+    if not record.has_value(field):
+        #opt['Logger'].warn('Missing record field {}'.format( field))
+        print( 'Missing record field {}'.format( field.get_name() ))
+        raise ValueError('The record does not have field {}'.format( field.get_name() ))
+    else:
+        return record.get_value(field)
+
+def ColorblindRGBMarkerColors( nColors=0):
+    palette = [(0, 114, 178), (0, 158, 115), (213, 94, 0), (204, 121, 167),
+        (240, 228, 66), (230, 159, 0), (86, 180, 233), (150, 150, 150)]
+    if nColors<1:
+        return palette
+    elif nColors<9:
+        return palette[:nColors]
+    else:
+        n = int(nColors/8)
+        moreRGB = palette
+        for i in range(n):
+            moreRGB = moreRGB+palette
+        return( moreRGB[:nColors])
+
+def PoseInteractionsSVG(ligand, proteinOrig, width=400, height=300):
+    """Generate a OEGrapheme interaction plot for a protein-ligand complex.
+    The input protein may have other non-protein components as well so
+    the input protein is first split into components to isolate the protein
+    only for the plot. This may have to be changed if other components need
+    to be included in the plot.
+    """
+    # perceive residue hierarchy of total system
+    if not oechem.OEHasResidues(proteinOrig):
+        oechem.OEPerceiveResidues(proteinOrig, oechem.OEPreserveResInfo_All)
+        print('Perceiving residues')
+    # split the total system into components
+    ligandPsuedo = oechem.OEMol()
+    protein = oechem.OEMol()
+    water = oechem.OEMol()
+    other = oechem.OEMol()
+    #sopts = oechem.OESplitMolComplexOptions('MOL')
+    sopts = oechem.OESplitMolComplexOptions()
+    oechem.OESplitMolComplex(ligandPsuedo, protein, water, other, proteinOrig, sopts)
+    #
+    # make the OEHintInteractionContainer
+    asite = oechem.OEInteractionHintContainer(protein, ligand)
+    if not asite.IsValid():
+        oechem.OEThrow.Fatal("Cannot initialize active site!")
+    # do the perceiving
+    oechem.OEPerceiveInteractionHints(asite)
+    # set the depiction options
+    opts = oegrapheme.OE2DActiveSiteDisplayOptions(width, height)
+    opts.SetRenderInteractiveLegend(True)
+    magnifyresidue = 1.0
+    opts.SetSVGMagnifyResidueInHover(magnifyresidue)
+    # make the depiction
+    oegrapheme.OEPrepareActiveSiteDepiction(asite)
+    adisp = oegrapheme.OE2DActiveSiteDisplay(asite, opts)
+    # make the image
+    image = oedepict.OEImage(width, height)
+    oegrapheme.OERenderActiveSite(image, adisp)
+    # Add a legend
+    #iconscale = 0.5
+    #oedepict.OEAddInteractiveIcon(image, oedepict.OEIconLocation_TopRight, iconscale)
+    svgBytes = oedepict.OEWriteImageToString("svg", image)
+
+    return svgBytes.decode("utf-8")

@@ -33,5 +33,5 @@
   "build_requirements": {"gpu": 1, "instance_tags": ["cuda9"]},
 
   "name": "MD Orion Package",
- "version": "0.7.10.1"
+ "version": "0.7.10.6"
 }
