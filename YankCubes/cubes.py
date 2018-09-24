@@ -1009,6 +1009,14 @@ class YankProxyCube(OERecordComputeCube):
         current_iteration_field = OEField("current_iterations", Types.Int)
 
         try:
+            if not record.has_value(Fields.title):
+                self.opt['Logger'].warn("Missing record Title field")
+                system_title = complex.GetTitle()[0:12]
+            else:
+                system_title = record.get_value(Fields.title)
+
+            self.opt['Logger'].warn(">>>>>>>>>>> System Title {}".format(system_title))
+
             if port == 'intake':
                 record.set_value(current_iteration_field, 0)
                 current_iteration = record.get_value(current_iteration_field)
