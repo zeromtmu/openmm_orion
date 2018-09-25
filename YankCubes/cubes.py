@@ -472,8 +472,17 @@ class SyncBindingFECube(OERecordComputeCube):
     This cube is used to synchronize the solvated ligands and the related
     solvated complexes
     """
+
     classification = [["Synchronization Cube"]]
     tags = [tag for lists in classification for tag in lists]
+
+    # Override defaults for some parameters
+    parameter_overrides = {
+        "memory_mb": {"default": 6000},
+        "spot_policy": {"default": "Allowed"},
+        "prefetch_count": {"default": 1},  # 1 molecule at a time
+        "item_count": {"default": 1}  # 1 molecule at a time
+    }
 
     solvated_ligand_in_port = RecordInputPort("solvated_ligand_in_port")
 
