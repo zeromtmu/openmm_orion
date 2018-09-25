@@ -43,30 +43,31 @@ from cuberecord import (DatasetWriterCube,
 job = WorkFloe('Binding Affinity Replica Exchange')
 
 job.description = """
-    The Absolute Binding Affinity Free Energy protocol (ABFE) performs Binding Affinity calculations
-    on a set of provided ligands and related receptor by using YANK Replica Exchange ( http://getyank.org/latest/ ).
-    The ligands need to have coordinates and correct chemistry. Each ligand can have multiple conformers,
-    but each conformer will be treated as a different ligand and prepared to run ABFE.
-    The protein needs to be prepared at MD preparation standard. This includes capping the protein,
-    resolve missing atoms in protein residues and resolve missing protein loops. The parametrization of
-    some "known unknown" non standard protein residues is partially supported. Ligands need to be already posed
-    in the protein binding site. A complex (Bonded State) is formed, solvated and parametrized accordingly
-    to the selected force fields. In a similar fashion the Unbounded state is also prepared. Minimization,
-    Warm up (NVT) and Equilibration (NPT) stages are performed an the Bonded and Unbounded states. In order
-    to minimize Molecular Dynamics (MD) failures along these stages, positional harmonic restraints are
-    applied on the ligand and protein with different force constants. At the end of the equilibration stages
-    the ABFE calculations are run by YANK with the selected parameters. Calculated Binding Affinities
-    for each ligand are output with the related floe reports.
+The Absolute Binding Affinity Free Energy protocol (ABFE) performs Binding Affinity calculations
+on a set of provided ligands posed in a receptor by using YANK Replica Exchange ( http://getyank.org/latest/ ).
+The ligands need to have coordinates and correct chemistry. Each ligand can have multiple conformers,
+but each conformer will be prepared and treated as a different ligand.
+The protein needs to be prepared to MD standard: This includes capping the protein,
+resolving missing atoms in protein residues and resolving missing protein loops.
+The parametrization of some common non-standard protein residues is partially supported.
+Though input separately from the protein, Ligands need to be already posed in the
+protein binding site.
+A bound complex is formed, solvated and parametrized according to the selected force fields.
+The unbound state is similarly prepared. For both bound and unbound states the ABFE
+calculation is preceded by minimization, warm up, and equilibration in the presence of
+positional harmonic restraints.
+The ABFE calculation is then run by YANK with the selected parameters.
+The output floe report for each ligand contains the calculated binding affinity and health checks.
 
-    Required Input Parameters:
-    -----------
-    ligands: Dataset of the prepared ligands
-    protein: Dataset of the prepared protein
+Required Input Parameters:
+-----------
+ligands: Dataset of the prepared ligands
+protein: Dataset of the prepared protein
 
-    Outputs:
-    --------
-    out : Dataset of the solvated systems with the calculated binding free energies and
-    floe reports
+Outputs:
+--------
+* out : Dataset of the solvated systems with the calculated binding free energies
+* floe report : An analysis of the results for each ligand
 """
 
 job.classification = [['BindingFreeEnergy', 'Yank']]
@@ -79,7 +80,7 @@ job.add_cube(iligs)
 
 chargelig = LigandChargeCube("LigCharge", title="Ligand Charge")
 chargelig.promote_parameter('charge_ligands', promoted_name='charge_ligands',
-                            description="Charge the ligand or not", default=True)
+                            description="Calculate ligand partial charges", default=True)
 job.add_cube(chargelig)
 
 ligset = LigandSetting("LigandSetting", title="Ligand Setting")
