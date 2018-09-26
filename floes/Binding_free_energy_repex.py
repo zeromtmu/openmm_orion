@@ -218,20 +218,20 @@ job.add_cube(equil3Complex)
 # LIGAND SETTING
 
 # Solvate Ligands
-solvateLigand = SolvationCube("HydrationLigand", title="Unbounded Ligand Hydration")
+solvateLigand = SolvationCube("HydrationLigand", title="Unbound Ligand Hydration")
 solvateLigand.set_parameters(solvents='[H]O[H]')
 solvateLigand.set_parameters(molar_fractions='1.0')
 solvateLigand.set_parameters(close_solvent=True)
 job.add_cube(solvateLigand)
 
 # Ligand Force Field Application
-ffLigand = ForceFieldCube("ForceFieldLigand", title="Unbounded Ligand Parametrization")
+ffLigand = ForceFieldCube("ForceFieldLigand", title="Unbound Ligand Parametrization")
 ffLigand.promote_parameter('ligand_forcefield', promoted_name='ligand_forcefield')
 ffLigand.promote_parameter('other_forcefield', promoted_name='other_forcefield')
 job.add_cube(ffLigand)
 
 # Ligand Minimization
-minimizeLigand = OpenMMminimizeCube("MinimizeLigand", title="Unbounded Ligand Minimization")
+minimizeLigand = OpenMMminimizeCube("MinimizeLigand", title="Unbound Ligand Minimization")
 minimizeLigand.set_parameters(restraints='noh ligand')
 minimizeLigand.promote_parameter('hmr', promoted_name='hmr')
 minimizeLigand.set_parameters(restraintWt=5.0)
@@ -239,7 +239,7 @@ minimizeLigand.set_parameters(center=True)
 job.add_cube(minimizeLigand)
 
 # Ligand NVT Warm-up
-warmupLigand = OpenMMNvtCube('warmupLigand', title='Unbounded Ligand Warm Up')
+warmupLigand = OpenMMNvtCube('warmupLigand', title='Unbound Ligand Warm Up')
 warmupLigand.set_parameters(time=0.02)
 warmupLigand.promote_parameter('temperature', promoted_name='temperature')
 warmupLigand.promote_parameter('hmr', promoted_name='hmr')
@@ -251,7 +251,7 @@ warmupLigand.set_parameters(suffix='warmup_ligand')
 job.add_cube(warmupLigand)
 
 # Ligand NPT Equilibration stage
-equilLigand = OpenMMNptCube('equilLigand', title='Unbounded Ligand Equilibration')
+equilLigand = OpenMMNptCube('equilLigand', title='Unbound Ligand Equilibration')
 equilLigand.set_parameters(time=0.02)
 equilLigand.promote_parameter('temperature', promoted_name='temperature')
 equilLigand.promote_parameter('pressure', promoted_name='pressure')
@@ -263,7 +263,7 @@ equilLigand.set_parameters(reporter_interval=0.0)
 equilLigand.set_parameters(suffix='equil')
 job.add_cube(equilLigand)
 
-sync = SyncBindingFECube("SyncCube", title="Un-Bound and Bound Synchronization")
+sync = SyncBindingFECube("SyncCube", title="Unbound and Bound States Synchronization")
 job.add_cube(sync)
 
 ofs = DatasetWriterCube('ofs', title='Out')

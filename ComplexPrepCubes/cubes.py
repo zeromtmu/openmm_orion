@@ -53,7 +53,7 @@ class HydrationCube(ParallelMixin, OERecordComputeCube):
 
     # Override defaults for some parameters
     parameter_overrides = {
-        "memory_mb": {"default": 2000},
+        "memory_mb": {"default": 6000},
         "spot_policy": {"default": "Allowed"},
         "prefetch_count": {"default": 1},  # 1 molecule at a time
         "item_count": {"default": 1}  # 1 molecule at a time
@@ -125,7 +125,7 @@ class SolvationCube(ParallelMixin, OERecordComputeCube):
 
     # Override defaults for some parameters
     parameter_overrides = {
-        "memory_mb": {"default": 2000},
+        "memory_mb": {"default": 6000},
         "spot_policy": {"default": "Allowed"},
         "prefetch_count": {"default": 1},  # 1 molecule at a time
         "item_count": {"default": 1}  # 1 molecule at a time
@@ -233,7 +233,7 @@ class SolvationCube(ParallelMixin, OERecordComputeCube):
             sol_system = packmol.oesolvate(solute, **opt)
             self.log.info("[{}] Solvated System atom number: {}".format(self.title,
                                                                         sol_system.NumAtoms()))
-            sol_system.SetTitle(solute_title)
+            sol_system.SetTitle(solute.GetTitle())
 
             record.set_value(Fields.primary_molecule, sol_system)
             record.set_value(Fields.title, solute_title)
@@ -366,7 +366,7 @@ class ComplexPrepCube(OERecordComputeCube):
 
                 complex_title = 'p' + self.protein_title + '_' + ligand_title
 
-                new_complex.SetTitle(complex_title)
+                new_complex.SetTitle(ligand.GetTitle())
 
                 new_record = OERecord()
 

@@ -309,13 +309,13 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                 # Restarting
                 if current_iterations != 0:
                     yank_files = md_stage_record.get_value(Fields.trajectory)
-                    filename = omm_utils.download(yank_files, delete=True)
+                    filename = omm_utils.download(yank_files, delete=False)
 
                     with tarfile.open(filename) as tar:
                         tar.extractall(path=output_directory)
 
                     # Remove file after extraction
-                    os.remove(filename)
+                    # os.remove(filename)
 
                     # Disable minimization if restart is enabled
                     minimize = False
@@ -806,13 +806,13 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
                 if current_iterations != 0:
                     yank_files = md_stage_record.get_value(Fields.trajectory)
-                    filename = omm_utils.download(yank_files, delete=True)
+                    filename = omm_utils.download(yank_files, delete=False)
 
                     with tarfile.open(filename) as tar:
                         tar.extractall(path=output_directory)
 
                     # Remove File after extraction
-                    os.remove(filename)
+                    # os.remove(filename)
 
                     # Disable minimization if restart is enabled
                     minimize = False

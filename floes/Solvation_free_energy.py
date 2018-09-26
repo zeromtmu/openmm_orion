@@ -103,7 +103,7 @@ yank_proxy.promote_parameter('iterations', promoted_name='iterations', default=1
 job.add_cube(yank_proxy)
 
 # First Yank Cube used to build the UI interface
-solvationfe = YankSolvationFECube("SovationFE", title="Yank Solvation")
+solvationfe = YankSolvationFECube("SolvationFE", title="Yank Solvation")
 solvationfe.promote_parameter('iterations', promoted_name='iterations')
 solvationfe.promote_parameter('verbose', promoted_name='verbose', default=False)
 solvationfe.promote_parameter('temperature', promoted_name='temperature', default=300.0,

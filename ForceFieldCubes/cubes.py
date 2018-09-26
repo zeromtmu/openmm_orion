@@ -187,7 +187,7 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
                 raise ValueError("Parmed and OE topologies mismatch atom number "
                                  "error for system: {}".format(system_title))
 
-            system_reassembled.SetTitle(system_title)
+            system_reassembled.SetTitle(system.GetTitle())
 
             # Set Parmed structure box_vectors
             is_periodic = True
