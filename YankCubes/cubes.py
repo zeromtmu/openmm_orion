@@ -415,7 +415,7 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                             session = OrionSession()
 
                             file_upload = File.upload(session,
-                                                      "{} Yank Report".format(opt['system_title']),
+                                                      "{}".format(system.GetTitle()[0:200]),
                                                       result_fn)
 
                             session.tag_resource(file_upload, "floe_report")
@@ -928,7 +928,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                             session = OrionSession()
 
                             file_upload = File.upload(session,
-                                                      "{} Yank Report".format(opt['system_title']),
+                                                      "{}".format(complex.GetTitle()[0:200]),
                                                       result_fn)
 
                             session.tag_resource(file_upload, "floe_report")

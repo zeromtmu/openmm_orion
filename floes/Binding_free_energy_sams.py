@@ -43,31 +43,34 @@ from cuberecord import (DatasetWriterCube,
 job = WorkFloe('Binding Affinity Self-Adjusted Mixture Sampling')
 
 job.description = """
-    The Absolute Binding Affinity Free Energy protocol (ABFE) performs Binding Affinity calculations
-    on a set of provided ligands and related receptor by using YANK Self-Adjusted Mixture Sampling
-    ( http://getyank.org/latest/ ). The ligands need to have coordinates and correct chemistry.
-    Each ligand can have multiple conformers, but each conformer will be treated as a different ligand
-    and prepared to run ABFE. The protein needs to be prepared at MD preparation standard. This includes
-    capping the protein, resolve missing atoms in protein residues and resolve missing protein loops.
-    The parametrization of some "known unknown" non standard protein residues is partially supported.
-    Ligands need to be already posed in the protein binding site. A complex (Bonded State) is formed,
-    solvated and parametrized accordingly to the selected force fields. In a similar fashion the Unbounded
-    state is also prepared. Minimization, Warm up (NVT) and Equilibration (NPT) stages are performed
-    an the Bonded and Unbounded states. In order to minimize Molecular Dynamics (MD) failures along
-    these stages, positional harmonic restraints are applied on the ligand and protein with different
-    force constants. At the end of the equilibration stages the ABFE calculations are run by YANK with
-    the selected parameters. Calculated Binding Affinities for each ligand are output with the related
-    floe reports.
+<span style="color:red">NOTE: this is an Alpha Test version. 
+We are actively working on improving Yank in Orion</span>
 
-    Required Input Parameters:
-    -----------
-    ligands: Dataset of the prepared ligands
-    protein: Dataset of the prepared protein
+The Absolute Binding Affinity Free Energy protocol (ABFE) performs Binding Affinity calculations
+on a set of provided ligands and related receptor by using YANK Self-Adjusted Mixture Sampling
+( http://getyank.org/latest/ ). The ligands need to have coordinates and correct chemistry.
+Each ligand can have multiple conformers, but each conformer will be treated as a different ligand
+and prepared to run ABFE. The protein needs to be prepared at MD preparation standard. This includes
+capping the protein, resolve missing atoms in protein residues and resolve missing protein loops.
+The parametrization of some "known unknown" non standard protein residues is partially supported.
+Ligands need to be already posed in the protein binding site. A complex (Bonded State) is formed,
+solvated and parametrized accordingly to the selected force fields. In a similar fashion the Unbounded
+state is also prepared. Minimization, Warm up (NVT) and Equilibration (NPT) stages are performed
+an the Bonded and Unbounded states. In order to minimize Molecular Dynamics (MD) failures along
+these stages, positional harmonic restraints are applied on the ligand and protein with different
+force constants. At the end of the equilibration stages the ABFE calculations are run by YANK with
+the selected parameters. Calculated Binding Affinities for each ligand are output with the related
+floe reports.
 
-    Outputs:
-    --------
-    out : Dataset of the solvated systems with the calculated binding free energies and
-    floe reports
+Required Input Parameters:
+-----------
+ligands: Dataset of the prepared ligands
+protein: Dataset of the prepared protein
+
+Outputs:
+--------
+out : Dataset of the solvated systems with the calculated binding free energies and
+floe reports
 """
 
 job.classification = [['BindingFreeEnergy', 'Yank']]

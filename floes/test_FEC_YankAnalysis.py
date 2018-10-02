@@ -18,7 +18,7 @@
 # or its use.
 
 from floe.api import WorkFloe
-from TrjAnalysisCubes.FEC_Yank_Analysis import FECAnalysis
+from TrjAnalysisCubes.FEC_Yank_Analysis import FECAnalysis, STATAnalysis
 from cuberecord import DatasetReaderCube, DatasetWriterCube
 
 job = WorkFloe("FEC Yank Analysis")
@@ -35,7 +35,10 @@ ifs.promote_parameter("data_in", promoted_name="system", title='System Input Fil
                       description="System input file")
 
 fecanalysis = FECAnalysis('fecanalysis', title='FEC Yank Analsyis')
+fecanalysis.promote_parameter('max_iterations', promoted_name='max_iterations', default=1000)
 
+stat = STATAnalysis("StatAnalysis", title="StatAnalysis")
+stat.promote_parameter('max_iterations', promoted_name='max_iterations')
 
 ofs = DatasetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")
@@ -43,10 +46,11 @@ ofs.promote_parameter("data_out", promoted_name="out")
 fail = DatasetWriterCube('fail', title='Failures')
 fail.promote_parameter("data_out", promoted_name="fail")
 
-job.add_cubes(ifs, fecanalysis, ofs, fail)
+job.add_cubes(ifs, fecanalysis, stat, ofs, fail)
 ifs.success.connect(fecanalysis.intake)
-fecanalysis.success.connect(ofs.intake)
-fecanalysis.failure.connect(fail.intake)
+fecanalysis.success.connect(stat.intake)
+stat.success.connect(ofs.intake)
+stat.failure.connect(fail.intake)
 
 if __name__ == "__main__":
     job.run()

@@ -23,6 +23,7 @@ import TrjAnalysisCubes.utils as utl
 import oetrajanalysis.OETrajBasicAnalysis_utils as oetrjutl
 import ensemble2img
 
+
 class TrajToOEMolCube_old(ParallelMixin, OERecordComputeCube):
     title = 'Traj to OEMol Cube'
 
@@ -166,7 +167,6 @@ class TrajToOEMolCube_old(ParallelMixin, OERecordComputeCube):
                 raise ValueError('{} AnalysesDone list does not exist'.format( system_title) )
             record.set_value( OEField( 'AnalysesDone', Types.StringVec), analysesDone)
             opt['Logger'].info('{}: saved protein and ligand traj OEMols'.format( system_title) )
-
 
             self.success.emit(record)
 

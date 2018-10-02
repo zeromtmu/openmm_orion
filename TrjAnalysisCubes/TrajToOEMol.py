@@ -12,18 +12,15 @@ from datarecord import (Types,
                         OERecord)
 
 from cuberecord import OERecordComputeCube
-from Standards import (Fields,
-                       MDRecords,
-                       MDStageNames)
+from Standards import Fields
 
-from openeye import oechem
 
 import MDCubes.OpenMMCubes.utils as omm_utils
 
 import TrjAnalysisCubes.utils as utl
-#import TrjAnalysisCubes.OETrajBasicAnalysis_utils as oetrjutl
 import oetrajanalysis.OETrajBasicAnalysis_utils as oetrjutl
 import ensemble2img
+
 
 class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
     title = 'Traj to OEMol Cube'
@@ -157,7 +154,6 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
                 raise ValueError('{} AnalysesDone list does not exist'.format( system_title) )
             record.set_value( OEField( 'AnalysesDone', Types.StringVec), analysesDone)
             opt['Logger'].info('{}: saved protein and ligand traj OEMols'.format( system_title) )
-
 
             self.success.emit(record)
 
