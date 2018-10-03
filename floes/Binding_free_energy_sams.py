@@ -43,8 +43,8 @@ from cuberecord import (DatasetWriterCube,
 job = WorkFloe('Binding Affinity Self-Adjusted Mixture Sampling')
 
 job.description = """
-<span style="color:red">NOTE: this is an Alpha Test version. 
-We are actively working on improving Yank in Orion</span>
+NOTE: this is an Alpha Test version. 
+We are actively working on improving Yank in Orion
 
 The Absolute Binding Affinity Free Energy protocol (ABFE) performs Binding Affinity calculations
 on a set of provided ligands and related receptor by using YANK Self-Adjusted Mixture Sampling

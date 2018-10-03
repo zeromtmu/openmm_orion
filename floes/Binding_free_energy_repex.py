@@ -43,8 +43,8 @@ from cuberecord import (DatasetWriterCube,
 job = WorkFloe('Binding Affinity Replica Exchange')
 
 job.description = """
-<span style="color:red">NOTE: this is an Alpha Test version. 
-We are actively working on improving Yank in Orion</span>
+NOTE: this is an Alpha Test version. 
+We are actively working on improving Yank in Orion
 
 The Absolute Binding Affinity Free Energy protocol (ABFE) performs Binding Affinity calculations
 on a set of provided ligands posed in a receptor by using YANK Replica Exchange ( http://getyank.org/latest/ ).
