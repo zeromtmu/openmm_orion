@@ -33,7 +33,7 @@ from simtk import (unit,
 
 from simtk.openmm import app
 
-import MDCubes.OpenMMCubes.utils as utils
+import MDCubes.utils as utils
 
 PACKAGE_DIR = os.path.dirname(os.path.dirname(MDOrion.__file__))
 

@@ -23,7 +23,7 @@ import mdtraj as md
 
 import sstmap as sm
 
-from MDCubes.OpenMMCubes import utils as omm_utils
+from MDCubes import utils as omm_utils
 
 from floe.constants import *
 

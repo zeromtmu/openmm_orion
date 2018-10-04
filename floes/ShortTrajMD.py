@@ -37,8 +37,6 @@ from ProtPrepCubes.cubes import ProteinSetting
 from LigPrepCubes.cubes import (LigandChargeCube,
                                 LigandSetting)
 
-from MDCubes.MDUtils.hypercubes.shard_writer import CollectionWriter
-
 job = WorkFloe('Short Trajectory MD')
 
 job.description = """
@@ -127,13 +125,6 @@ prod.promote_parameter('trajectory_interval', promoted_name='prod_trajectory_int
                        description='Trajectory saving interval in ns')
 prod.promote_parameter('reporter_interval', promoted_name='prod_reporter_interval', default=0.002,
                        description='Reporter saving interval is ns')
-# prod.promote_parameter('max_parallel', promoted_name='num_gpus', default=1,
-#                        description='Number of GPUS to make available - should be less than the number of ligands')
-# prod.promote_parameter('min_parallel', promoted_name='num_gpus', default=1,
-#                        description='Number of GPUS to make available - should be less than the number of ligands')
-# prod.promote_parameter('hmr', promoted_name='hmr', default=False,
-#                        description='Hydrogen Mass Repartitioning')
-
 prod.set_parameters(suffix='prod')
 prod.set_parameters(save_md_stage=True)
 
@@ -202,10 +193,8 @@ equil3.set_parameters(trajectory_interval=0.0)
 equil3.set_parameters(reporter_interval=0.001)
 equil3.set_parameters(suffix='equil3')
 
-# ofs = DataSetWriterCube('ofs', title='Out')
-# ofs.promote_parameter("data_out", promoted_name="out")
-
-ofs = CollectionWriter('ofs', title='Out')
+ofs = DatasetWriterCube('ofs', title='Out')
+ofs.promote_parameter("data_out", promoted_name="out")
 
 fail = DatasetWriterCube('fail', title='Failures')
 fail.set_parameters(data_out='fail.oedb')

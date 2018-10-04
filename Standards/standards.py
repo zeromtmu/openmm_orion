@@ -59,7 +59,7 @@ class Fields:
     primary_molecule = OEPrimaryMolField()
 
     # Parmed Structure Field
-    structure = OEField('Structure_Parmed_OPLMD', ParmedData)
+    pmd_structure = OEField('Structure_Parmed_OPLMD', ParmedData)
 
     # The Stage Name
     stage_name = OEField('Stage_name_OPLMD', Types.String)
@@ -78,7 +78,7 @@ class Fields:
 
     # Trajectory
     if in_orion():
-        trajectory = OEField("Trajectory_OPLMD", TypesCR.Orion.LargeFile)
+        trajectory = OEField("Trajectory_OPLMD", TypesCR.Orion.File)
     else:
         trajectory = OEField("Trajectory_OPLMD", Types.String)
 
@@ -93,8 +93,8 @@ class Fields:
 
 # ---------------- Record Standards -------------- #
 
-# The MDSystemRecord class holds the system topology as an OEMol and the system
-# parametrization by using a Parmed Structure object
+# The MDSystemRecord class holds the system topology as an OEMol and the System
+# MD State made of system positions, velocities and box_vectors
 
 class MDRecords:
     class MDSystemRecord(OERecord):

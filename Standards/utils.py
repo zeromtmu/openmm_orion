@@ -20,7 +20,7 @@ from datarecord.types import CustomHandler
 import pickle
 import parmed
 
-from MDCubes.mdutils import MDState
+from MDCubes.utils import MDState
 import copy
 
 
@@ -48,31 +48,6 @@ class ParmedData(CustomHandler):
     def deserialize(data):
         new_structure = parmed.structure.Structure()
         new_structure.__setstate__(pickle.loads(bytes(data)))
-        return new_structure
-
-
-# class MDStructureData(CustomHandler):
-#
-#     @staticmethod
-#     def get_name():
-#         return 'MDStructure'
-#
-#     @classmethod
-#     def validate(cls, value):
-#         return isinstance(value, MDStructure)
-#
-#     @classmethod
-#     def copy(cls, value):
-#         return copy.deepcopy(value)
-#
-#     @staticmethod
-#     def serialize(structure):
-#         pkl_obj = pickle.dumps(structure)
-#         return bytes(pkl_obj)
-#
-#     @staticmethod
-#     def deserialize(data):
-#         new_structure = pickle.loads(bytes(data))
         return new_structure
 
 

@@ -29,7 +29,7 @@ from datarecord import (Types,
                         OERecord,
                         OEFieldMeta)
 
-import MDCubes.OpenMMCubes.utils as omm_utils
+import MDCubes.utils as omm_utils
 
 from openeye import oechem
 
@@ -72,6 +72,10 @@ from os import environ
 
 from YankCubes.yank_templates import (resources,
                                       max_cube_running_time)
+
+from Standards.utils import ParmedData
+
+from MDCubes.utils import MDState
 
 
 class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
@@ -214,8 +218,8 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
             total_time_per_iteration = resources['k80']['w29']['intercept'] + resources['k80']['w29']['slope'] * system.NumAtoms()
 
             iterations_per_cube = int(max_cube_running_time/total_time_per_iteration)
-            # # TODO DEBUGGING REMOVE NEXT LINE
-            # iterations_per_cube = 5
+            # TODO DEBUGGING REMOVE NEXT LINE
+            # iterations_per_cube = 3
 
             # Calculate the new number of iterations to run
             if current_iterations + iterations_per_cube > opt['iterations']:
@@ -266,15 +270,22 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
             # Extract the most recent MDStageRecord
             md_stage_record = md_stages[-1]
 
+            # Extract from the record the Parmed structure
+            if not record.has_value(Fields.pmd_structure):
+                raise ValueError("The System does not seem to be parametrized by the Force Field")
+
+            solvated_structure = record.get_value(Fields.pmd_structure)
+
             # Extract the MDSystemRecord
             md_system_record = md_stage_record.get_value(Fields.md_system)
 
-            # Extract from the MDSystemRecord the the Parmed structure
-            parmed_structure = md_system_record.get_value(Fields.structure)
+            # Extract the MD State
+            mdstate = md_system_record.get_value(Fields.md_state)
 
-            # Extract the MD data
-            mdData = omm_utils.MDData(parmed_structure)
-            solvated_structure = mdData.structure
+            # Update the parmed structure with the MD State
+            solvated_structure.positions = mdstate.get_positions()
+            solvated_structure.velocities = mdstate.get_velocities()
+            solvated_structure.box_vectors = mdstate.get_box_vectors()
 
             # Extract the ligand parmed structure
             solute_structure = solvated_structure.split()[0][0]
@@ -309,13 +320,16 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                 # Restarting
                 if current_iterations != 0:
                     yank_files = md_stage_record.get_value(Fields.trajectory)
-                    filename = omm_utils.download(yank_files, delete=True)
 
-                    with tarfile.open(filename) as tar:
+                    filename = os.path.join(output_directory, "yank_files.tar")
+
+                    fn_local = omm_utils.download_file(yank_files, filename)
+
+                    with tarfile.open(fn_local) as tar:
                         tar.extractall(path=output_directory)
 
-                    # Remove file after extraction
-                    os.remove(filename)
+                    # remove the file
+                    os.remove(fn_local)
 
                     # Disable minimization if restart is enabled
                     minimize = False
@@ -434,7 +448,7 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                     archive.add(output_directory, arcname='.', recursive=True)
 
                 # Create Large file object if required
-                lf = omm_utils.upload(tar_fn)
+                lf = omm_utils.upload_file(tar_fn, opt['system_title']+'.tar.gz')
 
                 str_logger += '\n' + '-' * 32 + ' SIMULATION ' + '-' * 32
 
@@ -442,7 +456,7 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                     str_logger += '\n'+flog.read()
 
                 md_stage_record = MDRecords.MDStageRecord(MDStageNames.FEC,
-                                                          MDRecords.MDSystemRecord(system, mdData.structure),
+                                                          MDRecords.MDSystemRecord(system, mdstate),
                                                           log=str_logger,
                                                           trajectory=lf)
                 # md_stages.append(md_stage_record)
@@ -520,10 +534,27 @@ class SyncBindingFECube(OERecordComputeCube):
                 new_record.set_value(Fields.id, pair[1].get_value(Fields.id))
                 new_record.set_value(Fields.title, pair[1].get_value(Fields.title))
 
-                ligand_solvated_field = OEField("ligand_solvated", Types.Record)
-                complex_solvated_field = OEField("complex_solvated", Types.Record)
-                new_record.set_value(ligand_solvated_field, pair[0].get_value(Fields.md_stages)[-1].get_value(Fields.md_system))
-                new_record.set_value(complex_solvated_field, pair[1].get_value(Fields.md_stages)[-1].get_value(Fields.md_system))
+                ligand_solvated_field = OEField("ligand_pmd_solvated", ParmedData)
+                complex_solvated_field = OEField("complex_pmd_solvated", ParmedData)
+
+                # Extract and update ligand parmed structure
+                ligand_md_state = pair[0].get_value(Fields.md_stages)[-1].get_value(Fields.md_system).get_value(Fields.md_state)
+                ligand_pmd_structure = pair[0].get_value(Fields.pmd_structure)
+
+                ligand_pmd_structure.positions = ligand_md_state.get_positions()
+                ligand_pmd_structure.velocities = ligand_md_state.get_velocities()
+                ligand_pmd_structure.box_vectors = ligand_md_state.get_box_vectors()
+
+                # Extract and update complex parmed structure
+                complex_md_state = pair[1].get_value(Fields.md_stages)[-1].get_value(Fields.md_system).get_value(Fields.md_state)
+                complex_pmd_structure = pair[1].get_value(Fields.pmd_structure)
+
+                complex_pmd_structure.positions = complex_md_state.get_positions()
+                complex_pmd_structure.velocities = complex_md_state.get_velocities()
+                complex_pmd_structure.box_vectors = complex_md_state.get_box_vectors()
+
+                new_record.set_value(ligand_solvated_field, ligand_pmd_structure)
+                new_record.set_value(complex_solvated_field, complex_pmd_structure)
 
                 self.success.emit(new_record)
 
@@ -756,23 +787,21 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
             solvent_str_names = ' '.join(solvent_res_names)
 
             if current_iterations == 0:
-                solvated_ligand_record_field = OEField("ligand_solvated", Types.Record)
 
-                if not record.has_value(solvated_ligand_record_field):
-                    raise ValueError("The parametrized solvated ligand is missing")
+                solvated_ligand_pmd_field = OEField("ligand_pmd_solvated", ParmedData)
+                solvated_complex_pmd_field = OEField("complex_pmd_solvated", ParmedData)
 
-                solvated_ligand_mdsystem_record = record.get_value(solvated_ligand_record_field)
+                if not record.has_value(solvated_ligand_pmd_field):
+                    raise ValueError("The Parmed solvated ligand structure is missing")
 
-                solvated_ligand_parmed_structure = solvated_ligand_mdsystem_record.get_value(Fields.structure)
+                solvated_ligand_parmed_structure = record.get_value(solvated_ligand_pmd_field)
 
-                solvated_complex_record_field = OEField("complex_solvated", Types.Record)
+                if not record.has_value(solvated_complex_pmd_field):
+                    raise ValueError("The Parmed solvated complex structure is missing")
 
-                if not record.has_value(solvated_complex_record_field):
-                    raise ValueError("The parametrized solvated complex is missing")
+                solvated_complex_parmed_structure = record.get_value(solvated_complex_pmd_field)
 
-                solvated_complex_mdsystem_record = record.get_value(solvated_complex_record_field)
-
-                solvated_complex_parmed_structure = solvated_complex_mdsystem_record.get_value(Fields.structure)
+                mdstate = MDState(solvated_complex_parmed_structure)
 
             else:
                 # Extract the MDStageRecord list
@@ -783,7 +812,13 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
                 complex_mdsystem_record = md_stage_record.get_value(Fields.md_system)
 
-                solvated_complex_parmed_structure = complex_mdsystem_record.get_value(Fields.structure)
+                mdstate = complex_mdsystem_record.get_value(Fields.md_state)
+
+                solvated_complex_parmed_structure = record.get_value(Fields.pmd_structure)
+
+                solvated_complex_parmed_structure.positions = mdstate.get_positions()
+                solvated_complex_parmed_structure.velocities = mdstate.get_velocities()
+                solvated_complex_parmed_structure.box_vectors = mdstate.get_box_vectors()
 
             # Write out all the required files and set-run the Yank experiment
             with TemporaryDirectory() as output_directory:
@@ -797,13 +832,16 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
                 if current_iterations != 0:
                     yank_files = md_stage_record.get_value(Fields.trajectory)
-                    filename = omm_utils.download(yank_files, delete=True)
 
-                    with tarfile.open(filename) as tar:
+                    filename = os.path.join(output_directory, "yank_files.tar")
+
+                    fn_local = omm_utils.download_file(yank_files, filename)
+
+                    with tarfile.open(fn_local) as tar:
                         tar.extractall(path=output_directory)
 
-                    # Remove File after extraction
-                    os.remove(filename)
+                    # remove the file
+                    os.remove(fn_local)
 
                     # Disable minimization if restart is enabled
                     minimize = False
@@ -938,7 +976,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     archive.add(output_directory, arcname='.', recursive=True)
 
                 # Create Large file object if required
-                lf = omm_utils.upload(tar_fn)
+                lf = omm_utils.upload_file(tar_fn, opt['system_title']+'.tar.gz')
 
                 str_logger += '\n' + '-' * 32 + ' SIMULATION ' + '-' * 32
 
@@ -947,7 +985,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
                 md_stage_record = MDRecords.MDStageRecord(MDStageNames.FEC,
                                                           MDRecords.MDSystemRecord(complex,
-                                                                                   solvated_complex_parmed_structure),
+                                                                                   mdstate),
                                                           log=str_logger,
                                                           trajectory=lf)
                 if current_iterations != 0:
@@ -959,6 +997,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     record.set_value(Fields.md_stages, [md_stage_record])
                     record.set_value(Fields.id, opt['system_id'])
                     record.set_value(Fields.title, opt['system_title'])
+                    record.set_value(Fields.pmd_structure, solvated_complex_parmed_structure)
 
             record.set_value(current_iteration_field, new_iterations)
             record.set_value(Fields.primary_molecule, complex)
@@ -994,7 +1033,7 @@ class YankProxyCube(OERecordComputeCube):
 
     iterations = parameter.IntegerParameter(
         'iterations',
-        default=13,
+        default=1000,
         help_text="Total number of iterations")
 
     cycle_out_port = RecordOutputPort("cycle_out_port")

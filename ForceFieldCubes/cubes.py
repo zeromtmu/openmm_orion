@@ -35,7 +35,7 @@ from Standards import (MDStageNames,
                        Fields,
                        MDRecords)
 
-from MDCubes.mdutils import MDState
+from MDCubes.utils import MDState
 
 from simtk.openmm import app
 from simtk import unit
@@ -227,7 +227,7 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
             record.set_value(Fields.primary_molecule, system_reassembled)
             record.set_value(Fields.title, system_title)
 
-            record.set_value(Fields.structure, system_structure)
+            record.set_value(Fields.pmd_structure, system_structure)
 
             mdstate = MDState(system_structure)
 
