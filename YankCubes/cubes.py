@@ -219,7 +219,7 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
 
             iterations_per_cube = int(max_cube_running_time/total_time_per_iteration)
             # TODO DEBUGGING REMOVE NEXT LINE
-            # iterations_per_cube = 3
+            # iterations_per_cube = 5
 
             # Calculate the new number of iterations to run
             if current_iterations + iterations_per_cube > opt['iterations']:
@@ -734,7 +734,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
             iterations_per_cube = int(max_cube_running_time/total_time_per_iteration)
 
-            # # TODO DEBUGGING REMOVE NEXT LINE
+            # TODO DEBUGGING REMOVE NEXT LINE
             # iterations_per_cube = 5
 
             # Calculate the new number of iterations to run

@@ -197,7 +197,6 @@ ofs = DatasetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")
 
 fail = DatasetWriterCube('fail', title='Failures')
-fail.set_parameters(data_out='fail.oedb')
 
 job.add_cubes(iligs, ligset, iprot, protset, chargelig, complx, solvate, ff,
               minComplex, warmup, equil1, equil2, equil3, prod, ofs, fail)
