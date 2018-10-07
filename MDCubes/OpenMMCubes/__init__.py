@@ -16,5 +16,4 @@
 # or its use.
 
 
-from .utils import *
 from .simtools import *

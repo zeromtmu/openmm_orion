@@ -37,7 +37,7 @@ from cuberecord.cube_testing import OEMolRecordStream
 
 from Standards import Fields
 
-import MDCubes.OpenMMCubes.utils as utils
+import MDCubes.utils as utils
 
 
 PACKAGE_DIR = os.path.dirname(os.path.dirname(MDOrion.__file__))

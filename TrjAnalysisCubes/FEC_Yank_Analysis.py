@@ -12,7 +12,7 @@ import os
 
 from tempfile import TemporaryDirectory
 
-import MDCubes.OpenMMCubes.utils as omm_utils
+import MDCubes.utils as omm_utils
 
 
 from yank.analyze import ExperimentAnalyzer
@@ -104,9 +104,12 @@ class FECAnalysis(ParallelMixin, OERecordComputeCube):
                 if md_stage_record.has_value(Fields.trajectory):
 
                     yank_files = md_stage_record.get_value(Fields.trajectory)
-                    filename = omm_utils.download(yank_files, delete=False)
 
-                    with tarfile.open(filename) as tar:
+                    filename = os.path.join(output_directory, "yank_files.tar")
+
+                    fn_local = omm_utils.download_file(yank_files, filename, delete=True)
+
+                    with tarfile.open(fn_local) as tar:
                         tar.extractall(path=output_directory)
 
                 else:

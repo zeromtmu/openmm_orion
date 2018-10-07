@@ -126,13 +126,6 @@ prod.promote_parameter('trajectory_interval', promoted_name='prod_trajectory_int
                        description='Trajectory saving interval in ns')
 prod.promote_parameter('reporter_interval', promoted_name='prod_reporter_interval', default=0.002,
                        description='Reporter saving interval is ns')
-# prod.promote_parameter('max_parallel', promoted_name='num_gpus', default=1,
-#                        description='Number of GPUS to make available - should be less than the number of ligands')
-# prod.promote_parameter('min_parallel', promoted_name='num_gpus', default=1,
-#                        description='Number of GPUS to make available - should be less than the number of ligands')
-# prod.promote_parameter('hmr', promoted_name='hmr', default=False,
-#                        description='Hydrogen Mass Repartitioning')
-
 prod.set_parameters(suffix='prod')
 prod.set_parameters(save_md_stage=True)
 
@@ -205,8 +198,6 @@ ofs = DatasetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")
 
 fail = DatasetWriterCube('fail', title='Failures')
-fail.promote_parameter("data_out", promoted_name="fail")
-
 
 job.add_cubes(iligs, ligset, iprot, protset, chargelig, complx, solvate, ff,
               minComplex, warmup, equil1, equil2, equil3, prod, ofs, fail)

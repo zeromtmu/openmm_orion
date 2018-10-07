@@ -17,17 +17,31 @@
 
 
 import mdtraj
+
 import numpy as np
+
 from sys import stdout
-from simtk import unit, openmm
+
+from simtk import (unit,
+                   openmm)
+
 from simtk.openmm import app
+
 from oeommtools import utils as oeommutils
+
 from platform import uname
+
 import os
+
 import fcntl
+
 import time
+
 from floe.api.orion import in_orion
-from MDCubes.OpenMMCubes.utils import StateDataReporterName
+
+from MDCubes.utils import StateDataReporterName
+
+from MDCubes.utils import MDState
 
 
 def local_cluster(sim):
@@ -72,25 +86,25 @@ def local_cluster(sim):
 
 
 @local_cluster
-def simulation(mdData, opt):
+def simulation(parmed_structure, opt):
     """
     This supporting function performs: OpenMM Minimization, NVT and NPT
     Molecular Dynamics (MD) simulations
 
     Parameters
     ----------
-    mdData : MDData data object
-        The object which recovers the relevant Parmed structure data
-        to perform MD
+    parmed_structure : Parmed Structure data object
+        The Object is used to recover the MD data
     opt: python dictionary
         A dictionary containing all the MD setting info
     """
     # MD data extracted from Parmed
-    structure = mdData.structure
-    topology = mdData.topology
-    positions = mdData.positions
-    velocities = mdData.velocities
-    box = mdData.box
+    mdData = MDState(parmed_structure)
+
+    topology = parmed_structure.topology
+    positions = mdData.get_positions()
+    velocities = mdData.get_velocities()
+    box = mdData.get_box_vectors()
 
     # Time step in ps
     if opt['hmr']:
@@ -105,29 +119,29 @@ def simulation(mdData, opt):
     if opt['center'] and box is not None:
         opt['Logger'].info("[{}] Centering is On".format(opt['CubeTitle']))
         # Numpy array in A
-        coords = structure.coordinates
+        coords = parmed_structure.coordinates
         # System Center of Geometry
         cog = np.mean(coords, axis=0)
         # System box vectors
-        box_v = structure.box_vectors.in_units_of(unit.angstrom)/unit.angstrom
+        box_v = parmed_structure.box_vectors.in_units_of(unit.angstrom)/unit.angstrom
         box_v = np.array([box_v[0][0], box_v[1][1], box_v[2][2]])
         # Translation vector
         delta = box_v/2 - cog
         # New Coordinates
         new_coords = coords + delta
-        structure.coordinates = new_coords
-        positions = structure.positions
+        parmed_structure.coordinates = new_coords
+        positions = parmed_structure.positions
 
     # OpenMM system
     if box is not None:
-        system = structure.createSystem(nonbondedMethod=eval("app.%s" % opt['nonbondedMethod']),
-                                        nonbondedCutoff=opt['nonbondedCutoff']*unit.angstroms,
-                                        constraints=eval("app.%s" % opt['constraints']),
-                                        removeCMMotion=False, hydrogenMass=4.0*unit.amu if opt['hmr'] else None)
+        system = parmed_structure.createSystem(nonbondedMethod=eval("app.%s" % opt['nonbondedMethod']),
+                                               nonbondedCutoff=opt['nonbondedCutoff']*unit.angstroms,
+                                               constraints=eval("app.%s" % opt['constraints']),
+                                               removeCMMotion=False, hydrogenMass=4.0*unit.amu if opt['hmr'] else None)
     else:  # Vacuum
-        system = structure.createSystem(nonbondedMethod=app.NoCutoff,
-                                        constraints=eval("app.%s" % opt['constraints']),
-                                        removeCMMotion=False, hydrogenMass=4.0*unit.amu if opt['hmr'] else None)
+        system = parmed_structure.createSystem(nonbondedMethod=app.NoCutoff,
+                                               constraints=eval("app.%s" % opt['constraints']),
+                                               removeCMMotion=False, hydrogenMass=4.0*unit.amu if opt['hmr'] else None)
 
     # OpenMM Integrator
     integrator = openmm.LangevinIntegrator(opt['temperature']*unit.kelvin, 1/unit.picoseconds, stepLen)
@@ -355,10 +369,10 @@ def simulation(mdData, opt):
 
         state = simulation.context.getState(getPositions=True, getEnergy=True)
 
-        ie = '{:<25} = {:<10}'.format('Initial Energy', str(state_reference_start.getPotentialEnergy().
-                                                            in_units_of(unit.kilocalorie_per_mole)))
-        fe = '{:<25} = {:<10}'.format('Minimized Energy', str(state.getPotentialEnergy().
-                                                              in_units_of(unit.kilocalorie_per_mole)))
+        ie = '{:<25} = {:<10}'.format('Initial Potential Energy', str(state_reference_start.getPotentialEnergy().
+                                                                      in_units_of(unit.kilocalorie_per_mole)))
+        fe = '{:<25} = {:<10}'.format('Minimized Potential Energy', str(state.getPotentialEnergy().
+                                                                        in_units_of(unit.kilocalorie_per_mole)))
 
         opt['Logger'].info(ie)
         opt['Logger'].info(fe)
@@ -366,18 +380,18 @@ def simulation(mdData, opt):
         str_logger += '\n' + ie + '\n' + fe
 
     # OpenMM Quantity object
-    structure.positions = state.getPositions(asNumpy=False)
+    parmed_structure.positions = state.getPositions(asNumpy=False)
     # OpenMM Quantity object
     if box is not None:
-        structure.box_vectors = state.getPeriodicBoxVectors()
+        parmed_structure.box_vectors = state.getPeriodicBoxVectors()
 
     if opt['SimType'] in ['nvt', 'npt']:
         # numpy array in units of angstrom/picoseconds
-        structure.velocities = state.getVelocities(asNumpy=False)
+        parmed_structure.velocities = state.getVelocities(asNumpy=False)
 
     # Update the OEMol complex positions to match the new
     # Parmed structure after the simulation
-    new_temp_mol = oeommutils.openmmTop_to_oemol(structure.topology, structure.positions, verbose=False)
+    new_temp_mol = oeommutils.openmmTop_to_oemol(parmed_structure.topology, parmed_structure.positions, verbose=False)
     new_pos = new_temp_mol.GetCoords()
     opt['molecule'].SetCoords(new_pos)
 

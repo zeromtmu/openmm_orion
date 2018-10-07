@@ -23,7 +23,7 @@ from floe.api import (ParallelMixin,
 
 from cuberecord import OERecordComputeCube
 
-import MDCubes.OpenMMCubes.utils as utils
+import MDCubes.utils as utils
 
 from openeye import oechem
 
@@ -33,13 +33,7 @@ from Standards import (Fields,
                        MDRecords,
                        MDStageNames)
 
-
-# import tarfile
-# from orionclient.session import APISession
-# from orionclient.types import File
-# Example
-# session = APISession
-# File.upload(APISession, "THIS IS A NAME", )
+from MDCubes.utils import MDState
 
 import copy
 
@@ -160,7 +154,7 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
 
     save_md_stage = parameter.BooleanParameter(
         'save_md_stage',
-        default=False,
+        default=True,
         help_text="""Save the MD simulation stage. If True the MD,
         simulation data will be appended to the md simulation stages 
         otherwise the last MD stage will be overwritten""")
@@ -219,6 +213,13 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
             opt['system_title'] = system_title
             opt['system_id'] = record.get_value(Fields.id)
 
+            # Extract from the record the Parmed structure
+            if not record.has_value(Fields.pmd_structure):
+                raise ValueError("The System does not seem to be parametrized by the Force Field")
+
+            parmed_structure = record.get_value(Fields.pmd_structure)
+
+            # Extract from the record the md stages
             if not record.has_value(Fields.md_stages):
                 raise ValueError("The System does not seem to be parametrized by the Force Field")
 
@@ -231,9 +232,9 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
             # Extract the MDSystemRecord
             md_system_record = md_stage_record.get_value(Fields.md_system)
 
-            # Extract from the MDSystemRecord the topology and the Parmed structure
+            # Extract from the MDSystemRecord the topology and the MD State
             system = md_system_record.get_value(Fields.topology)
-            parmed_structure = md_system_record.get_value(Fields.structure)
+            mdstate = md_system_record.get_value(Fields.md_state)
 
             # Update cube simulation parameters with the eventually molecule SD tags
             new_args = {dp.GetTag(): dp.GetValue() for dp in oechem.OEGetSDDataPairs(system) if dp.GetTag() in
@@ -247,21 +248,28 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
                 opt['Logger'].info("Updating parameters for molecule: {}\n{}".format(system.GetTitle(), new_args))
                 opt.update(new_args)
 
-            mdData = utils.MDData(parmed_structure)
-
             opt['molecule'] = system
             opt['str_logger'] = str_logger
+
+            # Update the parmed structure with the MD State
+            parmed_structure.positions = mdstate.get_positions()
+            parmed_structure.velocities = mdstate.get_velocities()
+            parmed_structure.box_vectors = mdstate.get_box_vectors()
 
             # The system and the related parmed structure are passed as reference
             # and therefore, they are updated inside the simulation call
             opt['Logger'].info('[{}] MINIMIZING System: {}'.format(opt['CubeTitle'], system_title))
-            simtools.simulation(mdData, opt)
+            simtools.simulation(parmed_structure, opt)
 
             record.set_value(Fields.primary_molecule, system)
 
+            mdstate = MDState(parmed_structure)
+
             md_stage_record = MDRecords.MDStageRecord(MDStageNames.MINIMIZATION,
-                                                      MDRecords.MDSystemRecord(system, mdData.structure),
+                                                      MDRecords.MDSystemRecord(system, mdstate),
                                                       log=opt['str_logger'])
+
+            record.set_value(Fields.pmd_structure, parmed_structure)
 
             if opt['save_md_stage']:
                 opt['Logger'].info("[{}] Saving MD stage: {}".format(opt['CubeTitle'], opt['SimType']))
@@ -380,11 +388,6 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
         default='nvt',
         help_text='Filename suffix for output simulation files')
 
-    # upload_ui = parameter.BooleanParameter(
-    #     'upload_ui',
-    #     default=False,
-    #     help_text='Upload the generated files to the Orion UI')
-
     center = parameter.BooleanParameter(
         'center',
         default=False,
@@ -473,9 +476,15 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
                 raise ValueError("Missing the ID field")
 
             opt['system_title'] = system_title
-
             opt['system_id'] = record.get_value(Fields.id)
 
+            # Extract from the record the Parmed structure
+            if not record.has_value(Fields.pmd_structure):
+                raise ValueError("The System does not seem to be parametrized by the Force Field")
+
+            parmed_structure = record.get_value(Fields.pmd_structure)
+
+            # Extract from the record the md stages
             if not record.has_value(Fields.md_stages):
                 raise ValueError("The System does not seem to be parametrized by the Force Field")
 
@@ -488,9 +497,9 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
             # Extract the MDSystemRecord
             md_system_record = md_stage_record.get_value(Fields.md_system)
 
-            # Extract from the MDSystemRecord the topology and the Parmed structure
+            # Extract from the MDSystemRecord the topology and the MDState
             system = md_system_record.get_value(Fields.topology)
-            parmed_structure = md_system_record.get_value(Fields.structure)
+            mdstate = md_system_record.get_value(Fields.md_state)
 
             # Update cube simulation parameters with the eventually molecule SD tags
             new_args = {dp.GetTag(): dp.GetValue() for dp in oechem.OEGetSDDataPairs(system) if dp.GetTag() in
@@ -505,22 +514,24 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
                 opt.update(new_args)
 
             opt['outfname'] = '{}-{}'.format(system_title + '_'+str(opt['system_id']), opt['suffix'])
-
-            mdData = utils.MDData(parmed_structure)
-
             opt['molecule'] = system
             opt['str_logger'] = str_logger
+
+            # Update the parmed structure with the MD State
+            parmed_structure.positions = mdstate.get_positions()
+            parmed_structure.velocities = mdstate.get_velocities()
+            parmed_structure.box_vectors = mdstate.get_box_vectors()
 
             # The system and the related parmed structure are passed as reference
             # and therefore, they are updated
             opt['Logger'].info('[{}] START NVT SIMULATION: {}'.format(opt['CubeTitle'], system_title))
-            simtools.simulation(mdData, opt)
+            simtools.simulation(parmed_structure, opt)
 
             # Trajectory
             if opt['trajectory_interval']:
                 full_path = os.getcwd()
                 filename = os.path.join(full_path, opt['outfname']+'.h5')
-                lf = utils.upload(filename)
+                lf = utils.upload_file(filename, opt['outfname']+'.h5')
             else:  # Empty Trajectory
                 lf = None
 
@@ -532,26 +543,12 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
 
                 opt['str_logger'] += '\n'+str_logger
 
-            # # If required upload files in the Orion UI
-            # if in_orion() and opt['upload_ui']:
-            #     file_list = []
-            #     if opt['trajectory_interval']:
-            #         file_list.append(opt['outfname']+'.h5')
-            #     if opt['reporter_interval']:
-            #         file_list.append(opt['outfname'] + '.log')
-            #     if file_list:
-            #         tarname = opt['outfname'] + '.tar'
-            #         tar = tarfile.open(tarname, "w")
-            #         for name in file_list:
-            #             opt['Logger'].info('Adding {} to {}'.format(name, tarname))
-            #             tar.add(name)
-            #         tar.close()
-            #         upload_file(tarname, tarname, tags=['TRAJECTORY'])
-
             record.set_value(Fields.primary_molecule, system)
 
+            mdstate = MDState(parmed_structure)
+
             md_stage_record = MDRecords.MDStageRecord(MDStageNames.NVT,
-                                                      MDRecords.MDSystemRecord(system, mdData.structure),
+                                                      MDRecords.MDSystemRecord(system, mdstate),
                                                       log=opt['str_logger'], trajectory=lf)
 
             if opt['save_md_stage']:
@@ -677,11 +674,6 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
         default='npt',
         help_text='Filename suffix for output simulation files')
 
-    # upload_ui = parameter.BooleanParameter(
-    #     'upload_ui',
-    #     default=False,
-    #     help_text='Upload the generated files to the Orion UI')
-
     center = parameter.BooleanParameter(
         'center',
         default=False,
@@ -768,9 +760,15 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
                 raise ValueError("Missing the ID field")
 
             opt['system_title'] = system_title
-
             opt['system_id'] = record.get_value(Fields.id)
 
+            # Extract from the record the Parmed structure
+            if not record.has_value(Fields.pmd_structure):
+                raise ValueError("The System does not seem to be parametrized by the Force Field")
+
+            parmed_structure = record.get_value(Fields.pmd_structure)
+
+            # Extract from the record the md stages
             if not record.has_value(Fields.md_stages):
                 raise ValueError("The System does not seem to be parametrized by the Force Field")
 
@@ -785,7 +783,7 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
 
             # Extract from the MDSystemRecord the topology and the Parmed structure
             system = md_system_record.get_value(Fields.topology)
-            parmed_structure = md_system_record.get_value(Fields.structure)
+            mdstate = md_system_record.get_value(Fields.md_state)
 
             # Update cube simulation parameters with the eventually molecule SD tags
             new_args = {dp.GetTag(): dp.GetValue() for dp in oechem.OEGetSDDataPairs(system) if dp.GetTag() in
@@ -802,22 +800,24 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
                 opt.update(new_args)
 
             opt['outfname'] = '{}-{}'.format(system_title + '_' + str(opt['system_id']), opt['suffix'])
-
-            mdData = utils.MDData(parmed_structure)
-
             opt['molecule'] = system
             opt['str_logger'] = str_logger
+
+            # Update the parmed structure with the MD State
+            parmed_structure.positions = mdstate.get_positions()
+            parmed_structure.velocities = mdstate.get_velocities()
+            parmed_structure.box_vectors = mdstate.get_box_vectors()
 
             # The system and the related parmed structure are passed as reference
             # and therefore, they are updated
             opt['Logger'].info('[{}] START NPT SIMULATION: {}'.format(opt['CubeTitle'], system_title))
-            simtools.simulation(mdData, opt)
+            simtools.simulation(parmed_structure, opt)
 
             # Trajectory
             if opt['trajectory_interval']:
                 full_path = os.getcwd()
                 filename = os.path.join(full_path, opt['outfname']+'.h5')
-                lf = utils.upload(filename)
+                lf = utils.upload_file(filename, opt['outfname']+'.h5')
             else:  # Empty Trajectory
                 lf = None
 
@@ -828,26 +828,12 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
 
                 opt['str_logger'] += '\n' + str_logger
 
-            # # If required upload files in the Orion UI
-            # if in_orion() and opt['upload_ui']:
-            #     file_list = []
-            #     if opt['trajectory_interval']:
-            #         file_list.append(opt['outfname']+'.h5')
-            #     if opt['reporter_interval']:
-            #         file_list.append(opt['outfname'] + '.log')
-            #     if file_list:
-            #         tarname = opt['outfname'] + '.tar'
-            #         tar = tarfile.open(tarname, "w")
-            #         for name in file_list:
-            #             opt['Logger'].info('Adding {} to {}'.format(name, tarname))
-            #             tar.add(name)
-            #         tar.close()
-            #         upload_file(tarname, tarname, tags=['TRAJECTORY'])
-
             record.set_value(Fields.primary_molecule, system)
 
+            mdstate = MDState(parmed_structure)
+
             md_stage_record = MDRecords.MDStageRecord(MDStageNames.NPT,
-                                                      MDRecords.MDSystemRecord(system, mdData.structure),
+                                                      MDRecords.MDSystemRecord(system, mdstate),
                                                       log=opt['str_logger'], trajectory=lf)
 
             if opt['save_md_stage']:
