@@ -33,13 +33,9 @@ from platform import uname
 
 import os
 
-import fcntl
-
-import time
+import copy
 
 from floe.api.orion import in_orion
-
-from MDCubes.utils import MDState
 
 try:
     import bz2
@@ -55,362 +51,333 @@ import simtk.openmm as mm
 import math
 import time
 
+from MDCubes.utils import MDSimulations
 
-def local_cluster(sim):
-    def wrapper(*args):
-        if 'OE_VISIBLE_DEVICES' in os.environ and not in_orion():
 
-            gpus_available_indexes = os.environ["OE_VISIBLE_DEVICES"].split(',')
-            mdData = args[0]
-            opt = args[1]
-            opt['Logger'].warn("LOCAL FLOE CLUSTER OPTION IN USE")
-            while True:
+class OpenMMSimulations(MDSimulations):
 
-                gpu_id = gpus_available_indexes[opt['system_id'] % len(gpus_available_indexes)]
+    def __init__(self, mdstate, parmed_structure, opt):
+        super().__init__(mdstate, parmed_structure, opt)
 
-                try:
-                    # fn = os.path.join('/tmp/', gpu_id + '.txt')
-                    fn = gpu_id + '.txt'
-                    with open(fn, 'a') as file:
-                        fcntl.flock(file, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                        file.write("name = {} MOL_ID = {} GPU_IDS = {} GPU_ID = {}\n".format(
-                                                                                opt['system_title'],
-                                                                                opt['system_id'],
-                                                                                gpus_available_indexes,
-                                                                                gpu_id))
-                        opt['gpu_id'] = gpu_id
-                        sim(mdData, opt)
-                        time.sleep(2.0)
-                        fcntl.flock(file, fcntl.LOCK_UN)
-                        break
-                except BlockingIOError:
-                    time.sleep(0.1)
-                except Exception as e:  # If the simulation fails for other reasons
-                    try:
-                        fcntl.flock(file, fcntl.LOCK_UN)
-                    except:
-                        pass
-                    raise ValueError("{} Simulation Failed".format(e.message))
+        topology = parmed_structure.topology
+        positions = mdstate.get_positions()
+        velocities = mdstate.get_velocities()
+        box = mdstate.get_box_vectors()
+
+        # Time step in ps
+        if opt['hmr']:
+            self.stepLen = 0.004 * unit.picoseconds
+            opt['Logger'].info("Hydrogen Mass reduction is On")
         else:
-            sim(*args)
+            self.stepLen = 0.002 * unit.picoseconds
 
-    return wrapper
+        opt['timestep'] = self.stepLen
 
+        # Centering the system to the OpenMM Unit Cell
+        if opt['center'] and box is not None:
+            opt['Logger'].info("[{}] Centering is On".format(opt['CubeTitle']))
+            # Numpy array in A
+            coords = parmed_structure.coordinates
+            # System Center of Geometry
+            cog = np.mean(coords, axis=0)
+            # System box vectors
+            box_v = parmed_structure.box_vectors.in_units_of(unit.angstrom) / unit.angstrom
+            box_v = np.array([box_v[0][0], box_v[1][1], box_v[2][2]])
+            # Translation vector
+            delta = box_v / 2 - cog
+            # New Coordinates
+            new_coords = coords + delta
+            parmed_structure.coordinates = new_coords
+            positions = parmed_structure.positions
+            mdstate.set_positions(positions)
 
-@local_cluster
-def simulation(parmed_structure, opt):
-    """
-    This supporting function performs: OpenMM Minimization, NVT and NPT
-    Molecular Dynamics (MD) simulations
+        # OpenMM system
+        if box is not None:
+            self.system = parmed_structure.createSystem(nonbondedMethod=eval("app.%s" % opt['nonbondedMethod']),
+                                                        nonbondedCutoff=opt['nonbondedCutoff'] * unit.angstroms,
+                                                        constraints=eval("app.%s" % opt['constraints']),
+                                                        removeCMMotion=False,
+                                                        hydrogenMass=4.0 * unit.amu if opt['hmr'] else None)
+        else:  # Vacuum
+            self.system = parmed_structure.createSystem(nonbondedMethod=app.NoCutoff,
+                                                        constraints=eval("app.%s" % opt['constraints']),
+                                                        removeCMMotion=False,
+                                                        hydrogenMass=4.0 * unit.amu if opt['hmr'] else None)
 
-    Parameters
-    ----------
-    parmed_structure : Parmed Structure data object
-        The Object is used to recover the MD data
-    opt: python dictionary
-        A dictionary containing all the MD setting info
-    """
-    # MD data extracted from Parmed
-    mdData = MDState(parmed_structure)
+        # OpenMM Integrator
+        integrator = openmm.LangevinIntegrator(opt['temperature'] * unit.kelvin, 1 / unit.picoseconds, self.stepLen)
 
-    topology = parmed_structure.topology
-    positions = mdData.get_positions()
-    velocities = mdData.get_velocities()
-    box = mdData.get_box_vectors()
+        if opt['SimType'] == 'npt':
+            if box is None:
+                raise ValueError("NPT simulation without box vector")
 
-    # Time step in ps
-    if opt['hmr']:
-        stepLen = 0.004 * unit.picoseconds
-        opt['Logger'].info("Hydrogen Mass reduction is On")
-    else:
-        stepLen = 0.002 * unit.picoseconds
+            # Add Force Barostat to the system
+            self.system.addForce(
+                openmm.MonteCarloBarostat(opt['pressure'] * unit.atmospheres, opt['temperature'] * unit.kelvin, 25))
 
-    opt['timestep'] = stepLen
+        # Apply restraints
+        if opt['restraints']:
+            opt['Logger'].info("[{}] RESTRAINT mask applied to: {}"
+                               "\tRestraint weight: {}".format(opt['CubeTitle'],
+                                                               opt['restraints'],
+                                                               opt['restraintWt'] *
+                                                               unit.kilocalories_per_mole / unit.angstroms ** 2))
+            # Select atom to restraint
+            res_atom_set = oeommutils.select_oemol_atom_idx_by_language(opt['molecule'], mask=opt['restraints'])
+            opt['Logger'].info("[{}] Number of restraint atoms: {}".format(opt['CubeTitle'],
+                                                                           len(res_atom_set)))
+            # define the custom force to restrain atoms to their starting positions
+            force_restr = openmm.CustomExternalForce('k_restr*periodicdistance(x, y, z, x0, y0, z0)^2')
+            # Add the restraint weight as a global parameter in kcal/mol/A^2
+            force_restr.addGlobalParameter("k_restr",
+                                           opt['restraintWt'] * unit.kilocalories_per_mole / unit.angstroms ** 2)
+            # Define the target xyz coords for the restraint as per-atom (per-particle) parameters
+            force_restr.addPerParticleParameter("x0")
+            force_restr.addPerParticleParameter("y0")
+            force_restr.addPerParticleParameter("z0")
 
-    # Centering the system to the OpenMM Unit Cell
-    if opt['center'] and box is not None:
-        opt['Logger'].info("[{}] Centering is On".format(opt['CubeTitle']))
-        # Numpy array in A
-        coords = parmed_structure.coordinates
-        # System Center of Geometry
-        cog = np.mean(coords, axis=0)
-        # System box vectors
-        box_v = parmed_structure.box_vectors.in_units_of(unit.angstrom)/unit.angstrom
-        box_v = np.array([box_v[0][0], box_v[1][1], box_v[2][2]])
-        # Translation vector
-        delta = box_v/2 - cog
-        # New Coordinates
-        new_coords = coords + delta
-        parmed_structure.coordinates = new_coords
-        positions = parmed_structure.positions
+            for idx in range(0, len(positions)):
+                if idx in res_atom_set:
+                    xyz = positions[idx].in_units_of(unit.nanometers) / unit.nanometers
+                    force_restr.addParticle(idx, xyz)
 
-    # OpenMM system
-    if box is not None:
-        system = parmed_structure.createSystem(nonbondedMethod=eval("app.%s" % opt['nonbondedMethod']),
-                                               nonbondedCutoff=opt['nonbondedCutoff']*unit.angstroms,
-                                               constraints=eval("app.%s" % opt['constraints']),
-                                               removeCMMotion=False, hydrogenMass=4.0*unit.amu if opt['hmr'] else None)
-    else:  # Vacuum
-        system = parmed_structure.createSystem(nonbondedMethod=app.NoCutoff,
-                                               constraints=eval("app.%s" % opt['constraints']),
-                                               removeCMMotion=False, hydrogenMass=4.0*unit.amu if opt['hmr'] else None)
+            self.system.addForce(force_restr)
 
-    # OpenMM Integrator
-    integrator = openmm.LangevinIntegrator(opt['temperature']*unit.kelvin, 1/unit.picoseconds, stepLen)
+        # Freeze atoms
+        if opt['freeze']:
+            opt['Logger'].info("[{}] FREEZE mask applied to: {}".format(opt['CubeTitle'],
+                                                                        opt['freeze']))
 
-    if opt['SimType'] == 'npt':
-        if box is None:
-            raise ValueError("NPT simulation without box vector")
+            freeze_atom_set = oeommutils.select_oemol_atom_idx_by_language(opt['molecule'], mask=opt['freeze'])
+            opt['Logger'].info("[{}] Number of frozen atoms: {}".format(opt['CubeTitle'],
+                                                                        len(freeze_atom_set)))
+            # Set atom masses to zero
+            for idx in range(0, len(positions)):
+                if idx in freeze_atom_set:
+                    self.system.setParticleMass(idx, 0.0)
 
-        # Add Force Barostat to the system
-        system.addForce(openmm.MonteCarloBarostat(opt['pressure']*unit.atmospheres, opt['temperature']*unit.kelvin, 25))
-
-    # Apply restraints
-    if opt['restraints']:
-        opt['Logger'].info("[{}] RESTRAINT mask applied to: {}"
-                           "\tRestraint weight: {}".format(opt['CubeTitle'],
-                                                           opt['restraints'],
-                                                           opt['restraintWt'] *
-                                                           unit.kilocalories_per_mole/unit.angstroms**2))
-        # Select atom to restraint
-        res_atom_set = oeommutils.select_oemol_atom_idx_by_language(opt['molecule'], mask=opt['restraints'])
-        opt['Logger'].info("[{}] Number of restraint atoms: {}".format(opt['CubeTitle'],
-                                                                       len(res_atom_set)))
-        # define the custom force to restrain atoms to their starting positions
-        force_restr = openmm.CustomExternalForce('k_restr*periodicdistance(x, y, z, x0, y0, z0)^2')
-        # Add the restraint weight as a global parameter in kcal/mol/A^2
-        force_restr.addGlobalParameter("k_restr", opt['restraintWt']*unit.kilocalories_per_mole/unit.angstroms**2)
-        # Define the target xyz coords for the restraint as per-atom (per-particle) parameters
-        force_restr.addPerParticleParameter("x0")
-        force_restr.addPerParticleParameter("y0")
-        force_restr.addPerParticleParameter("z0")
-
-        for idx in range(0, len(positions)):
-            if idx in res_atom_set:
-                xyz = positions[idx].in_units_of(unit.nanometers)/unit.nanometers
-                force_restr.addParticle(idx, xyz)
-        
-        system.addForce(force_restr)
-
-    # Freeze atoms
-    if opt['freeze']:
-        opt['Logger'].info("[{}] FREEZE mask applied to: {}".format(opt['CubeTitle'],
-                                                                    opt['freeze']))
-
-        freeze_atom_set = oeommutils.select_oemol_atom_idx_by_language(opt['molecule'], mask=opt['freeze'])
-        opt['Logger'].info("[{}] Number of frozen atoms: {}".format(opt['CubeTitle'],
-                                                                    len(freeze_atom_set)))
-        # Set atom masses to zero
-        for idx in range(0, len(positions)):
-            if idx in freeze_atom_set:
-                system.setParticleMass(idx, 0.0)
-
-    # Platform Selection
-    if opt['platform'] == 'Auto':
-        # simulation = app.Simulation(topology, system, integrator)
-        # Select the platform
-        for plt_name in ['CUDA', 'OpenCL', 'CPU', 'Reference']:
-            try:
-                platform = openmm.Platform_getPlatformByName(plt_name)
-                break
-            except:
-                if plt_name == 'Reference':
-                    raise ValueError('It was not possible to select any OpenMM Platform')
-                else:
-                    pass
-        if platform.getName() in ['CUDA', 'OpenCL']:
-            for precision in ['mixed', 'single', 'double']:
+        # Platform Selection
+        if opt['platform'] == 'Auto':
+            # Select the platform
+            for plt_name in ['CUDA', 'OpenCL', 'CPU', 'Reference']:
                 try:
-                    # Set platform precision for CUDA or OpenCL
-                    properties = {'Precision': precision}
-
-                    if 'gpu_id' in opt and 'OE_VISIBLE_DEVICES' in os.environ and not in_orion():
-                        properties['DeviceIndex'] = opt['gpu_id']
-
-                    simulation = app.Simulation(topology, system, integrator,
-                                                platform=platform,
-                                                platformProperties=properties)
+                    platform = openmm.Platform_getPlatformByName(plt_name)
                     break
                 except:
-                    if precision == 'double':
-                        raise ValueError('It was not possible to select any Precision '
-                                         'for the selected Platform: {}'.format(platform.getName()))
+                    if plt_name == 'Reference':
+                        raise ValueError('It was not possible to select any OpenMM Platform')
                     else:
                         pass
-        else:  # CPU or Reference
-            simulation = app.Simulation(topology, system, integrator, platform=platform)
-    else:  # Not Auto Platform selection
-        try:
-            platform = openmm.Platform.getPlatformByName(opt['platform'])
-        except Exception as e:
-            raise ValueError('The selected platform is not supported: {}'.format(str(e)))
+            if platform.getName() in ['CUDA', 'OpenCL']:
+                for precision in ['mixed', 'single', 'double']:
+                    try:
+                        # Set platform precision for CUDA or OpenCL
+                        properties = {'Precision': precision}
 
-        if opt['platform'] in ['CUDA', 'OpenCL']:
+                        if 'gpu_id' in opt and 'OE_VISIBLE_DEVICES' in os.environ and not in_orion():
+                            properties['DeviceIndex'] = opt['gpu_id']
+
+                        simulation = app.Simulation(topology, self.system, integrator,
+                                                    platform=platform,
+                                                    platformProperties=properties)
+                        break
+                    except:
+                        if precision == 'double':
+                            raise ValueError('It was not possible to select any Precision '
+                                             'for the selected Platform: {}'.format(platform.getName()))
+                        else:
+                            pass
+            else:  # CPU or Reference
+                simulation = app.Simulation(topology, self.system, integrator, platform=platform)
+        else:  # Not Auto Platform selection
             try:
-                # Set platform CUDA or OpenCL precision
-                properties = {'Precision': opt['cuda_opencl_precision']}
+                platform = openmm.Platform.getPlatformByName(opt['platform'])
+            except Exception as e:
+                raise ValueError('The selected platform is not supported: {}'.format(str(e)))
 
-                simulation = app.Simulation(topology, system, integrator,
-                                            platform=platform,
-                                            platformProperties=properties)
-            except Exception:
-                raise ValueError('It was not possible to set the {} precision for the {} platform'
-                                 .format(opt['cuda_opencl_precision'], opt['platform']))
-        else:  # CPU or Reference Platform
-            simulation = app.Simulation(topology, system, integrator, platform=platform)
+            if opt['platform'] in ['CUDA', 'OpenCL']:
+                try:
+                    # Set platform CUDA or OpenCL precision
+                    properties = {'Precision': opt['cuda_opencl_precision']}
 
-    # Set starting positions and velocities
-    simulation.context.setPositions(positions)
+                    simulation = app.Simulation(topology, self.system, integrator,
+                                                platform=platform,
+                                                platformProperties=properties)
+                except Exception:
+                    raise ValueError('It was not possible to set the {} precision for the {} platform'
+                                     .format(opt['cuda_opencl_precision'], opt['platform']))
+            else:  # CPU or Reference Platform
+                simulation = app.Simulation(topology, self.system, integrator, platform=platform)
 
-    # Set Box dimensions
-    if box is not None:
-        simulation.context.setPeriodicBoxVectors(box[0], box[1], box[2])
-
-    # If the velocities are not present in the Parmed structure
-    # new velocity vectors are generated otherwise the system is
-    # restarted from the previous State
-    if opt['SimType'] in ['nvt', 'npt']:
-
-        if velocities is not None:
-            opt['Logger'].info('[{}] RESTARTING simulation from a previous State'.format(opt['CubeTitle']))
-            simulation.context.setVelocities(velocities)
-        else:
-            # Set the velocities drawing from the Boltzmann distribution at the selected temperature
-            opt['Logger'].info('[{}] GENERATING a new starting State'.format(opt['CubeTitle']))
-            simulation.context.setVelocitiesToTemperature(opt['temperature']*unit.kelvin)
-
-        # Convert simulation time in steps
-        opt['steps'] = int(round(opt['time']/(stepLen.in_units_of(unit.nanoseconds)/unit.nanoseconds)))
-        
-        # Set Reporters
-        for rep in getReporters(**opt):
-            simulation.reporters.append(rep)
-            
-    # OpenMM platform information
-    mmver = openmm.version.version
-    mmplat = simulation.context.getPlatform()
-
-    str_logger = '\n' + '-' * 32 + ' SIMULATION ' + '-' * 32
-    str_logger += '\n' + '{:<25} = {:<10}'.format('time step', str(opt['timestep']))
-
-    # Host information
-    for k, v in uname()._asdict().items():
-        str_logger += "\n{:<25} = {:<10}".format(k, v)
-        opt['Logger'].info("[{}] {} : {}".format(opt['CubeTitle'],
-                                                 k, v))
-
-    # Platform properties
-    for prop in mmplat.getPropertyNames():
-        val = mmplat.getPropertyValue(simulation.context, prop)
-        str_logger += "\n{:<25} = {:<10}".format(prop, val)
-        opt['Logger'].info("[{}] {} : {}".format(opt['CubeTitle'],
-                                                 prop, val))
-
-    info = "{:<25} = {:<10}".format("OpenMM Version", mmver)
-    opt['Logger'].info("[{}] OpenMM Version : {}".format(opt['CubeTitle'], mmver))
-    str_logger += '\n'+info
-
-    info = "{:<25} = {:<10}".format("Platform in use", mmplat.getName())
-    opt['Logger'].info("[{}] Platform in use : {}".format(opt['CubeTitle'], mmplat.getName()))
-    str_logger += '\n'+info
-
-    if opt['SimType'] in ['nvt', 'npt']:
-
-        if opt['SimType'] == 'nvt':
-            opt['Logger'].info("[{}] Running time : {time} ns => {steps} steps of {SimType} at "
-                               "{temperature} K".format(opt['CubeTitle'], **opt))
-            info = "{:<25} = {time} ns => {steps} steps of {SimType} at " \
-                   "{temperature} K".format("Running time", **opt)
-        else:
-            opt['Logger'].info(
-                "[{}] Running time : {time} ns => {steps} steps of {SimType} "
-                "at {temperature} K pressure {pressure} atm".format(opt['CubeTitle'], **opt))
-            info = "{:<25} = {time} ns => {steps} steps of {SimType} at " \
-                   "{temperature} K pressure {pressure} atm".format("Running time", **opt)
-
-        str_logger += '\n' + info
-
-        if opt['trajectory_interval']:
-
-            total_frames = int(round(opt['time'] / opt['trajectory_interval']))
-
-            opt['Logger'].info('[{}] Total trajectory frames : {}'.format(opt['CubeTitle'], total_frames))
-            info = '{:<25} = {:<10}'.format('Total trajectory frames', total_frames)
-            str_logger += '\n' + info
-
-        # Start Simulation
-        simulation.step(opt['steps'])
-
-        if box is not None:
-            state = simulation.context.getState(getPositions=True, getVelocities=True,
-                                                getEnergy=True, enforcePeriodicBox=True)
-        else:
-            state = simulation.context.getState(getPositions=True, getVelocities=True,
-                                                getEnergy=True, enforcePeriodicBox=False)
-        
-    elif opt['SimType'] == 'min':
-        
-        # Run a first minimization on the Reference platform
-        platform_reference = openmm.Platform.getPlatformByName('Reference')
-        integrator_reference = openmm.LangevinIntegrator(opt['temperature'] * unit.kelvin,
-                                                         1 / unit.picoseconds, stepLen)
-        simulation_reference = app.Simulation(topology, system, integrator_reference, platform=platform_reference)
         # Set starting positions and velocities
-        simulation_reference.context.setPositions(positions)
-
-        state_reference_start = simulation_reference.context.getState(getEnergy=True)
+        simulation.context.setPositions(positions)
 
         # Set Box dimensions
         if box is not None:
-            simulation_reference.context.setPeriodicBoxVectors(box[0], box[1], box[2])
+            simulation.context.setPeriodicBoxVectors(box[0], box[1], box[2])
 
-        simulation_reference.minimizeEnergy(tolerance=1e5*unit.kilojoule_per_mole)
+        # If the velocities are not present in the Parmed structure
+        # new velocity vectors are generated otherwise the system is
+        # restarted from the previous State
+        if opt['SimType'] in ['nvt', 'npt']:
 
-        state_reference_end = simulation_reference.context.getState(getPositions=True)
+            if velocities is not None:
+                opt['Logger'].info('[{}] RESTARTING simulation from a previous State'.format(opt['CubeTitle']))
+                simulation.context.setVelocities(velocities)
+            else:
+                # Set the velocities drawing from the Boltzmann distribution at the selected temperature
+                opt['Logger'].info('[{}] GENERATING a new starting State'.format(opt['CubeTitle']))
+                simulation.context.setVelocitiesToTemperature(opt['temperature'] * unit.kelvin)
 
-        # Start minimization on the selected platform
-        if opt['steps'] == 0:
-            opt['Logger'].info('[{}] Minimization steps: until convergence is found'.format(opt['CubeTitle']))
-        else:
-            opt['Logger'].info('[{}] Minimization steps: {steps}'.format(opt['CubeTitle'], **opt))
+            # Convert simulation time in steps
+            opt['steps'] = int(round(opt['time'] / (self.stepLen.in_units_of(unit.nanoseconds) / unit.nanoseconds)))
 
-        # Set positions after minimization on the Reference Platform
-        simulation.context.setPositions(state_reference_end.getPositions())
+            # Set Reporters
+            for rep in getReporters(**opt):
+                simulation.reporters.append(rep)
 
-        simulation.minimizeEnergy(maxIterations=opt['steps'])
+        # OpenMM platform information
+        mmver = openmm.version.version
+        mmplat = simulation.context.getPlatform()
 
-        state = simulation.context.getState(getPositions=True, getEnergy=True)
+        str_logger = '\n' + '-' * 32 + ' SIMULATION ' + '-' * 32
+        str_logger += '\n' + '{:<25} = {:<10}'.format('time step', str(opt['timestep']))
 
-        ie = '{:<25} = {:<10}'.format('Initial Potential Energy', str(state_reference_start.getPotentialEnergy().
-                                                                      in_units_of(unit.kilocalorie_per_mole)))
-        fe = '{:<25} = {:<10}'.format('Minimized Potential Energy', str(state.getPotentialEnergy().
-                                                                        in_units_of(unit.kilocalorie_per_mole)))
+        # Host information
+        for k, v in uname()._asdict().items():
+            str_logger += "\n{:<25} = {:<10}".format(k, v)
+            opt['Logger'].info("[{}] {} : {}".format(opt['CubeTitle'],
+                                                     k, v))
 
-        opt['Logger'].info(ie)
-        opt['Logger'].info(fe)
+        # Platform properties
+        for prop in mmplat.getPropertyNames():
+            val = mmplat.getPropertyValue(simulation.context, prop)
+            str_logger += "\n{:<25} = {:<10}".format(prop, val)
+            opt['Logger'].info("[{}] {} : {}".format(opt['CubeTitle'],
+                                                     prop, val))
 
-        str_logger += '\n' + ie + '\n' + fe
+        info = "{:<25} = {:<10}".format("OpenMM Version", mmver)
+        opt['Logger'].info("[{}] OpenMM Version : {}".format(opt['CubeTitle'], mmver))
+        str_logger += '\n' + info
 
-    # OpenMM Quantity object
-    parmed_structure.positions = state.getPositions(asNumpy=False)
-    # OpenMM Quantity object
-    if box is not None:
-        parmed_structure.box_vectors = state.getPeriodicBoxVectors()
+        info = "{:<25} = {:<10}".format("Platform in use", mmplat.getName())
+        opt['Logger'].info("[{}] Platform in use : {}".format(opt['CubeTitle'], mmplat.getName()))
+        str_logger += '\n' + info
 
-    if opt['SimType'] in ['nvt', 'npt']:
-        # numpy array in units of angstrom/picoseconds
-        parmed_structure.velocities = state.getVelocities(asNumpy=False)
+        self.mdstate = mdstate
+        self.parmed_structure = parmed_structure
+        self.opt = opt
+        self.str_logger = str_logger
+        self.omm_simulation = simulation
 
-    # Update the OEMol complex positions to match the new
-    # Parmed structure after the simulation
-    new_temp_mol = oeommutils.openmmTop_to_oemol(parmed_structure.topology, parmed_structure.positions, verbose=False)
-    new_pos = new_temp_mol.GetCoords()
-    opt['molecule'].SetCoords(new_pos)
+        return
 
-    # Update the string logger
-    opt['str_logger'] += str_logger
+    def run(self):
 
-    return
+        topology = self.parmed_structure.topology
+        positions = self.mdstate.get_positions()
+        box = self.mdstate.get_box_vectors()
+
+        if self.opt['SimType'] == 'min':
+
+            # Run a first minimization on the Reference platform
+            platform_reference = openmm.Platform.getPlatformByName('Reference')
+            integrator_reference = openmm.LangevinIntegrator(self.opt['temperature'] * unit.kelvin,
+                                                             1 / unit.picoseconds, self.stepLen)
+            simulation_reference = app.Simulation(topology, self.system, integrator_reference, platform=platform_reference)
+            # Set starting positions and velocities
+            simulation_reference.context.setPositions(positions)
+
+            state_reference_start = simulation_reference.context.getState(getEnergy=True)
+
+            # Set Box dimensions
+            if box is not None:
+                simulation_reference.context.setPeriodicBoxVectors(box[0], box[1], box[2])
+
+            simulation_reference.minimizeEnergy(tolerance=1e5 * unit.kilojoule_per_mole)
+
+            state_reference_end = simulation_reference.context.getState(getPositions=True)
+
+            # Start minimization on the selected platform
+            if self.opt['steps'] == 0:
+                self.opt['Logger'].info('[{}] Minimization steps: until convergence is found'.format(self.opt['CubeTitle']))
+            else:
+                self.opt['Logger'].info('[{}] Minimization steps: {steps}'.format(self.opt['CubeTitle'], **self.opt))
+
+            # Set positions after minimization on the Reference Platform
+            self.omm_simulation.context.setPositions(state_reference_end.getPositions())
+
+            self.omm_simulation.minimizeEnergy(maxIterations=self.opt['steps'])
+
+            state = self.omm_simulation.context.getState(getPositions=True, getEnergy=True)
+
+            ie = '{:<25} = {:<10}'.format('Initial Potential Energy', str(state_reference_start.getPotentialEnergy().
+                                                                          in_units_of(unit.kilocalorie_per_mole)))
+            fe = '{:<25} = {:<10}'.format('Minimized Potential Energy', str(state.getPotentialEnergy().
+                                                                            in_units_of(unit.kilocalorie_per_mole)))
+
+            self.opt['Logger'].info(ie)
+            self.opt['Logger'].info(fe)
+
+            self.str_logger += '\n' + ie + '\n' + fe
+
+        if self.opt['SimType'] in ['nvt', 'npt']:
+
+            if self.opt['SimType'] == 'nvt':
+                self.opt['Logger'].info("[{}] Running time : {time} ns => {steps} steps of {SimType} at "
+                                        "{temperature} K".format(self.opt['CubeTitle'], **self.opt))
+                info = "{:<25} = {time} ns => {steps} steps of {SimType} at " \
+                       "{temperature} K".format("Running time", **self.opt)
+            else:
+                self.opt['Logger'].info(
+                    "[{}] Running time : {time} ns => {steps} steps of {SimType} "
+                    "at {temperature} K pressure {pressure} atm".format(self.opt['CubeTitle'], **self.opt))
+                info = "{:<25} = {time} ns => {steps} steps of {SimType} at " \
+                       "{temperature} K pressure {pressure} atm".format("Running time", **self.opt)
+
+            self.str_logger += '\n' + info
+
+            if self.opt['trajectory_interval']:
+                total_frames = int(round(self.opt['time'] / self.opt['trajectory_interval']))
+
+                self.opt['Logger'].info('[{}] Total trajectory frames : {}'.format(self.opt['CubeTitle'], total_frames))
+                info = '{:<25} = {:<10}'.format('Total trajectory frames', total_frames)
+                self.str_logger += '\n' + info
+
+            # Start Simulation
+            self.omm_simulation.step(self.opt['steps'])
+
+            if box is not None:
+                state = self.omm_simulation.context.getState(getPositions=True,
+                                                             getVelocities=True,
+                                                             getEnergy=True,
+                                                             enforcePeriodicBox=True)
+            else:
+                state = self.omm_simulation.context.getState(getPositions=True,
+                                                             getVelocities=True,
+                                                             getEnergy=True,
+                                                             enforcePeriodicBox=False)
+
+        self.omm_state = state
+
+        return
+
+    def update_state(self):
+
+        if not hasattr(self, 'omm_state'):
+            raise ValueError("The OpenMM State has not been defined. The MD simulation has not been performed")
+
+        new_mdstate = copy.deepcopy(self.mdstate)
+
+        new_mdstate.set_positions(self.omm_state.getPositions(asNumpy=False))
+
+        if self.mdstate.get_box_vectors() is not None:
+            new_mdstate.set_box_vectors(self.omm_state.getPeriodicBoxVectors())
+
+        if self.opt['SimType'] in ['nvt', 'npt']:
+            new_mdstate.set_velocities(self.omm_state.getVelocities(asNumpy=False))
+
+        return new_mdstate
 
 
 def getReporters(totalSteps=None, outfname=None, **opt):
@@ -790,3 +757,363 @@ class StateDataReporterName(object):
     def __del__(self):
         if self._openedFile:
             self._out.close()
+
+
+# def local_cluster(sim):
+#     def wrapper(*args):
+#         if 'OE_VISIBLE_DEVICES' in os.environ and not in_orion():
+#
+#             gpus_available_indexes = os.environ["OE_VISIBLE_DEVICES"].split(',')
+#             mdData = args[0]
+#             opt = args[1]
+#             opt['Logger'].warn("LOCAL FLOE CLUSTER OPTION IN USE")
+#             while True:
+#
+#                 gpu_id = gpus_available_indexes[opt['system_id'] % len(gpus_available_indexes)]
+#
+#                 try:
+#                     # fn = os.path.join('/tmp/', gpu_id + '.txt')
+#                     fn = gpu_id + '.txt'
+#                     with open(fn, 'a') as file:
+#                         fcntl.flock(file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+#                         file.write("name = {} MOL_ID = {} GPU_IDS = {} GPU_ID = {}\n".format(
+#                                                                                 opt['system_title'],
+#                                                                                 opt['system_id'],
+#                                                                                 gpus_available_indexes,
+#                                                                                 gpu_id))
+#                         opt['gpu_id'] = gpu_id
+#                         sim(mdData, opt)
+#                         time.sleep(2.0)
+#                         fcntl.flock(file, fcntl.LOCK_UN)
+#                         break
+#                 except BlockingIOError:
+#                     time.sleep(0.1)
+#                 except Exception as e:  # If the simulation fails for other reasons
+#                     try:
+#                         fcntl.flock(file, fcntl.LOCK_UN)
+#                     except:
+#                         pass
+#                     raise ValueError("{} Simulation Failed".format(e.message))
+#         else:
+#             sim(*args)
+#
+#     return wrapper
+
+
+# @local_cluster
+# def simulation(parmed_structure, opt):
+#     """
+#     This supporting function performs: OpenMM Minimization, NVT and NPT
+#     Molecular Dynamics (MD) simulations
+#
+#     Parameters
+#     ----------
+#     parmed_structure : Parmed Structure data object
+#         The Object is used to recover the MD data
+#     opt: python dictionary
+#         A dictionary containing all the MD setting info
+#     """
+#     # MD data extracted from Parmed
+#     mdData = MDState(parmed_structure)
+#
+#     topology = parmed_structure.topology
+#     positions = mdData.get_positions()
+#     velocities = mdData.get_velocities()
+#     box = mdData.get_box_vectors()
+#
+#     # Time step in ps
+#     if opt['hmr']:
+#         stepLen = 0.004 * unit.picoseconds
+#         opt['Logger'].info("Hydrogen Mass reduction is On")
+#     else:
+#         stepLen = 0.002 * unit.picoseconds
+#
+#     opt['timestep'] = stepLen
+#
+#     # Centering the system to the OpenMM Unit Cell
+#     if opt['center'] and box is not None:
+#         opt['Logger'].info("[{}] Centering is On".format(opt['CubeTitle']))
+#         # Numpy array in A
+#         coords = parmed_structure.coordinates
+#         # System Center of Geometry
+#         cog = np.mean(coords, axis=0)
+#         # System box vectors
+#         box_v = parmed_structure.box_vectors.in_units_of(unit.angstrom)/unit.angstrom
+#         box_v = np.array([box_v[0][0], box_v[1][1], box_v[2][2]])
+#         # Translation vector
+#         delta = box_v/2 - cog
+#         # New Coordinates
+#         new_coords = coords + delta
+#         parmed_structure.coordinates = new_coords
+#         positions = parmed_structure.positions
+#
+#     # OpenMM system
+#     if box is not None:
+#         system = parmed_structure.createSystem(nonbondedMethod=eval("app.%s" % opt['nonbondedMethod']),
+#                                                nonbondedCutoff=opt['nonbondedCutoff']*unit.angstroms,
+#                                                constraints=eval("app.%s" % opt['constraints']),
+#                                                removeCMMotion=False, hydrogenMass=4.0*unit.amu if opt['hmr'] else None)
+#     else:  # Vacuum
+#         system = parmed_structure.createSystem(nonbondedMethod=app.NoCutoff,
+#                                                constraints=eval("app.%s" % opt['constraints']),
+#                                                removeCMMotion=False, hydrogenMass=4.0*unit.amu if opt['hmr'] else None)
+#
+#     # OpenMM Integrator
+#     integrator = openmm.LangevinIntegrator(opt['temperature']*unit.kelvin, 1/unit.picoseconds, stepLen)
+#
+#     if opt['SimType'] == 'npt':
+#         if box is None:
+#             raise ValueError("NPT simulation without box vector")
+#
+#         # Add Force Barostat to the system
+#         system.addForce(openmm.MonteCarloBarostat(opt['pressure']*unit.atmospheres, opt['temperature']*unit.kelvin, 25))
+#
+#     # Apply restraints
+#     if opt['restraints']:
+#         opt['Logger'].info("[{}] RESTRAINT mask applied to: {}"
+#                            "\tRestraint weight: {}".format(opt['CubeTitle'],
+#                                                            opt['restraints'],
+#                                                            opt['restraintWt'] *
+#                                                            unit.kilocalories_per_mole/unit.angstroms**2))
+#         # Select atom to restraint
+#         res_atom_set = oeommutils.select_oemol_atom_idx_by_language(opt['molecule'], mask=opt['restraints'])
+#         opt['Logger'].info("[{}] Number of restraint atoms: {}".format(opt['CubeTitle'],
+#                                                                        len(res_atom_set)))
+#         # define the custom force to restrain atoms to their starting positions
+#         force_restr = openmm.CustomExternalForce('k_restr*periodicdistance(x, y, z, x0, y0, z0)^2')
+#         # Add the restraint weight as a global parameter in kcal/mol/A^2
+#         force_restr.addGlobalParameter("k_restr", opt['restraintWt']*unit.kilocalories_per_mole/unit.angstroms**2)
+#         # Define the target xyz coords for the restraint as per-atom (per-particle) parameters
+#         force_restr.addPerParticleParameter("x0")
+#         force_restr.addPerParticleParameter("y0")
+#         force_restr.addPerParticleParameter("z0")
+#
+#         for idx in range(0, len(positions)):
+#             if idx in res_atom_set:
+#                 xyz = positions[idx].in_units_of(unit.nanometers)/unit.nanometers
+#                 force_restr.addParticle(idx, xyz)
+#
+#         system.addForce(force_restr)
+#
+#     # Freeze atoms
+#     if opt['freeze']:
+#         opt['Logger'].info("[{}] FREEZE mask applied to: {}".format(opt['CubeTitle'],
+#                                                                     opt['freeze']))
+#
+#         freeze_atom_set = oeommutils.select_oemol_atom_idx_by_language(opt['molecule'], mask=opt['freeze'])
+#         opt['Logger'].info("[{}] Number of frozen atoms: {}".format(opt['CubeTitle'],
+#                                                                     len(freeze_atom_set)))
+#         # Set atom masses to zero
+#         for idx in range(0, len(positions)):
+#             if idx in freeze_atom_set:
+#                 system.setParticleMass(idx, 0.0)
+#
+#     # Platform Selection
+#     if opt['platform'] == 'Auto':
+#         # simulation = app.Simulation(topology, system, integrator)
+#         # Select the platform
+#         for plt_name in ['CUDA', 'OpenCL', 'CPU', 'Reference']:
+#             try:
+#                 platform = openmm.Platform_getPlatformByName(plt_name)
+#                 break
+#             except:
+#                 if plt_name == 'Reference':
+#                     raise ValueError('It was not possible to select any OpenMM Platform')
+#                 else:
+#                     pass
+#         if platform.getName() in ['CUDA', 'OpenCL']:
+#             for precision in ['mixed', 'single', 'double']:
+#                 try:
+#                     # Set platform precision for CUDA or OpenCL
+#                     properties = {'Precision': precision}
+#
+#                     if 'gpu_id' in opt and 'OE_VISIBLE_DEVICES' in os.environ and not in_orion():
+#                         properties['DeviceIndex'] = opt['gpu_id']
+#
+#                     simulation = app.Simulation(topology, system, integrator,
+#                                                 platform=platform,
+#                                                 platformProperties=properties)
+#                     break
+#                 except:
+#                     if precision == 'double':
+#                         raise ValueError('It was not possible to select any Precision '
+#                                          'for the selected Platform: {}'.format(platform.getName()))
+#                     else:
+#                         pass
+#         else:  # CPU or Reference
+#             simulation = app.Simulation(topology, system, integrator, platform=platform)
+#     else:  # Not Auto Platform selection
+#         try:
+#             platform = openmm.Platform.getPlatformByName(opt['platform'])
+#         except Exception as e:
+#             raise ValueError('The selected platform is not supported: {}'.format(str(e)))
+#
+#         if opt['platform'] in ['CUDA', 'OpenCL']:
+#             try:
+#                 # Set platform CUDA or OpenCL precision
+#                 properties = {'Precision': opt['cuda_opencl_precision']}
+#
+#                 simulation = app.Simulation(topology, system, integrator,
+#                                             platform=platform,
+#                                             platformProperties=properties)
+#             except Exception:
+#                 raise ValueError('It was not possible to set the {} precision for the {} platform'
+#                                  .format(opt['cuda_opencl_precision'], opt['platform']))
+#         else:  # CPU or Reference Platform
+#             simulation = app.Simulation(topology, system, integrator, platform=platform)
+#
+#     # Set starting positions and velocities
+#     simulation.context.setPositions(positions)
+#
+#     # Set Box dimensions
+#     if box is not None:
+#         simulation.context.setPeriodicBoxVectors(box[0], box[1], box[2])
+#
+#     # If the velocities are not present in the Parmed structure
+#     # new velocity vectors are generated otherwise the system is
+#     # restarted from the previous State
+#     if opt['SimType'] in ['nvt', 'npt']:
+#
+#         if velocities is not None:
+#             opt['Logger'].info('[{}] RESTARTING simulation from a previous State'.format(opt['CubeTitle']))
+#             simulation.context.setVelocities(velocities)
+#         else:
+#             # Set the velocities drawing from the Boltzmann distribution at the selected temperature
+#             opt['Logger'].info('[{}] GENERATING a new starting State'.format(opt['CubeTitle']))
+#             simulation.context.setVelocitiesToTemperature(opt['temperature']*unit.kelvin)
+#
+#         # Convert simulation time in steps
+#         opt['steps'] = int(round(opt['time']/(stepLen.in_units_of(unit.nanoseconds)/unit.nanoseconds)))
+#
+#         # Set Reporters
+#         for rep in getReporters(**opt):
+#             simulation.reporters.append(rep)
+#
+#     # OpenMM platform information
+#     mmver = openmm.version.version
+#     mmplat = simulation.context.getPlatform()
+#
+#     str_logger = '\n' + '-' * 32 + ' SIMULATION ' + '-' * 32
+#     str_logger += '\n' + '{:<25} = {:<10}'.format('time step', str(opt['timestep']))
+#
+#     # Host information
+#     for k, v in uname()._asdict().items():
+#         str_logger += "\n{:<25} = {:<10}".format(k, v)
+#         opt['Logger'].info("[{}] {} : {}".format(opt['CubeTitle'],
+#                                                  k, v))
+#
+#     # Platform properties
+#     for prop in mmplat.getPropertyNames():
+#         val = mmplat.getPropertyValue(simulation.context, prop)
+#         str_logger += "\n{:<25} = {:<10}".format(prop, val)
+#         opt['Logger'].info("[{}] {} : {}".format(opt['CubeTitle'],
+#                                                  prop, val))
+#
+#     info = "{:<25} = {:<10}".format("OpenMM Version", mmver)
+#     opt['Logger'].info("[{}] OpenMM Version : {}".format(opt['CubeTitle'], mmver))
+#     str_logger += '\n'+info
+#
+#     info = "{:<25} = {:<10}".format("Platform in use", mmplat.getName())
+#     opt['Logger'].info("[{}] Platform in use : {}".format(opt['CubeTitle'], mmplat.getName()))
+#     str_logger += '\n'+info
+#
+#     if opt['SimType'] in ['nvt', 'npt']:
+#
+#         if opt['SimType'] == 'nvt':
+#             opt['Logger'].info("[{}] Running time : {time} ns => {steps} steps of {SimType} at "
+#                                "{temperature} K".format(opt['CubeTitle'], **opt))
+#             info = "{:<25} = {time} ns => {steps} steps of {SimType} at " \
+#                    "{temperature} K".format("Running time", **opt)
+#         else:
+#             opt['Logger'].info(
+#                 "[{}] Running time : {time} ns => {steps} steps of {SimType} "
+#                 "at {temperature} K pressure {pressure} atm".format(opt['CubeTitle'], **opt))
+#             info = "{:<25} = {time} ns => {steps} steps of {SimType} at " \
+#                    "{temperature} K pressure {pressure} atm".format("Running time", **opt)
+#
+#         str_logger += '\n' + info
+#
+#         if opt['trajectory_interval']:
+#
+#             total_frames = int(round(opt['time'] / opt['trajectory_interval']))
+#
+#             opt['Logger'].info('[{}] Total trajectory frames : {}'.format(opt['CubeTitle'], total_frames))
+#             info = '{:<25} = {:<10}'.format('Total trajectory frames', total_frames)
+#             str_logger += '\n' + info
+#
+#         # Start Simulation
+#         simulation.step(opt['steps'])
+#
+#         if box is not None:
+#             state = simulation.context.getState(getPositions=True, getVelocities=True,
+#                                                 getEnergy=True, enforcePeriodicBox=True)
+#         else:
+#             state = simulation.context.getState(getPositions=True, getVelocities=True,
+#                                                 getEnergy=True, enforcePeriodicBox=False)
+#
+#     elif opt['SimType'] == 'min':
+#
+#         # Run a first minimization on the Reference platform
+#         platform_reference = openmm.Platform.getPlatformByName('Reference')
+#         integrator_reference = openmm.LangevinIntegrator(opt['temperature'] * unit.kelvin,
+#                                                          1 / unit.picoseconds, stepLen)
+#         simulation_reference = app.Simulation(topology, system, integrator_reference, platform=platform_reference)
+#         # Set starting positions and velocities
+#         simulation_reference.context.setPositions(positions)
+#
+#         state_reference_start = simulation_reference.context.getState(getEnergy=True)
+#
+#         # Set Box dimensions
+#         if box is not None:
+#             simulation_reference.context.setPeriodicBoxVectors(box[0], box[1], box[2])
+#
+#         simulation_reference.minimizeEnergy(tolerance=1e5*unit.kilojoule_per_mole)
+#
+#         state_reference_end = simulation_reference.context.getState(getPositions=True)
+#
+#         # Start minimization on the selected platform
+#         if opt['steps'] == 0:
+#             opt['Logger'].info('[{}] Minimization steps: until convergence is found'.format(opt['CubeTitle']))
+#         else:
+#             opt['Logger'].info('[{}] Minimization steps: {steps}'.format(opt['CubeTitle'], **opt))
+#
+#         # Set positions after minimization on the Reference Platform
+#         simulation.context.setPositions(state_reference_end.getPositions())
+#
+#         simulation.minimizeEnergy(maxIterations=opt['steps'])
+#
+#         state = simulation.context.getState(getPositions=True, getEnergy=True)
+#
+#         ie = '{:<25} = {:<10}'.format('Initial Potential Energy', str(state_reference_start.getPotentialEnergy().
+#                                                                       in_units_of(unit.kilocalorie_per_mole)))
+#         fe = '{:<25} = {:<10}'.format('Minimized Potential Energy', str(state.getPotentialEnergy().
+#                                                                         in_units_of(unit.kilocalorie_per_mole)))
+#
+#         opt['Logger'].info(ie)
+#         opt['Logger'].info(fe)
+#
+#         str_logger += '\n' + ie + '\n' + fe
+#
+#     # OpenMM Quantity object
+#     parmed_structure.positions = state.getPositions(asNumpy=False)
+#     # OpenMM Quantity object
+#     if box is not None:
+#         parmed_structure.box_vectors = state.getPeriodicBoxVectors()
+#
+#     if opt['SimType'] in ['nvt', 'npt']:
+#         # numpy array in units of angstrom/picoseconds
+#         parmed_structure.velocities = state.getVelocities(asNumpy=False)
+#
+#     # Update the OEMol complex positions to match the new
+#     # Parmed structure after the simulation
+#     new_temp_mol = oeommutils.openmmTop_to_oemol(parmed_structure.topology, parmed_structure.positions, verbose=False)
+#     new_pos = new_temp_mol.GetCoords()
+#     opt['molecule'].SetCoords(new_pos)
+#
+#     # Update the string logger
+#     opt['str_logger'] += str_logger
+#
+#     return
+
+
+
