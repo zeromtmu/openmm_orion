@@ -24,8 +24,6 @@ import ensemble2img
 
 from tempfile import TemporaryDirectory
 
-# TODO Update DOWNLOAD FILE SECTIONS
-
 
 class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
     title = 'Traj to OEMol Cube'
@@ -89,11 +87,8 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
 
             lastName = utl.RequestOEFieldType(md_stageLast_record, Fields.stage_name)
 
-            if lastName!='NPT':
+            if lastName != 'NPT':
                 raise ValueError('Cannot find the NPT stage')
-
-            # TODO ASK CHRISTOPHER
-            # Write out all the required files and set-run the Yank experiment
 
             with TemporaryDirectory() as output_directory:
 
@@ -179,14 +174,14 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
                 opt['Logger'].info('{}: created AnalysesDone list'.format(system_title))
             if analysesDone is None:
                 raise ValueError('{} AnalysesDone list does not exist'.format(system_title))
-            record.set_value( OEField( 'AnalysesDone', Types.StringVec), analysesDone)
+            record.set_value(OEField('AnalysesDone', Types.StringVec), analysesDone)
             opt['Logger'].info('{}: saved protein and ligand traj OEMols'.format(system_title))
 
             self.success.emit(record)
 
         except Exception as e:
             print("Failed to complete", str(e), flush=True)
-            opt['Logger'].info('Exception in TrajToOEMolCube on {}'.format(system_title))
+            self.log.info('Exception in TrajToOEMolCube on {}'.format(system_title))
             self.log.error(traceback.format_exc())
             # Return failed mol
             self.failure.emit(record)

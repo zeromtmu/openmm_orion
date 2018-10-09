@@ -26,6 +26,8 @@ from os import environ
 from openeye import oechem, oedepict
 import TrjAnalysisCubes.utils as utl
 
+import base64
+
 
 _clus_floe_report_header = """
 <html>
@@ -235,6 +237,7 @@ _clus_floe_report_Trailer = """    </div>
 </body>
 </html>"""
 
+
 def MakeClusterInfoText(dataDict, rgbVec):
     # Generate text string about Clustering information
     #
@@ -291,7 +294,7 @@ def MakeClusterInfoText(dataDict, rgbVec):
 
 
 def png_to_data_url(png_data):
-    return "<img src='data:image/png;base64," + b64encode(png_data).decode('utf-8') + "'>"
+    return "<img src='data:image/png;base64," + base64.b64encode(png_data).decode('utf-8') + "'>"
 
 
 def trim_svg(svg):
@@ -460,7 +463,7 @@ class MDTrajAnalysisClusterReport(OERecordComputeCube):
 
                 ligName = ligInitPose.GetTitle()
                 id_plmd = utl.RequestOEFieldType( record, Fields.id)
-                file_upload = File.upload(session, "Report{} {}".format(id_plmd,ligName), "./"+reportFName)
+                file_upload = File.upload(session, "Report{} {}".format(id_plmd, ligName), "./"+reportFName+".html")
                 session.tag_resource(file_upload, "floe_report")
                 job_id = environ.get('ORION_JOB_ID')
                 if job_id:
