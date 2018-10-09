@@ -18,7 +18,7 @@
 # or its use.
 
 from floe.api import WorkFloe
-from MDCubes.OpenMMCubes.cubes import OpenMMNvtCube
+from MDCubes.cubes import OpenMMNvtCube
 from cuberecord import DatasetReaderCube, DatasetWriterCube
 
 job = WorkFloe("NVT Simulation")

@@ -19,9 +19,9 @@
 
 from floe.api import WorkFloe
 
-from MDCubes.OpenMMCubes.cubes import (OpenMMminimizeCube,
-                                       OpenMMNvtCube,
-                                       OpenMMNptCube)
+from MDCubes.cubes import (OpenMMminimizeCube,
+                           OpenMMNvtCube,
+                           OpenMMNptCube)
 
 from ComplexPrepCubes.cubes import (SolvationCube,
                                     ComplexPrepCube)

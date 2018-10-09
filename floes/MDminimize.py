@@ -18,7 +18,7 @@
 # or its use.
 
 from floe.api import WorkFloe
-from MDCubes.OpenMMCubes.cubes import OpenMMminimizeCube
+from MDCubes.cubes import OpenMMminimizeCube
 from cuberecord import DatasetReaderCube, DatasetWriterCube
 
 job = WorkFloe("Minimize")

@@ -23,9 +23,9 @@ from floe.api import WorkFloe
 from cuberecord import (DatasetWriterCube,
                         DatasetReaderCube)
 
-from MDCubes.OpenMMCubes.cubes import (OpenMMminimizeCube,
-                                       OpenMMNvtCube,
-                                       OpenMMNptCube)
+from MDCubes.cubes import (OpenMMminimizeCube,
+                           OpenMMNvtCube,
+                           OpenMMNptCube)
 
 from ComplexPrepCubes.cubes import (ComplexPrepCube,
                                     SolvationCube)
@@ -129,10 +129,9 @@ prod.promote_parameter('temperature', promoted_name='temperature', default=300.0
 prod.promote_parameter('pressure', promoted_name='pressure', default=1.0, description='Pressure (atm)')
 prod.promote_parameter('trajectory_interval', promoted_name='prod_trajectory_interval', default=0.002,
                        description='Trajectory saving interval in ns')
-prod.promote_parameter('reporter_interval', promoted_name='prod_reporter_interval', default=0.002,
-                       description='Reporter saving interval in ns')
 prod.promote_parameter('hmr', title='Use Hydrogen Mass Repartitioning', default=True,
                        description='Give hydrogens more mass to speed up the MD')
+prod.set_parameters(reporter_interval=0.002)
 prod.set_parameters(suffix='prod')
 prod.set_parameters(save_md_stage=True)
 

@@ -33,7 +33,7 @@ from ComplexPrepCubes.cubes import (ComplexPrepCube,
 
 from ForceFieldCubes.cubes import ForceFieldCube
 
-from MDCubes.OpenMMCubes.cubes import OpenMMminimizeCube
+from MDCubes.cubes import OpenMMminimizeCube
 
 job = WorkFloe("Complex Preparation with Minimization")
 

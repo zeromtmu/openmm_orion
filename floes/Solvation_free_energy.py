@@ -31,9 +31,9 @@ from LigPrepCubes.cubes import (LigandChargeCube,
 from YankCubes.cubes import (YankSolvationFECube,
                              YankProxyCube)
 
-from MDCubes.OpenMMCubes.cubes import (OpenMMminimizeCube,
-                                       OpenMMNvtCube,
-                                       OpenMMNptCube)
+from MDCubes.cubes import (OpenMMminimizeCube,
+                           OpenMMNvtCube,
+                           OpenMMNptCube)
 
 job = WorkFloe("Solvation Free Energy")
 

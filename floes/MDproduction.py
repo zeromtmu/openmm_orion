@@ -18,7 +18,7 @@
 # or its use.
 
 from floe.api import WorkFloe
-from MDCubes.OpenMMCubes.cubes import OpenMMNptCube
+from MDCubes.cubes import OpenMMNptCube
 from cuberecord import DatasetReaderCube, DatasetWriterCube
 
 job = WorkFloe("NPT Production")
