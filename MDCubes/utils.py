@@ -15,13 +15,17 @@
 # liable for any damages or liability in connection with the Sample Code
 # or its use.
 
-from simtk.openmm import unit
-
 from orionclient.session import in_orion, OrionSession
 
 from orionclient.types import File
 
 from os import environ
+
+from abc import ABC, abstractmethod
+
+import parmed
+
+import simtk
 
 
 class MDState(object):
@@ -38,7 +42,7 @@ class MDState(object):
             self.__velocities__ = None
         else:
             # Parmed stores the velocities as a numpy array in unit of angstrom/picoseconds
-            self.__velocities__ = parmed_structure.velocities * unit.angstrom/unit.picosecond
+            self.__velocities__ = parmed_structure.velocities * simtk.unit.angstrom/simtk.unit.picosecond
             # The returned object is an OpenMM Quantity with units
 
         if parmed_structure.box_vectors is None:
@@ -56,7 +60,7 @@ class MDState(object):
         return self.__box_vectors__
 
     def set_positions(self, positions):
-        if isinstance(positions, self.__positions__):
+        if isinstance(positions, simtk.unit.quantity.Quantity):
             self.__positions__ = positions
         else:
             raise ValueError("It was not possible to set the positions")
@@ -64,7 +68,7 @@ class MDState(object):
         return
 
     def set_velocities(self, velocities):
-        if isinstance(velocities, self.__velocities__):
+        if isinstance(velocities, simtk.unit.quantity.Quantity):
             self.__velocities__ = velocities
         else:
             raise ValueError("It was not possible to set the velocities")
@@ -72,12 +76,91 @@ class MDState(object):
         return
 
     def set_box_vectors(self, box_vectors):
-        if isinstance(box_vectors, self.__box_vectors__):
+        if isinstance(box_vectors, simtk.unit.quantity.Quantity):
             self.__box_vectors__ = box_vectors
         else:
             raise ValueError("It was not possible to set the box vectors")
 
         return
+
+
+class MDSimulations(ABC):
+    @abstractmethod
+    def __init__(self, mdstate, ff_parameters, opt):
+
+        if not isinstance(mdstate, MDState):
+            raise ValueError("{} is not a MDState Object".format(type(mdstate)))
+
+        if not isinstance(ff_parameters, parmed.Structure):
+            raise ValueError("{} is not a Parmed Structure Object".format(type(mdstate)))
+
+        if not isinstance(opt, dict):
+            raise ValueError("{} is not a dictionary".format(type(opt)))
+
+    @abstractmethod
+    def run(self):
+        pass
+
+    @abstractmethod
+    def update_state(self):
+        pass
+
+
+def md_simulation(mdstate, ff_parameters, opt):
+
+    if opt['md_engine'] == 'OpenMM':
+
+        from MDCubes.OpenMMCubes.simtools import OpenMMSimulations
+
+        MDSim = OpenMMSimulations(mdstate, ff_parameters, opt)
+
+        MDSim.run()
+
+        new_mdstate = MDSim.update_state()
+
+        return new_mdstate
+    else:
+        raise ValueError("The selected MD engine is not currently supported: {}".format(opt['md_engine']))
+
+
+def upload_file(filename, orion_name):
+
+    if in_orion():
+
+        session = OrionSession()
+
+        file_upload = File.upload(session,
+                                  orion_name,
+                                  filename)
+
+        session.tag_resource(file_upload, "Trajectory")
+
+        job_id = environ.get('ORION_JOB_ID')
+
+        if job_id:
+            session.tag_resource(file_upload, "Job {}".format(job_id))
+
+    else:
+        file_upload = filename
+
+    return file_upload
+
+
+def download_file(file_id, filename, delete=False):
+
+    if in_orion():
+        file_id.download_to_file(filename)
+
+        fn_local = filename
+
+        if delete:
+            session = OrionSession()
+            session.delete_resource(file_id)
+
+    else:
+        fn_local = file_id
+
+    return fn_local
 
 
 # class MDStructure(object):
@@ -139,42 +222,3 @@ class MDState(object):
 #         else:
 #             raise ValueError("The selected MD Engine is not currently supported: {}".format(mdengine))
 
-
-def upload_file(filename, orion_name):
-
-    if in_orion():
-
-        session = OrionSession()
-
-        file_upload = File.upload(session,
-                                  orion_name,
-                                  filename)
-
-        session.tag_resource(file_upload, "Trajectory")
-
-        job_id = environ.get('ORION_JOB_ID')
-
-        if job_id:
-            session.tag_resource(file_upload, "Job {}".format(job_id))
-
-    else:
-        file_upload = filename
-
-    return file_upload
-
-
-def download_file(file_id, filename, delete=False):
-
-    if in_orion():
-        file_id.download_to_file(filename)
-
-        fn_local = filename
-
-        if delete:
-            session = OrionSession()
-            session.delete_resource(file_id)
-
-    else:
-        fn_local = file_id
-
-    return fn_local
