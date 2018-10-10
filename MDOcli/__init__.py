@@ -14,15 +14,3 @@
 # PARTICULAR PURPOSE AND NONINFRINGEMENT. In no event shall OpenEye be
 # liable for any damages or liability in connection with the Sample Code
 # or its use.
-
-__version__ = '0.7.11'
-
-import ComplexPrepCubes
-import ForceFieldCubes
-import LigPrepCubes
-import MDCubes
-import ProtPrepCubes
-import Standards
-import TrjAnalysisCubes
-import YankCubes
-import MDOcli
