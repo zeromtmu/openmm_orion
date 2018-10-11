@@ -124,7 +124,7 @@ prod.promote_parameter('temperature', promoted_name='temperature', default=300.0
 prod.promote_parameter('pressure', promoted_name='pressure', default=1.0, description='Pressure (atm)')
 prod.set_parameters(reporter_interval=0.002)
 prod.set_parameters(suffix='prod')
-prod.set_parameters(save_md_stage=True)
+
 
 # Minimization
 minComplex = OpenMMminimizeCube('minComplex', title='System Minimization')
@@ -146,6 +146,7 @@ warmup.set_parameters(trajectory_interval=0.0)
 warmup.set_parameters(reporter_interval=0.001)
 warmup.set_parameters(suffix='warmup')
 warmup.promote_parameter("hmr", promoted_name="hmr")
+warmup.set_parameters(save_md_stage=True)
 
 
 # The system is equilibrated at the right pressure and temperature in 3 stages

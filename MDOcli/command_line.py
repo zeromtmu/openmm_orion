@@ -32,7 +32,7 @@ def main(ctx):
 @click.option("--id", help="Record ID number", default="all")
 @click.option("--profile", help="OCLI profile name", default="default")
 @click.pass_context
-def record(ctx, filename, id, profile):
+def dataset(ctx, filename, id, profile):
     """ Record Extraction"""
 
     ctx.obj['filename'] = filename
@@ -59,12 +59,12 @@ def record(ctx, filename, id, profile):
     os.environ['ORION_PROFILE'] = profile
 
 
-@record.command("trajectory")
+@dataset.command("trajectory")
 @click.option("--format", help="Trajectory format", type=click.Choice(['h5', 'dcd', 'tar.gz']), default='h5')
 @click.option("--stgn", help="MD Stage number", default="last")
-@click.option("--editname", help="Edit the trajectory file name", default=None)
+@click.option("--fixname", help="Edit the trajectory file name", default=None)
 @click.pass_context
-def trajectory_extraction(ctx, format, stgn, editname):
+def trajectory_extraction(ctx, format, stgn, fixname):
     stagen = stgn
 
     new_record_list = []
@@ -75,7 +75,7 @@ def trajectory_extraction(ctx, format, stgn, editname):
 
         if not record.has_value(Fields.md_stages):
             print("No MD stages have been found in the selected record")
-            return
+            continue
 
         stages = record.get_value(Fields.md_stages)
         nstages = len(stages)
@@ -84,53 +84,61 @@ def trajectory_extraction(ctx, format, stgn, editname):
         fn = title + "_" + str(id)
 
         if stagen == 'last':
-            stage = stages[-1]
+            stages_work_on = [stages[-1]]
+        elif stagen == 'all':
+            stages_work_on = stages
         else:
             if int(stagen) > nstages:
                 print("Wrong stage number selection: {} > max = {}".format(stagen, nstages))
                 return
             else:
-                stage = stages[int(stagen)]
+                stages_work_on = [stages[int(stagen)]]
 
-        if stage.has_value(Fields.trajectory):
-            fnt = stage.get_value(Fields.trajectory)
+        for idx in range(0, len(stages_work_on)):
 
-        elif stage.has_value(orion_trj_field):
-            trj_id = stage.get_value(orion_trj_field)
-            trj_id.download_to_file(fn + "." + format)
+            stage = stages_work_on[idx]
 
-        else:
-            print("No MD trajectory found in the selected record!")
-            return
+            if stage.has_value(Fields.trajectory):
+                fnt = stage.get_value(Fields.trajectory)
 
-        if format == 'dcd':
-            print(fnt)
-            trj_mdtraj = md.load(fnt)
-            trj_mdtraj[0].save(os.path.splitext(fnt)[0]+'.pdb')
-            trj_mdtraj.save(os.path.splitext(fnt)[0]+'.dcd')
-
-        if editname is not None:
-
-            stage.set_value(Fields.trajectory, fn + "." + format)
-
-            if stagen == 'last':
-                stages[-1] = stage
+            elif stage.has_value(orion_trj_field):
+                trj_id = stage.get_value(orion_trj_field)
+                suffix = ''
+                if stage.has_value(Fields.log_data):
+                    log = stage.get_value(Fields.log_data)
+                    log_split = log.split()
+                    for i in range(0, len(log_split)):
+                        if log_split[i] == 'suffix':
+                            suffix = log_split[i+2]
+                            break
+                fnt = fn + '-' + suffix + '.' + format
+                trj_id.download_to_file(fnt)
             else:
-                stages[int(stagen)] = stage
+                print("No MD trajectory found in the selected stage record {}".format(stage.get_value(Fields.stage_name)))
+                continue
 
-            record.set_value(Fields.md_stages, stages)
+            if format == 'dcd':
+                print(fnt)
+                trj_mdtraj = md.load(fnt)
+                trj_mdtraj[0].save(os.path.splitext(fnt)[0]+'.pdb')
+                trj_mdtraj.save(os.path.splitext(fnt)[0]+'.dcd')
 
+            if fixname is not None:
+                stage.set_value(Fields.trajectory, fnt)
+                stages_work_on[idx] = stage
+
+            record.set_value(Fields.md_stages, stages_work_on)
             new_record_list.append(record)
 
-    if editname is not None:
+    if fixname is not None:
 
-        ofs = oechem.oeofstream(editname)
+        ofs = oechem.oeofstream(fixname)
 
         for record in new_record_list:
             OEWriteRecord(ofs, record, fmt='binary')
 
 
-@record.command("logs")
+@dataset.command("logs")
 @click.option("--stgn", help="MD Stage number", default="last")
 @click.pass_context
 def logs_extraction(ctx, stgn):
@@ -150,22 +158,27 @@ def logs_extraction(ctx, stgn):
         fn = title + "_" + str(id)
 
         if stagen == 'last':
-            stage = stages[-1]
+            stages_work_on = [stages[-1]]
+        elif stagen == 'all':
+            stages_work_on = stages
         else:
             if int(stagen) > nstages:
                 print("Wrong stage number selection: {} > max = {}".format(stagen, nstages))
                 return
             else:
-                stage = stages[int(stagen)]
+                stages_work_on = [stages[int(stagen)]]
 
-        print("SYSTEM NAME = {}".format(fn))
-        if stage.has_value(Fields.log_data):
-            print(stage.get_value(Fields.log_data))
-        else:
-            print("No logs have been found")
+        for stage in stages_work_on:
+
+            print("SYSTEM NAME = {}".format(fn))
+            print("Stage name = {}".format(stage.get_value(Fields.stage_name)))
+            if stage.has_value(Fields.log_data):
+                print(stage.get_value(Fields.log_data))
+            else:
+                print("No logs have been found")
 
 
-@record.command("protein")
+@dataset.command("protein")
 @click.pass_context
 def protein_extraction(ctx):
 
@@ -182,7 +195,7 @@ def protein_extraction(ctx):
                 oechem.OEWriteConstMolecule(ofs, record.get_value(Fields.protein))
 
 
-@record.command("ligand")
+@dataset.command("ligand")
 @click.pass_context
 def ligand_extraction(ctx):
 
@@ -200,7 +213,7 @@ def ligand_extraction(ctx):
                 oechem.OEWriteConstMolecule(ofs, record.get_value(Fields.ligand))
 
 
-@record.command("info")
+@dataset.command("info")
 @click.pass_context
 def info_extraction(ctx):
 
