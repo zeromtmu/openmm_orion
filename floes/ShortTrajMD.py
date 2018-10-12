@@ -122,6 +122,8 @@ prod.promote_parameter('time', promoted_name='prod_ns', default=2.0,
 prod.promote_parameter('temperature', promoted_name='temperature', default=300.0,
                        description='Temperature (Kelvin)')
 prod.promote_parameter('pressure', promoted_name='pressure', default=1.0, description='Pressure (atm)')
+prod.promote_parameter('trajectory_interval', promoted_name='prod_trajectory_interval', default=0.002,
+                       description='Trajectory saving interval in ns')
 prod.set_parameters(reporter_interval=0.002)
 prod.set_parameters(suffix='prod')
 

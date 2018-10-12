@@ -33,7 +33,7 @@ def main(ctx):
 @click.option("--profile", help="OCLI profile name", default="default")
 @click.pass_context
 def dataset(ctx, filename, id, profile):
-    """ Record Extraction"""
+    """ Records Extraction"""
 
     ctx.obj['filename'] = filename
 
