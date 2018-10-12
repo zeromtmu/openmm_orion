@@ -133,7 +133,6 @@ prod.promote_parameter('hmr', title='Use Hydrogen Mass Repartitioning', default=
                        description='Give hydrogens more mass to speed up the MD')
 prod.set_parameters(reporter_interval=0.002)
 prod.set_parameters(suffix='prod')
-prod.set_parameters(save_md_stage=True)
 
 
 # Minimization
@@ -156,6 +155,7 @@ warmup.set_parameters(trajectory_interval=0.0)
 warmup.set_parameters(reporter_interval=0.001)
 warmup.set_parameters(suffix='warmup')
 warmup.promote_parameter("hmr", default=True)
+warmup.set_parameters(save_md_stage=True)
 
 
 # The system is equilibrated at the right pressure and temperature in 3 stages

@@ -60,5 +60,9 @@ setup(
         'Operating System :: OS Independent',
         'Programming Language :: Python :: 3.5',
     ],
+    entry_points='''
+        [console_scripts]
+        mdocli=MDOcli.command_line:main
+    ''',
     zip_safe=False
 )

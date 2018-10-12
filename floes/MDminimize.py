@@ -50,6 +50,7 @@ ifs.promote_parameter("data_in", promoted_name="system", title='System Input Fil
 
 min = OpenMMminimizeCube('Minimize', title="System Minimization")
 min.promote_parameter('steps', promoted_name='steps', default=0)
+min.set_parameters(save_md_stage=True)
 
 ofs = DatasetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")

@@ -20,7 +20,7 @@ from oeommtools import utils as oeommutils
 
 # ifs = OEMolRecordStream("p38_l38_a_2n_nvt_5ns.oeb.gz")
 
-ifs = oechem.oeifstream("prep.oedb")
+ifs = oechem.oeifstream("pP38_lig38a_2n_npt_5ns.oedb")
 records = []
 while True:
     record = read_mol_record(ifs)
@@ -39,29 +39,32 @@ for record in records:
     # #print(stage.has_value(Fields.log_data))
     # #print(stage.get_value(Fields.log_data))
     # mdsystem = stage.get_value(Fields.md_system)
-    # pmd = mdsystem.get_value(Fields.structure)
+    pmd = record.get_value(Fields.pmd_structure)
+    pmd_split = pmd.split()[2][0]
+    pmd_split.save("cazzo.pdb")
+    print(pmd_split)
     #pmd.save("sys.pdb", overwrite=True)
 
-    complex = record.get_value(Fields.primary_molecule)
-
-    # Split the complex in components in order to apply the FF
-    protein, ligand, water, excipients = oeommutils.split(complex, ligand_res_name='LIG')
-
-    print("Protein atom numbers = {}\nLigand atom numbers = {}\n"
-                  "Water atom numbers = {}\nExcipients atom numbers = {}".format(
-                                                                                 protein.NumAtoms(),
-                                                                                 ligand.NumAtoms(),
-                                                                                 water.NumAtoms(),
-                                                                                 excipients.NumAtoms()))
-
-    topology, positions = oeommutils.oemol_to_openmmTop(water)
-
-    ff = app.ForceField('amber99sbildn.xml', 'tip4pew.xml')
-
-    modeller = app.Modeller(topology, positions)
-    modeller.addExtraParticles(ff)
-
-    app.PDBFile.writeFile(modeller.topology, modeller.positions, open('tip4pew.pdb', 'w'))
+    # complex = record.get_value(Fields.primary_molecule)
+    #
+    # # Split the complex in components in order to apply the FF
+    # protein, ligand, water, excipients = oeommutils.split(complex, ligand_res_name='LIG')
+    #
+    # print("Protein atom numbers = {}\nLigand atom numbers = {}\n"
+    #               "Water atom numbers = {}\nExcipients atom numbers = {}".format(
+    #                                                                              protein.NumAtoms(),
+    #                                                                              ligand.NumAtoms(),
+    #                                                                              water.NumAtoms(),
+    #                                                                              excipients.NumAtoms()))
+    #
+    # topology, positions = oeommutils.oemol_to_openmmTop(water)
+    #
+    # ff = app.ForceField('amber99sbildn.xml', 'tip4pew.xml')
+    #
+    # modeller = app.Modeller(topology, positions)
+    # modeller.addExtraParticles(ff)
+    #
+    # app.PDBFile.writeFile(modeller.topology, modeller.positions, open('tip4pew.pdb', 'w'))
 
 
     # complex = mdsystem.get_value(Fields.topology)

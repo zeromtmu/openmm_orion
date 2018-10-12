@@ -16,9 +16,15 @@
 # or its use.
 
 import os
+
 from orionclient.session import OrionSession
-from artemis.wrappers import WorkFloeWrapper, DatasetWrapper, OutputDatasetWrapper
+
+from artemis.wrappers import (WorkFloeWrapper,
+                              DatasetWrapper,
+                              OutputDatasetWrapper)
+
 from artemis.test import FloeTestCase
+
 from artemis.decorators import package
 
 import pytest
@@ -35,7 +41,6 @@ from simtk import (unit,
 
 from simtk.openmm import app
 
-import MDCubes.utils as utils
 
 PACKAGE_DIR = os.path.dirname(os.path.dirname(MDOrion.__file__))
 
@@ -44,16 +49,15 @@ FLOES_DIR = os.path.join(PACKAGE_DIR, "floes")
 
 session = OrionSession()
 
+
 # Supporting functions
+def calculate_VT(mdstate, parmed_structure):
 
-
-def calculate_VT(mdData):
     # Extract starting MD data
-    topology = mdData.topology
-    positions = mdData.positions
-    velocities = mdData.velocities
-    box = mdData.box
-    parmed_structure = mdData.structure
+    topology = parmed_structure.topology
+    positions = mdstate.get_positions()
+    velocities = mdstate.get_velocities()
+    box = mdstate.get_box_vectors()
 
     volume = box[0][0] * box[1][1] * box[2][2]
 
@@ -167,18 +171,21 @@ class TestMDOrionFloes(FloeTestCase):
 
             md_system = stage.get_value(Fields.md_system)
 
-            parmed_structure = md_system.get_value(Fields.structure)
+            mdstate = md_system.get_value(Fields.md_state)
 
-            mdData = utils.MDData(parmed_structure)
+            parmed_structure = record.get_value(Fields.pmd_structure)
+            parmed_structure.positions = mdstate.get_positions()
+            parmed_structure.box_vectors = mdstate.get_box_vectors()
+            parmed_structure.velocities = mdstate.get_velocities()
 
             # Calculate final volume and temperature
-            vol_f, temp_f = calculate_VT(mdData)
+            vol_f, temp_f = calculate_VT(mdstate, parmed_structure)
 
             # Check 3*std volume
             # Average volume and its standard deviation (in nm^3) measured along
             # one 5ns run for the selected system
-            avg_volume = 633.0247292 * (unit.nanometers**3)
-            std_volume = 1.202811485
+            avg_volume = 632.9923452 * (unit.nanometers ** 3)
+            std_volume = 1.200821012
 
             self.assertAlmostEqual(avg_volume/(unit.nanometers**3),
                                    vol_f.in_units_of(unit.nanometers**3)/(unit.nanometers**3),
@@ -187,9 +194,8 @@ class TestMDOrionFloes(FloeTestCase):
             # Check temperature
             # Average temperature and its standard deviation (in K) measured along
             # one 5ns run for the selected system
-            avg_temperature = 300.0066236 * unit.kelvin
-            std_temperature = 1.175174286
+            avg_temperature = 300.0278579 * unit.kelvin
+            std_temperature = 1.189319355
             self.assertAlmostEqual(avg_temperature / unit.kelvin,
                                    temp_f.in_units_of(unit.kelvin) / unit.kelvin,
                                    delta=3 * std_temperature)
-

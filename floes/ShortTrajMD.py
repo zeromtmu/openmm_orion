@@ -126,7 +126,6 @@ prod.promote_parameter('trajectory_interval', promoted_name='prod_trajectory_int
                        description='Trajectory saving interval in ns')
 prod.set_parameters(reporter_interval=0.002)
 prod.set_parameters(suffix='prod')
-prod.set_parameters(save_md_stage=True)
 
 
 # Minimization
@@ -149,6 +148,7 @@ warmup.set_parameters(trajectory_interval=0.0)
 warmup.set_parameters(reporter_interval=0.001)
 warmup.set_parameters(suffix='warmup')
 warmup.promote_parameter("hmr", promoted_name="hmr")
+warmup.set_parameters(save_md_stage=True)
 
 
 # The system is equilibrated at the right pressure and temperature in 3 stages

@@ -68,6 +68,7 @@ npt.promote_parameter('trajectory_interval', promoted_name='trajectory_interval'
                       description='Trajectory saving interval in ns')
 npt.promote_parameter('reporter_interval', promoted_name='reporter_interval', default=0.001,
                       description='Reporter saving interval in ns')
+npt.set_parameters(save_md_stage=True)
 
 ofs = DatasetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")

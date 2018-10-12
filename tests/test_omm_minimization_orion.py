@@ -44,16 +44,13 @@ FLOES_DIR = os.path.join(PACKAGE_DIR, "floes")
 
 session = OrionSession()
 
+
 # Supporting functions
+def calculate_eng(mdstate, parmed_structure):
 
-
-def calculate_eng(mdData):
-
-        # Extract starting MD data
-        topology = mdData.topology
-        positions = mdData.positions
-        box = mdData.box
-        parmed_structure = mdData.structure
+        topology = parmed_structure.topology
+        positions = mdstate.get_positions()
+        box = mdstate.get_box_vectors()
 
         # OpenMM system
         system = parmed_structure.createSystem(nonbondedMethod=app.PME,
@@ -114,7 +111,7 @@ class TestMDOrionFloes(FloeTestCase):
         # The records list must have just one record
         self.assertEqual(count, 1)
 
-        # Calculate starting potential energy
+        # Calculate the initial potential energy
         for record in records:
             stages = record.get_value(Fields.md_stages)
             self.assertEqual(len(stages), 1)
@@ -123,12 +120,15 @@ class TestMDOrionFloes(FloeTestCase):
 
             md_system = stage.get_value(Fields.md_system)
 
-            parmed_structure = md_system.get_value(Fields.structure)
+            mdstate = md_system.get_value(Fields.md_state)
 
-            mdData = utils.MDData(parmed_structure)
+            parmed_structure = record.get_value(Fields.pmd_structure)
+            parmed_structure.positions = mdstate.get_positions()
+            parmed_structure.box_vectors = mdstate.get_box_vectors()
+            parmed_structure.velocities = mdstate.get_velocities()
 
-            # Calculate starting potential energy
-            eng_i = calculate_eng(mdData)
+            # Calculate the initial potential energy
+            eng_i = calculate_eng(mdstate, parmed_structure)
 
         output_file = OutputDatasetWrapper(extension=".oedb")
         fail_output_file = OutputDatasetWrapper(extension=".oedb")
@@ -166,7 +166,7 @@ class TestMDOrionFloes(FloeTestCase):
         # The records list must have just one record
         self.assertEqual(count, 1)
 
-        # Calculate starting potential energy
+        # Calculate the final potential energy
         for record in records:
 
             stages = record.get_value(Fields.md_stages)
@@ -177,12 +177,15 @@ class TestMDOrionFloes(FloeTestCase):
 
             md_system = stage.get_value(Fields.md_system)
 
-            parmed_structure = md_system.get_value(Fields.structure)
+            mdstate = md_system.get_value(Fields.md_state)
 
-            mdData = utils.MDData(parmed_structure)
+            parmed_structure = record.get_value(Fields.pmd_structure)
+            parmed_structure.positions = mdstate.get_positions()
+            parmed_structure.box_vectors = mdstate.get_box_vectors()
+            parmed_structure.velocities = mdstate.get_velocities()
 
-            # Calculate final potential energy
-            eng_f = calculate_eng(mdData)
+            # Calculate the final potential energy
+            eng_f = calculate_eng(mdstate, parmed_structure)
 
         self.assertLess(eng_f.in_units_of(unit.kilojoule_per_mole)/unit.kilojoule_per_mole,
                         eng_i.in_units_of(unit.kilojoule_per_mole)/unit.kilojoule_per_mole)

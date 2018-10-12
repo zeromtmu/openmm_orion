@@ -100,6 +100,7 @@ class TestMDOrionFloes(FloeTestCase):
             self.assertTrue(record.has_value(Fields.protein))
             self.assertTrue(record.has_value(Fields.primary_molecule))
             self.assertTrue(record.has_value(Fields.md_stages))
+            self.assertTrue(record.has_value(Fields.pmd_structure))
 
             self.assertEqual(record.get_value(Fields.id), 0)
             self.assertEqual(record.get_value(Fields.title), "pMCL1_l26")
@@ -130,7 +131,7 @@ class TestMDOrionFloes(FloeTestCase):
             md_system = stage.get_value(Fields.md_system)
 
             self.assertTrue(md_system.has_value(Fields.topology))
-            self.assertTrue(md_system.has_value(Fields.structure))
+            self.assertTrue(md_system.has_value(Fields.md_state))
 
             top_mol = md_system.get_value(Fields.topology)
             self.assertEqual(top_mol.NumAtoms(), complx.NumAtoms())
