@@ -44,11 +44,22 @@ def testfloes(ctx):
 
 
 @task
-def testorion(ctx):
+def testorion(ctx, profile=""):
     """
     run tests
     """
     clean(ctx)
+
+    if profile is "":
+        if "ORION_PROFILE" in os.environ:
+            profile = os.getenv("ORION_PROFILE")
+        else:
+            profile = 'default'
+
+    print("Using Orion Profile: {}".format(profile))
+    clean_pyc(ctx)
+    clean(ctx)
+
     run("py.test -s -v --orion ./tests")
 
 
