@@ -50,6 +50,7 @@ setup(
     description='Orion cubes to perform MD and MD analysis',
     install_requires=install_reqs,
     license='Other/Proprietary License',
+    url='https://github.com/oess/openmm_orion',
     classifiers=[
         "Development Status :: 1 - Planning",
         'Intended Audience :: Developers',
