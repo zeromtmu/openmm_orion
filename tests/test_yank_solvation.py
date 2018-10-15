@@ -36,6 +36,7 @@ session = OrionSession()
 @package(PACKAGE_DIR)
 class TestYankSolvationOrionFloes(FloeTestCase):
 
+    @pytest.mark.floetest
     @pytest.mark.slow
     def test_yank_solvation_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
@@ -67,6 +68,7 @@ class TestYankSolvationOrionFloes(FloeTestCase):
 
         self.assertWorkFloeComplete(workfloe)
 
+    @pytest.mark.floetest
     @pytest.mark.slow
     def test_yank_solvation_multi_ligs_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(

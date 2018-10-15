@@ -40,9 +40,11 @@ for record in records:
     # #print(stage.get_value(Fields.log_data))
     # mdsystem = stage.get_value(Fields.md_system)
     pmd = record.get_value(Fields.pmd_structure)
-    pmd_split = pmd.split()[2][0]
-    pmd_split.save("cazzo.pdb")
-    print(pmd_split)
+    protein_pmd = pmd.split()[0][0]
+    ligand_pmd = pmd.split()[1][0]
+    complex_pmd = protein_pmd + ligand_pmd
+    complex_pmd.save("system.pdb", overwrite=True)
+
     #pmd.save("sys.pdb", overwrite=True)
 
     # complex = record.get_value(Fields.primary_molecule)

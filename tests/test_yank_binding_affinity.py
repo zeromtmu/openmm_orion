@@ -42,6 +42,7 @@ session = OrionSession()
 @package(PACKAGE_DIR)
 class TestYankBindingFloes(FloeTestCase):
 
+    @pytest.mark.floetest
     @pytest.mark.slow
     def test_yank_binding_repex_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
@@ -81,6 +82,7 @@ class TestYankBindingFloes(FloeTestCase):
 
         self.assertWorkFloeComplete(workfloe)
 
+    @pytest.mark.floetest
     @pytest.mark.slow
     def test_yank_binding_repex_multi_ligs_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
@@ -120,6 +122,7 @@ class TestYankBindingFloes(FloeTestCase):
 
         self.assertWorkFloeComplete(workfloe)
 
+    @pytest.mark.floetest
     @pytest.mark.slow
     def test_yank_binding_sams_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
@@ -159,6 +162,7 @@ class TestYankBindingFloes(FloeTestCase):
 
         self.assertWorkFloeComplete(workfloe)
 
+    @pytest.mark.floetest
     @pytest.mark.slow
     def test_yank_binding_sams_multi_ligs_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
