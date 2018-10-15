@@ -57,9 +57,6 @@ def testorion(ctx, profile=""):
             profile = 'default'
 
     print("Using Orion Profile: {}".format(profile))
-    clean_pyc(ctx)
-    clean(ctx)
-
     run("py.test -s -v --orion ./tests")
 
 
