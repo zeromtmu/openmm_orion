@@ -35,6 +35,7 @@ session = OrionSession()
 @package(PACKAGE_DIR)
 class TestMDOrionFloes(FloeTestCase):
 
+    @pytest.mark.floetest
     @pytest.mark.slow
     def test_STMD_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(

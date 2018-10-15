@@ -80,6 +80,7 @@ def calculate_eng(mdstate, parmed_structure):
 @package(PACKAGE_DIR)
 class TestMDOrionFloes(FloeTestCase):
 
+    @pytest.mark.floetest
     @pytest.mark.fast
     def test_omm_minimization_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
