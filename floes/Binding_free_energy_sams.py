@@ -110,8 +110,6 @@ job.add_cube(complx)
 solvateComplex = SolvationCube("HydrationComplex", title="Complex Hydration")
 solvateComplex.promote_parameter('density', promoted_name='density', default=1.03,
                                  description="Solution density in g/ml")
-solvateComplex.promote_parameter('close_solvent', promoted_name='close_solvent', default=True,
-                                 description='The solvent molecules will be placed very close to the solute')
 solvateComplex.promote_parameter('salt_concentration', promoted_name='salt_concentration', default=50.0,
                                  description='Salt concentration (Na+, Cl-) in millimolar')
 solvateComplex.set_parameters(solvents='[H]O[H]')
@@ -137,7 +135,6 @@ abfe = YankBindingFECube("YankABFE", title="Yank ABFE SAMS")
 abfe.promote_parameter('iterations', promoted_name='iterations',
                        description="Total Number of Yank iterations for the entire floe. "
                                    "A Yank iteration is 500 MD steps")
-# abfe.promote_parameter('verbose', promoted_name='verbose', default=True)
 abfe.promote_parameter('temperature', promoted_name='temperature', default=300.0,
                        description='Temperature (Kelvin)')
 abfe.promote_parameter('pressure', promoted_name='pressure', default=1.0,
@@ -150,7 +147,8 @@ abfe.promote_parameter('restraints', promoted_name='restraints',
                                    'alchemical decoupling. Choices: harmonic, boresch')
 abfe.promote_parameter('verbose', promoted_name='verbose', default=False, description="Yank verbose mode on/off")
 abfe.set_parameters(sampler='sams')
-abfe.set_parameters(protocol='windows_sams')
+abfe.promote_parameter('protocol_sams', promoted_name='protocol_sams', default='windows_sams',
+                       description="Select the Sams window schedule protocol")
 job.add_cube(abfe)
 
 # Minimization

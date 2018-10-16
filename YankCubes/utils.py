@@ -16,54 +16,12 @@
 # or its use.
 
 
-import os
-import numpy as np
-from simtk import unit
-import yaml
-from yank.analyze import get_analyzer
 from yank.experiment import ExperimentBuilder
+from YankCubes.yank_templates import max_cube_running_time
+from datetime import timedelta
 import os
-import fcntl
-import time
-from floe.api.orion import in_orion
-from simtk import openmm
 
 
-def local_cluster(sim):
-    def wrapper(*args):
-        if 'OE_VISIBLE_DEVICES' in os.environ and not in_orion():
-
-            gpus_available_indexes = os.environ["OE_VISIBLE_DEVICES"].split(',')
-            opt = args[0]
-            opt['Logger'].info("LOCAL FLOE CLUSTER OPTION IN USE")
-            while True:
-
-                gpu_id = gpus_available_indexes[opt['system_id'] % len(gpus_available_indexes)]
-
-                try:
-                    with open(gpu_id + '.txt', 'a') as file:
-                        fcntl.flock(file, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                        file.write("YANK - name = {} MOL_ID = {} GPU_IDS = {} GPU_ID = {}\n".format(opt['system_title'],
-                                                                                                    opt['system_id'],
-                                                                                                    gpus_available_indexes,
-                                                                                                    gpu_id))
-
-                        openmm.Platform.getPlatformByName('CUDA').setPropertyDefaultValue('DeviceIndex', gpu_id)
-
-                        sim(opt)
-                        time.sleep(1.0)
-                        fcntl.flock(file, fcntl.LOCK_UN)
-                        break
-                except IOError:
-                    time.sleep(0.01)
-
-        else:
-            sim(*args)
-
-    return wrapper
-
-
-@local_cluster
 def run_yank(opt):
 
     # Print Yank Template
@@ -76,3 +34,44 @@ def run_yank(opt):
     yaml_builder.run_experiments()
 
     return
+
+
+def calculate_iteration_time(output_directory, num_iterations):
+
+    UNITS = {"s": "seconds", "m": "minutes", "h": "hours", "d": "days", "w": "weeks"}
+
+    def convert_to_seconds(s):
+        count = int(float(s[:-1]))
+        unit = UNITS[s[-1]]
+        td = timedelta(**{unit: count})
+        return td.seconds + 60 * 60 * 24 * td.days
+
+    log_fn = os.path.join(output_directory, "experiments/experiments.log")
+
+    f = open(log_fn, 'r')
+
+    log = f.read()
+
+    times = []
+    for line in log.splitlines():
+        if "Iteration took" in line:
+            times.append(line)
+
+    clean_times = [i.split('-')[-1].split(" ")[-1][:-1] for i in times]
+
+    # times in seconds
+    tms_list = []
+
+    for tm in clean_times:
+        tms = convert_to_seconds(tm)
+        tms_list.append(tms)
+
+    # average time per iterations in hrs
+    avg_time_per_iteration_phase_1 = (sum(tms_list[:num_iterations]) / num_iterations) / 3600.0
+    avg_time_per_iteration_phase_2 = (sum(tms_list[num_iterations:]) / num_iterations) / 3600.0
+
+    avg_time_per_iteration = avg_time_per_iteration_phase_1 + avg_time_per_iteration_phase_2
+
+    iterations_per_cube = int(max_cube_running_time / avg_time_per_iteration)
+
+    return iterations_per_cube

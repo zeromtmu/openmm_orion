@@ -105,10 +105,9 @@ complx = ComplexPrepCube("Complex", title="Complex Preparation")
 solvate = SolvationCube("Hydration", title="System Hydration")
 solvate.promote_parameter('density', promoted_name='density', default=1.03,
                           description="Solution density in g/ml")
-solvate.promote_parameter('close_solvent', promoted_name='close_solvent', default=True,
-                          description='The solvent molecules will be placed very close to the solute')
 solvate.promote_parameter('salt_concentration', promoted_name='salt_concentration', default=50.0,
                           description='Salt concentration (Na+, Cl-) in millimolar')
+solvate.set_parameters(close_solvent=True)
 
 # Force Field Application
 ff = ForceFieldCube("ForceField", title="System Parametrization")
