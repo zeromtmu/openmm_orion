@@ -109,48 +109,67 @@ def yank_binding_initialize(sim):
 
             opt['Logger'].info("Yank User template file in use ")
 
-            # Load the yank_template as yaml
+            # Loading the yank_template as yaml
             yank_yaml_template = yaml.load(yank_template)
 
-            # Load the user Yaml file
+            # Loading the user Yaml file
             try:
                 fn = opt['user_yank_yaml_file']
                 with open(fn, 'r') as yaml_file:
                     yank_yaml_user = yaml.load(yaml_file)
-
             except:
                 raise IOError("It was not possible to load the provided yaml file")
 
             yank_yaml_merge = dict(yank_yaml_template)
 
+            # Cleaning
+            del yank_yaml_merge['harmonic']
+            del yank_yaml_merge['boresch']
+
             if 'experiments' in yank_yaml_user:
                 if isinstance(yank_yaml_user['experiments'], list):
+
                     for exp in yank_yaml_user['experiments']:
                         yank_yaml_merge[exp] = yank_yaml_user[exp]
+
+                    yank_yaml_merge['experiments'] = yank_yaml_user['experiments']
+
+                    # yank_template = yank_yaml_merge
                 else:
-                    # Cleaning
-                    del yank_yaml_merge['harmonic']
-                    del yank_yaml_merge['boresch']
+                    yank_yaml_merge['experiments'] = ["exp"]
+
+                    yank_yaml_merge['exp'] = yank_yaml_user['experiments']
+
+                if len(yank_yaml_merge['experiments']) > 1:
+                    raise ValueError("Currently just one Yank experiment is supported. Provided: {}".format(yank_yaml_merge['experiments']))
+
+                for exp in yank_yaml_merge['experiments']:
 
                     # System section
-                    yank_yaml_merge['experiments'] = dict()
-                    yank_yaml_merge['experiments']['system'] = 'system'
+                    yank_yaml_merge[exp]['system'] = 'system'
 
-                    # New Protocol
-                    yank_yaml_merge['experiments']['protocol'] = yank_yaml_user['experiments']['protocol']
-                    yank_yaml_merge['protocols'] = yank_yaml_user['protocols']
-                    if 'restraint' in yank_yaml_user['experiments']:
-                        yank_yaml_merge['experiments']['restraint'] = yank_yaml_user['experiments']['restraint']
+                    # Protocol Section
+                    if 'protocol' in yank_yaml_merge[exp]:
+                        yank_yaml_merge['protocols'][yank_yaml_merge[exp]['protocol']] = yank_yaml_user['protocols'][yank_yaml_merge[exp]['protocol']]
 
-                    # New Sampler
-                    if 'sampler' in yank_yaml_user['experiments']:
-                        yank_yaml_merge['experiments']['sampler'] = yank_yaml_user['experiments']['sampler']
-                        yank_yaml_merge['samplers'] = yank_yaml_user['samplers']
-                        yank_yaml_merge['mcmc_moves'] = yank_yaml_user['mcmc_moves']
-                        yank_yaml_merge['samplers'][yank_yaml_merge['experiments']['sampler']]['number_of_iterations'] \
-                            = opt['new_iterations']
+                    else:  # If the protocol section is not present use the selected one
+                        yank_yaml_merge[exp]['protocol'] = yank_yaml_template[yank_yaml_template['experiments'][0]]['protocol']
 
-                    yank_template = yank_yaml_merge
+                    if 'sampler' in yank_yaml_merge[exp]:
+                        yank_yaml_merge['samplers'][yank_yaml_merge[exp]['sampler']] = yank_yaml_user['samplers'][yank_yaml_merge[exp]['sampler']]
+                        if 'mcmc_moves' in yank_yaml_merge['samplers'][yank_yaml_merge[exp]['sampler']]:
+                            yank_yaml_merge['mcmc_moves'][yank_yaml_merge['samplers'][yank_yaml_merge[exp]['sampler']]['mcmc_moves']] = yank_yaml_user['mcmc_moves'][yank_yaml_user['samplers'][yank_yaml_merge[exp]['sampler']]['mcmc_moves']]
+                        else:  # mcmc move is set to the default one
+                            yank_yaml_merge['samplers'][yank_yaml_merge[exp]['sampler']]['mcmc_moves'] = yank_yaml_merge['samplers'][yank_yaml_template[yank_yaml_template['experiments'][0]]['sampler']]['mcmc_moves']
+                    else:  # The sampler is set to the default one
+                        yank_yaml_merge[exp]['sampler'] = yank_yaml_template[yank_yaml_template['experiments'][0]]['sampler']
+
+                    # Sampler section number of iterations
+                    yank_yaml_merge['samplers'][yank_yaml_merge[exp]['sampler']]['number_of_iterations'] = opt['new_iterations']
+
+                yank_template = yank_yaml_merge
+            else:
+                raise ValueError("Missing Experiments section in the provided Yank Yaml file")
 
         opt['yank_template'] = yank_template
 
