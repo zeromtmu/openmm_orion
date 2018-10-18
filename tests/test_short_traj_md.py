@@ -40,7 +40,7 @@ class TestMDOrionFloes(FloeTestCase):
     def test_STMD_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "ShortTrajMD.py"),
-            run_timeout=8000,
+            run_timeout=12000,
             queue_timeout=1200
         )
 

@@ -47,7 +47,7 @@ class TestYankBindingFloes(FloeTestCase):
     def test_yank_binding_repex_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "Binding_free_energy_repex.py"),
-            run_timeout=8000,
+            run_timeout=12000,
             queue_timeout=1200
         )
 
@@ -73,7 +73,7 @@ class TestYankBindingFloes(FloeTestCase):
                 "promoted": {
                     "ligands": ligand_file.identifier,
                     "protein": protein_file.identifier,
-                    "iterations": 5,
+                    "iterations": 13,
                     "out": output_file.identifier,
                     "fail": fail_output_file.identifier
                 }
@@ -87,7 +87,7 @@ class TestYankBindingFloes(FloeTestCase):
     def test_yank_binding_repex_multi_ligs_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "Binding_free_energy_repex.py"),
-            run_timeout=8000,
+            run_timeout=12000,
             queue_timeout=1200
         )
 
@@ -113,7 +113,7 @@ class TestYankBindingFloes(FloeTestCase):
                 "promoted": {
                     "ligands": ligand_file.identifier,
                     "protein": protein_file.identifier,
-                    "iterations": 5,
+                    "iterations": 13,
                     "out": output_file.identifier,
                     "fail": fail_output_file.identifier
                 }
@@ -127,7 +127,7 @@ class TestYankBindingFloes(FloeTestCase):
     def test_yank_binding_sams_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "Binding_free_energy_sams.py"),
-            run_timeout=8000,
+            run_timeout=12000,
             queue_timeout=1200
         )
 
@@ -153,7 +153,7 @@ class TestYankBindingFloes(FloeTestCase):
                 "promoted": {
                     "ligands": ligand_file.identifier,
                     "protein": protein_file.identifier,
-                    "iterations": 5,
+                    "iterations": 13,
                     "out": output_file.identifier,
                     "fail": fail_output_file.identifier
                 }
@@ -167,7 +167,7 @@ class TestYankBindingFloes(FloeTestCase):
     def test_yank_binding_sams_multi_ligs_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "Binding_free_energy_sams.py"),
-            run_timeout=8000,
+            run_timeout=12000,
             queue_timeout=1200
         )
 
@@ -193,7 +193,7 @@ class TestYankBindingFloes(FloeTestCase):
                 "promoted": {
                     "ligands": ligand_file.identifier,
                     "protein": protein_file.identifier,
-                    "iterations": 5,
+                    "iterations": 13,
                     "out": output_file.identifier,
                     "fail": fail_output_file.identifier
                 }
