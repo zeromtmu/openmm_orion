@@ -1,6 +1,6 @@
 {
- "requirements": "requirements.txt",
- "python_version": "3.5",
+ "requirements": "requirements_dev.txt",
+ "python_version": "3.5.6",
 
     "conda_channels": [ "conda-forge",
                         "mobleylab",
