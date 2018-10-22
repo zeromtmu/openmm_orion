@@ -11,6 +11,7 @@
 import re
 import ast
 
+
 from setuptools import setup, find_packages
 
 try:  # for pip >= 10
@@ -42,7 +43,7 @@ def get_version():
 
 setup(
     name="MDOrion",
-    version='0.7.11a0',
+    version=get_version(),
     packages=find_packages(exclude=['tests*']),
     include_package_data=True,
     author="Gaetano Calabro, Christopher Bayly",
