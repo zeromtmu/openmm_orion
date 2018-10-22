@@ -25,6 +25,10 @@ import pytest
 
 import MDOrion
 
+from openeye import oechem
+
+from datarecord import read_mol_record
+
 PACKAGE_DIR = os.path.dirname(os.path.dirname(MDOrion.__file__))
 
 FILE_DIR = os.path.join(PACKAGE_DIR, "tests", "data")
@@ -68,6 +72,23 @@ class TestYankSolvationOrionFloes(FloeTestCase):
 
         self.assertWorkFloeComplete(workfloe)
 
+        fail_ifs = oechem.oeifstream()
+        self.assertTrue(fail_ifs.open(fail_output_file.path))
+        fail_ifs.close()
+
+        records_fail = []
+
+        while True:
+            record_fail = read_mol_record(fail_ifs)
+            if record_fail is None:
+                break
+            records_fail.append(record_fail)
+        fail_ifs.close()
+
+        count = len(records_fail)
+        # The fail record must be empty
+        self.assertEqual(count, 0)
+
     @pytest.mark.floetest
     @pytest.mark.slow
     def test_yank_solvation_multi_ligs_floe(self):
@@ -99,3 +120,20 @@ class TestYankSolvationOrionFloes(FloeTestCase):
         )
 
         self.assertWorkFloeComplete(workfloe)
+
+        fail_ifs = oechem.oeifstream()
+        self.assertTrue(fail_ifs.open(fail_output_file.path))
+        fail_ifs.close()
+
+        records_fail = []
+
+        while True:
+            record_fail = read_mol_record(fail_ifs)
+            if record_fail is None:
+                break
+            records_fail.append(record_fail)
+        fail_ifs.close()
+
+        count = len(records_fail)
+        # The fail record must be empty
+        self.assertEqual(count, 0)

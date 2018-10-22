@@ -35,7 +35,7 @@ from simtk import (unit,
 
 from simtk.openmm import app
 
-import MDCubes.utils as utils
+from openeye import oechem
 
 PACKAGE_DIR = os.path.dirname(os.path.dirname(MDOrion.__file__))
 
@@ -151,6 +151,23 @@ class TestMDOrionFloes(FloeTestCase):
         )
 
         self.assertWorkFloeComplete(workfloe)
+
+        fail_ifs = oechem.oeifstream()
+        self.assertTrue(fail_ifs.open(fail_output_file.path))
+        fail_ifs.close()
+
+        records_fail = []
+
+        while True:
+            record_fail = read_mol_record(fail_ifs)
+            if record_fail is None:
+                break
+            records_fail.append(record_fail)
+        fail_ifs.close()
+
+        count = len(records_fail)
+        # The fail record must be empty
+        self.assertEqual(count, 0)
 
         # Read output record
         ifs = oeifstream(output_file.path)
