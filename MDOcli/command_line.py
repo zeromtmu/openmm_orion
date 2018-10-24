@@ -10,6 +10,8 @@ from datarecord import (Types,
                         OEField,
                         OEWriteRecord)
 
+from datarecord.datarecord import RecordVecData, RecordData
+
 from cuberecord import Types as TypesCR
 
 import mdtraj as md
@@ -220,29 +222,35 @@ def info_extraction(ctx):
     def recursive_record(record, level=0):
 
         for field in record.get_fields():
-            if not issubclass(field.get_type(), Types.Record) or not issubclass(field.get_type(), Types.RecordVec):
-                blank = (level+1) * "       "
+
+            field_type = field.get_type()
+
+            if not field_type == RecordData and not field_type == RecordVecData:
+                blank = (level + 1) * "       "
                 print("{} |".format(blank))
                 print("{} |".format(blank))
                 dis = "______"
                 if (field.get_type() is Types.String or
-                   field.get_type() is Types.Int or
-                   field.get_type() is Types.Float):
-                        print("{} {} name = {} type = {} value = {}".format(blank, dis,
-                                                                            field.get_name(),
-                                                                            field.get_type(),
-                                                                            str(record.get_value(field))[0:30]))
+                        field.get_type() is Types.Int or
+                        field.get_type() is Types.Float):
+                    print("{} {} name = {} type = {} value = {}".format(blank, dis,
+                                                                        field.get_name(),
+                                                                        field.get_type(),
+                                                                        str(record.get_value(field))[0:100]))
                 else:
                     print("{} {} name = {} type = {}".format(blank, dis,
                                                              field.get_name(),
                                                              field.get_type()))
 
-            if issubclass(field.get_type(), Types.Record):
-                recursive_record(record.get_value(field), level+1)
-            elif issubclass(field.get_type(), Types.RecordVec):
+            elif field_type == RecordData:
+                recursive_record(record.get_value(field), level + 1)
+
+            elif field_type == RecordVecData:
                 vec = record.get_value(field)
                 for rec in vec:
-                    recursive_record(rec, level+1)
+                    recursive_record(rec, level + 1)
+            else:
+                raise ValueError("Field type error: {}".format(field_type))
 
     for record in ctx.obj['records']:
         recursive_record(record, 0)

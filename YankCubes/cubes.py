@@ -308,7 +308,16 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
 
                 # Restarting
                 if current_iterations != 0:
-                    yank_files = md_stage_record.get_value(Fields.trajectory)
+
+                    if md_stage_record.has_value(Fields.trajectory):
+                        yank_files = md_stage_record.get_value(Fields.trajectory)
+
+                    elif md_stage_record.has_value(Fields.orion_local_trj_field):
+                        yank_files = md_stage_record.get_value(Fields.orion_local_trj_field)
+
+                    else:
+                        print("No Yank trajectory file have been found in the selected stage record {}".format(
+                            md_stage_record.get_value(Fields.stage_name)))
 
                     filename = os.path.join(output_directory, "yank_files.tar")
 
@@ -790,7 +799,16 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                 opt['solvated_ligand_omm_serialized_fn'] = os.path.join(output_directory, "unbonded_state.xml")
 
                 if current_iterations != 0:
-                    yank_files = md_stage_record.get_value(Fields.trajectory)
+
+                    if md_stage_record.has_value(Fields.trajectory):
+                        yank_files = md_stage_record.get_value(Fields.trajectory)
+
+                    elif md_stage_record.has_value(Fields.orion_local_trj_field):
+                        yank_files = md_stage_record.get_value(Fields.orion_local_trj_field)
+
+                    else:
+                        print("No Yank trajectory file have been found in the selected stage record {}".format(
+                            md_stage_record.get_value(Fields.stage_name)))
 
                     filename = os.path.join(output_directory, "yank_files.tar")
 

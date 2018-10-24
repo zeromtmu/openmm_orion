@@ -82,6 +82,10 @@ class Fields:
     else:
         trajectory = OEField("Trajectory_OPLMD", Types.String)
 
+    # This Field is introduced to deal with trajectory linked to a record
+    # generated in Orion but locally used
+    orion_local_trj_field = OEField("Trajectory_OPLMD", TypesCR.Orion.File)
+
     # Stage list Field
     md_stages = OEField("MDStages_OPLMD", Types.RecordVec)
 

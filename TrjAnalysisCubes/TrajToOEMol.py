@@ -92,11 +92,15 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
 
             with TemporaryDirectory() as output_directory:
 
-                trajID = utl.RequestOEFieldType(md_stageLast_record, Fields.trajectory)
+                if md_stageLast_record.has_value(Fields.trajectory):
+                    trajID = md_stageLast_record.get_value(Fields.trajectory)
 
-                if trajID is None:
-                    opt['Logger'].info('Trajectory not found!')
-                    raise ValueError('{} Trajectory not found!'.format(system_title))
+                elif md_stageLast_record.has_value(Fields.orion_local_trj_field):
+                    self.log.info("Local Orion Trajectory detected")
+                    trajID = md_stageLast_record.get_value(Fields.orion_local_trj_field)
+                else:
+                    raise ValueError("No trajectory file have been found in the selected stage record {}".format(
+                        md_stageLast_record.get_value(Fields.stage_name)))
 
                 trj_selected_filename = os.path.join(output_directory, "trajectory.h5")
 
