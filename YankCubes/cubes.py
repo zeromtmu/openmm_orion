@@ -48,7 +48,7 @@ import itertools
 from YankCubes import utils as yankutils
 
 
-from Standards import (MDStageNames,
+from Standards import (MDStageTypes,
                        Fields,
                        MDRecords)
 
@@ -403,7 +403,7 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                 with open(os.path.join(output_directory, "experiments/experiments.log"), 'r') as flog:
                     str_logger += '\n'+flog.read()
 
-                md_stage_record = MDRecords.MDStageRecord(MDStageNames.FEC,
+                md_stage_record = MDRecords.MDStageRecord(self.title, MDStageTypes.FEC,
                                                           MDRecords.MDSystemRecord(system, mdstate),
                                                           log=str_logger,
                                                           trajectory=lf)
@@ -904,7 +904,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                 with open(os.path.join(output_directory, "experiments/experiments.log"), 'r') as flog:
                     str_logger += '\n' + flog.read()
 
-                md_stage_record = MDRecords.MDStageRecord(MDStageNames.FEC,
+                md_stage_record = MDRecords.MDStageRecord(self.title, MDStageTypes.FEC,
                                                           MDRecords.MDSystemRecord(complex,
                                                                                    mdstate),
                                                           log=str_logger,
