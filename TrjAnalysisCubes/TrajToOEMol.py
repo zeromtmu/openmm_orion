@@ -99,7 +99,10 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
 
                 elif md_stageLast_record.has_value(Fields.orion_local_trj_field):
                     opt['Logger'].info("Orion S3 Trajectory Field Detected")
-                    trajID = md_stageLast_record.get_value(Fields.orion_local_trj_field)
+                    # Begin Bayly debug
+                    # trajID = md_stageLast_record.get_value(Fields.orion_local_trj_field)
+                    raise ValueError("Found Orion S3 Trajectory Field but stopping anyway")
+                    # End Bayly debug
 
                 else:
                     raise ValueError("No trajectory have been found in the selected stage record {}".format(
