@@ -27,6 +27,7 @@ from datarecord import read_mol_record
 import MDOrion
 from Standards import Fields
 from oeommtools import utils as oeommutils
+from openeye import oechem
 
 import pytest
 
@@ -41,6 +42,7 @@ session = OrionSession()
 @package(PACKAGE_DIR)
 class TestMDOrionFloes(FloeTestCase):
 
+    @pytest.mark.floetest
     @pytest.mark.fast
     def test_compex_prep_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
@@ -77,6 +79,20 @@ class TestMDOrionFloes(FloeTestCase):
             }
         )
         self.assertWorkFloeComplete(workfloe)
+
+        fail_ifs = oechem.oeifstream()
+        records_fail = []
+
+        while True:
+            record_fail = read_mol_record(fail_ifs)
+            if record_fail is None:
+                break
+            records_fail.append(record_fail)
+        fail_ifs.close()
+
+        count = len(records_fail)
+        # The fail record must be empty
+        self.assertEqual(count, 0)
 
         ifs = oeifstream(output_file.path)
         records = []
@@ -124,7 +140,7 @@ class TestMDOrionFloes(FloeTestCase):
             # self.assertTrue(stage.has_value(Fields.trajectory))
             self.assertTrue(stage.has_value(Fields.md_system))
 
-            self.assertEqual(stage.get_value(Fields.stage_name), "SETUP")
+            self.assertEqual(stage.get_value(Fields.stage_type), "SETUP")
             # self.assertEqual(stage.get_value(Fields.log_data), " ")
             # self.assertEqual(stage.get_value(Fields.trajectory), " ")
 

@@ -35,7 +35,7 @@ from simtk import (unit,
 
 from simtk.openmm import app
 
-import MDCubes.utils as utils
+from openeye import oechem
 
 PACKAGE_DIR = os.path.dirname(os.path.dirname(MDOrion.__file__))
 
@@ -80,6 +80,7 @@ def calculate_eng(mdstate, parmed_structure):
 @package(PACKAGE_DIR)
 class TestMDOrionFloes(FloeTestCase):
 
+    @pytest.mark.floetest
     @pytest.mark.fast
     def test_omm_minimization_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
@@ -150,6 +151,20 @@ class TestMDOrionFloes(FloeTestCase):
         )
 
         self.assertWorkFloeComplete(workfloe)
+
+        fail_ifs = oechem.oeifstream()
+        records_fail = []
+
+        while True:
+            record_fail = read_mol_record(fail_ifs)
+            if record_fail is None:
+                break
+            records_fail.append(record_fail)
+        fail_ifs.close()
+
+        count = len(records_fail)
+        # The fail record must be empty
+        self.assertEqual(count, 0)
 
         # Read output record
         ifs = oeifstream(output_file.path)
