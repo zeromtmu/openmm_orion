@@ -21,13 +21,9 @@ from floe.api import ParallelMixin, parameter
 
 from cuberecord import OERecordComputeCube
 
-from cuberecord.ports import  RecordOutputPort
-
 from oeommtools import utils as oeommutils
 
 from Standards import Fields
-
-from floe.constants import ADVANCED
 
 from openeye import oechem
 
