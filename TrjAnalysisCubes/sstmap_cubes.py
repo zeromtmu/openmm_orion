@@ -17,7 +17,7 @@ import os
 
 from oeommtools.utils import split
 
-from Standards import Fields, MDStageNames
+from Standards import Fields, MDStageTypes
 
 import mdtraj as md
 
@@ -232,7 +232,7 @@ class SSTMapHsa(ParallelMixin, OERecordComputeCube):
 
                     if ligand_align:
                         mdstage_setup = mdstages[0]
-                        if mdstage_setup.get_value(Fields.stage_name) == MDStageNames.SETUP:
+                        if mdstage_setup.get_value(Fields.stage_name) == MDStageTypes.SETUP:
                             mdsytem_setup = mdstage_setup.get_value(Fields.md_system)
                             setup_topology = mdsytem_setup.get_value(Fields.topology)
 
@@ -527,7 +527,7 @@ class SSTMapGist(ParallelMixin, OERecordComputeCube):
 
                         mdstage_setup = mdstages[0]
 
-                        if mdstage_setup.get_value(Fields.stage_name) == MDStageNames.SETUP:
+                        if mdstage_setup.get_value(Fields.stage_name) == MDStageTypes.SETUP:
                             mdsytem_setup = mdstage_setup.get_value(Fields.md_system)
                             setup_topology = mdsytem_setup.get_value(Fields.topology)
 

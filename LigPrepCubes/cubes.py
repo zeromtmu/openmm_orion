@@ -145,9 +145,7 @@ class LigandSetting(OERecordComputeCube):
     # Ligand Residue Name
     lig_res_name = parameter.StringParameter('lig_res_name',
                                              default='LIG',
-                                             required=True,
-                                             help_text='The ligand residue name',
-                                             level=ADVANCED)
+                                             help_text='The ligand residue name')
 
     def begin(self):
         self.opt = vars(self.args)
