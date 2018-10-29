@@ -94,8 +94,8 @@ class SSTMapHsa(ParallelMixin, OERecordComputeCube):
                   " of the ligand atom are included in the analysis. Default: 5.0."
     )
 
-    ligand_res_name = parameter.StringParameter(
-        'ligand_res_name',
+    lig_res_name = parameter.StringParameter(
+        'lig_res_name',
         default='LIG',
         max_length=4,
         help_text="Resname to use to identify the ligand"
@@ -243,7 +243,7 @@ class SSTMapHsa(ParallelMixin, OERecordComputeCube):
                     top_filename, parm_filename, prod_traj_filename, aligned_prot_oemol = sstmap_utils.\
                         process_trajectory(prod_traj_filename,
                                            prod_topology_parmed,
-                                           opt['ligand_res_name'],
+                                           opt['lig_res_name'],
                                            output_directory,
                                            reference_topology=setup_topology)
 
@@ -382,8 +382,8 @@ class SSTMapGist(ParallelMixin, OERecordComputeCube):
         help_text="Water model used during the simulation. Used to set bulk density number. Default: TIP3P."
     )
 
-    ligand_res_name = parameter.StringParameter(
-        'ligand_res_name',
+    lig_res_name = parameter.StringParameter(
+        'lig_res_name',
         default='LIG',
         max_length=4,
         help_text="Resname to use to identify the ligand"
@@ -538,7 +538,7 @@ class SSTMapGist(ParallelMixin, OERecordComputeCube):
                     # rotations.
                     top_filename, parm_filename, prod_traj_filename, aligned_prot_oemol = sstmap_utils.\
                         process_trajectory(prod_traj_filename, prod_topology_parmed,
-                                           opt['ligand_res_name'], output_directory,
+                                           opt['lig_res_name'], output_directory,
                                            reference_topology=setup_topology)
                     # Get number of frames
                     total_number_frames = 0

@@ -89,10 +89,10 @@ ff.promote_parameter('ligand_forcefield', promoted_name='ligand_ff', default='GA
 ff.promote_parameter('other_forcefield', promoted_name='other_ff', default='GAFF2')
 ff.set_parameters(lig_res_name='LIG')
 
-ofs = DatasetWriterCube('ofs', title='OFS-Success')
+ofs = DatasetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")
 
-fail = DatasetWriterCube('fail', title='OFS-Failure')
+fail = DatasetWriterCube('fail', title='Failures')
 fail.promote_parameter("data_out", promoted_name="fail")
 
 job.add_cubes(iligs, chargelig, ligset, iprot, protset, complx, solvate, ff, ofs, fail)
