@@ -76,6 +76,7 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
             opt['Logger'].info(' ')
             system_title = utl.RequestOEFieldType(record, Fields.title)
             opt['Logger'].info('{}: Attempting MD Traj conversion into OEMols'.format(system_title))
+            idx = utl.RequestOEFieldType( record, Fields.id)
 
             # Extract the MDStageRecord list
             md_stages = utl.RequestOEFieldType(record, Fields.md_stages)
@@ -85,23 +86,30 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
             # Extract and verify the traj filename for the last MD stage
             md_stageLast_record = md_stages[-1]
 
-            lastName = utl.RequestOEFieldType(md_stageLast_record, Fields.stage_type)
+            # begin debug Bayly
+            #lastName = utl.RequestOEFieldType(md_stageLast_record, Fields.stage_type)
+            lastName = utl.RequestOEFieldType(md_stageLast_record, Fields.stage_name)
+            # end debug Bayly
 
             if lastName != 'NPT':
                 raise ValueError('Cannot find the NPT stage')
 
             with TemporaryDirectory() as output_directory:
 
-                opt['Logger'].info('Temp Directory: {}'.format(output_directory))
+                opt['Logger'].info('{} Temp Directory: {}'.format(system_title, output_directory))
 
                 if md_stageLast_record.has_value(Fields.trajectory):
                     trajID = md_stageLast_record.get_value(Fields.trajectory)
 
                 elif md_stageLast_record.has_value(Fields.orion_local_trj_field):
-                    opt['Logger'].info("Orion S3 Trajectory Field Detected")
-                    # Begin Bayly debug
-                    # trajID = md_stageLast_record.get_value(Fields.orion_local_trj_field)
-                    raise ValueError("Found Orion S3 Trajectory Field but stopping anyway")
+                    opt['Logger'].info('{} Orion S3 Trajectory Field Detected'.format( system_title))
+                    # if traj has been downloaded, build the name and check for it
+                    trajID = system_title+'_'+str(idx)+'-prod.h5'
+                    if os.path.exists( trajID):
+                        opt['Logger'].info('{} ... but local Trajectory file {} exists'.format( system_title, trajID))
+                    else:
+                        trajID = md_stageLast_record.get_value(Fields.orion_local_trj_field)
+                    # raise ValueError("Found Orion S3 Trajectory Field but stopping anyway")
                     # End Bayly debug
 
                 else:
@@ -120,13 +128,13 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
                 setupName = utl.RequestOEFieldType(md_stage0_record, Fields.stage_name)
 
                 if setupName != 'SETUP':
-                    raise ValueError('Cannot find the SETUP stage')
+                    raise ValueError('{} Cannot find the SETUP stage'.format(system_title))
 
                 md_system = utl.RequestOEFieldType(md_stage0_record, Fields.md_system)
 
                 setupOEMol = utl.RequestOEFieldType(md_system, Fields.topology)
 
-                opt['Logger'].info('Setup topology has {} atoms'.format(setupOEMol.NumAtoms()))
+                opt['Logger'].info('{} Setup topology has {} atoms'.format(system_title, setupOEMol.NumAtoms()))
 
                 # Generate multiconformer protein and ligand OEMols from the trajectory
                 opt['Logger'].info('{} Generating protein and ligand trajectory OEMols'.format(system_title))
@@ -173,18 +181,14 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
 
             record.set_value(OEField('OETraj', Types.Record), oetrajRecord)
 
-            analysesDone = None
-
-            try:
-                analysesDone = utl.RequestOEField(record, 'AnalysesDone', Types.StringVec)
-                opt['Logger'].info('{}: found AnalysesDone list'.format(system_title))
+            # update or initiate the list of analyses that have been done
+            analysesDoneField = OEField('AnalysesDone', Types.StringVec)
+            if( record.has_value( analysesDoneField)):
+                analysesDone = utl.RequestOEFieldType( record, analysesDoneField)
                 analysesDone.append('OETraj')
-            except:
+            else:
                 analysesDone = ['OETraj']
-                opt['Logger'].info('{}: created AnalysesDone list'.format(system_title))
-            if analysesDone is None:
-                raise ValueError('{} AnalysesDone list does not exist'.format(system_title))
-            record.set_value(OEField('AnalysesDone', Types.StringVec), analysesDone)
+            record.set_value( analysesDoneField, analysesDone)
             opt['Logger'].info('{}: saved protein and ligand traj OEMols'.format(system_title))
 
             self.success.emit(record)
