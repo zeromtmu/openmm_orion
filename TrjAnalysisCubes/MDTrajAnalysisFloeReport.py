@@ -387,7 +387,8 @@ class MDTrajAnalysisClusterReport(OERecordComputeCube):
             clusRGB[-1] = (76, 76, 76)
 
             # write the report
-            reportFName = system_title+'_ClusReport.html'
+            id_plmd = utl.RequestOEFieldType( record, Fields.id)
+            reportFName = system_title+'_'+str(id_plmd)+'_ClusReport.html'
             report_file = open( reportFName, 'w')
 
             report_file.write(_clus_floe_report_header)
@@ -451,7 +452,6 @@ class MDTrajAnalysisClusterReport(OERecordComputeCube):
                 session = OrionSession()
 
                 ligName = ligInitPose.GetTitle()
-                id_plmd = utl.RequestOEFieldType( record, Fields.id)
                 file_upload = File.upload(session, "Report{} {}".format(id_plmd, ligName), "./"+reportFName)
                 session.tag_resource(file_upload, "floe_report")
                 job_id = environ.get('ORION_JOB_ID')
