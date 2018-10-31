@@ -132,6 +132,7 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
     def begin(self):
         self.opt = vars(self.args)
         self.opt['Logger'] = self.log
+        self.opt['SimType'] = 'yank_solvation'
 
     def process(self, record, port):
 
@@ -629,6 +630,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
     def begin(self):
         self.opt = vars(self.args)
         self.opt['Logger'] = self.log
+        self.opt['SimType'] = 'yank_binding'
 
     def process(self, record, port):
 

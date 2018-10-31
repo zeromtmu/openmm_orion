@@ -107,7 +107,7 @@ def calculate_VT(mdstate, parmed_structure):
 class TestMDOrionFloes(FloeTestCase):
 
     @pytest.mark.floetest
-    @pytest.mark.moderate
+    @pytest.mark.fast
     def test_omm_npt_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "MDnpt.py"),

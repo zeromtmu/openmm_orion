@@ -92,3 +92,163 @@ class TestMDOrionFloes(FloeTestCase):
         count = len(records_fail)
         # The fail record must be empty
         self.assertEqual(count, 0)
+
+    @pytest.mark.floetest
+    @pytest.mark.slow
+    def test_STMD_Analysis_floe(self):
+        workfloe = WorkFloeWrapper.get_workfloe(
+            os.path.join(FLOES_DIR, "ShortTrajMDWithAnalysis.py"),
+            run_timeout=12000,
+            queue_timeout=1200
+        )
+
+        ligand_file = DatasetWrapper.get_dataset(
+            os.path.join(
+                FILE_DIR,
+                "MCL1_lig26.oeb"
+            )
+        )
+
+        protein_file = DatasetWrapper.get_dataset(
+            os.path.join(
+                FILE_DIR,
+                "MCL1_protein_ACE_NMA_caps.pdb"
+            )
+        )
+
+        output_file = OutputDatasetWrapper(extension=".oedb")
+        fail_output_file = OutputDatasetWrapper(extension=".oedb")
+
+        workfloe.start(
+            {
+                "promoted": {
+                    "ligands": ligand_file.identifier,
+                    "protein": protein_file.identifier,
+                    "out": output_file.identifier,
+                    "fail": fail_output_file.identifier
+                }
+            }
+        )
+
+        self.assertWorkFloeComplete(workfloe)
+
+        fail_ifs = oechem.oeifstream()
+        records_fail = []
+
+        while True:
+            record_fail = read_mol_record(fail_ifs)
+            if record_fail is None:
+                break
+            records_fail.append(record_fail)
+        fail_ifs.close()
+
+        count = len(records_fail)
+        # The fail record must be empty
+        self.assertEqual(count, 0)
+
+    @pytest.mark.floetest
+    @pytest.mark.slow
+    def test_STMD_large_sys_floe(self):
+        workfloe = WorkFloeWrapper.get_workfloe(
+            os.path.join(FLOES_DIR, "ShortTrajMD.py"),
+            run_timeout=12000,
+            queue_timeout=1200
+        )
+
+        ligand_file = DatasetWrapper.get_dataset(
+            os.path.join(
+                FILE_DIR,
+                "Hunt13_lig13.oeb"
+            )
+        )
+
+        protein_file = DatasetWrapper.get_dataset(
+            os.path.join(
+                FILE_DIR,
+                "4JOO_truncNoLig.pdb"
+            )
+        )
+
+        output_file = OutputDatasetWrapper(extension=".oedb")
+        fail_output_file = OutputDatasetWrapper(extension=".oedb")
+
+        workfloe.start(
+            {
+                "promoted": {
+                    "ligands": ligand_file.identifier,
+                    "protein": protein_file.identifier,
+                    "out": output_file.identifier,
+                    "fail": fail_output_file.identifier
+                }
+            }
+        )
+
+        self.assertWorkFloeComplete(workfloe)
+
+        fail_ifs = oechem.oeifstream()
+        records_fail = []
+
+        while True:
+            record_fail = read_mol_record(fail_ifs)
+            if record_fail is None:
+                break
+            records_fail.append(record_fail)
+        fail_ifs.close()
+
+        count = len(records_fail)
+        # The fail record must be empty
+        self.assertEqual(count, 0)
+
+    @pytest.mark.floetest
+    @pytest.mark.slow
+    def test_STMD_multi_ligs_floe(self):
+        workfloe = WorkFloeWrapper.get_workfloe(
+            os.path.join(FLOES_DIR, "ShortTrajMD.py"),
+            run_timeout=12000,
+            queue_timeout=1200
+        )
+
+        ligand_file = DatasetWrapper.get_dataset(
+            os.path.join(
+                FILE_DIR,
+                "MCL1_ligs_5.oeb"
+            )
+        )
+
+        protein_file = DatasetWrapper.get_dataset(
+            os.path.join(
+                FILE_DIR,
+                "MCL1_protein_ACE_NMA_caps.pdb"
+            )
+        )
+
+        output_file = OutputDatasetWrapper(extension=".oedb")
+        fail_output_file = OutputDatasetWrapper(extension=".oedb")
+
+        workfloe.start(
+            {
+                "promoted": {
+                    "ligands": ligand_file.identifier,
+                    "protein": protein_file.identifier,
+                    "out": output_file.identifier,
+                    "fail": fail_output_file.identifier
+
+                }
+            }
+        )
+
+        self.assertWorkFloeComplete(workfloe)
+
+        fail_ifs = oechem.oeifstream()
+        records_fail = []
+
+        while True:
+            record_fail = read_mol_record(fail_ifs)
+            if record_fail is None:
+                break
+            records_fail.append(record_fail)
+        fail_ifs.close()
+
+        count = len(records_fail)
+        # The fail record must be empty
+        self.assertEqual(count, 0)
