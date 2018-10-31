@@ -42,7 +42,7 @@ class TestMDOrionFloes(FloeTestCase):
 
     @pytest.mark.floetest
     @pytest.mark.slow
-    def test_compex_prep_floe(self):
+    def test_STMD_large_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "ShortTrajMD.py"),
             run_timeout=12000,
