@@ -286,5 +286,7 @@ def info_extraction(ctx):
             else:
                 raise ValueError("Field type error: {}".format(field_type))
 
-    for record in ctx.obj['records']:
-        recursive_record(record, 0)
+    for idx in range(0, len(ctx.obj['records'])):
+        print(30 * "*" + " RECORD {}/{} ".format(idx + 1, len(ctx.obj['records'])) + 30 * "*")
+        recursive_record(ctx.obj['records'][idx], 0)
+        print("\n" + 30 * "*" + " END RECORD ".format(idx + 1, len(ctx.obj['records'])) + 30 * "*" + "\n") 
