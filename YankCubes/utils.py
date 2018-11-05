@@ -40,6 +40,12 @@ from os import environ
 
 import yaml
 
+import fcntl
+
+from simtk import openmm
+
+import time
+
 
 def yank_solvation_initialize(sim):
     def wrapper(*args):
@@ -71,7 +77,42 @@ def yank_solvation_initialize(sim):
         # Print Yank Template
         opt['Logger'].info(opt['yank_template'])
 
-        sim(opt)
+        if 'OE_VISIBLE_DEVICES' in os.environ and not in_orion():
+
+            gpus_available_indexes = os.environ["OE_VISIBLE_DEVICES"].split(',')
+
+            opt['Logger'].info("OE LOCAL FLOE CLUSTER OPTION IN USE")
+
+            while True:
+
+                for gpu_id in gpus_available_indexes:
+                    # opt['Logger'].warn("UNLOCKED GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
+                    try:
+                        with open(str(gpu_id) + '.txt', 'a') as file:
+                            fcntl.flock(file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                            opt['Logger'].warn("LOCKED GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
+                            file.write(
+                                "YANK - name = {} MOL_ID = {} GPU_IDS = {} GPU_ID = {}\n".format(opt['system_title'],
+                                                                                                 opt['system_id'],
+                                                                                                 gpus_available_indexes,
+                                                                                                 str(gpu_id)))
+
+                            openmm.Platform.getPlatformByName('CUDA').setPropertyDefaultValue('DeviceIndex', str(gpu_id))
+
+                            sim(opt)
+
+                            time.sleep(5.0)
+                            fcntl.flock(file, fcntl.LOCK_UN)
+                            time.sleep(1.0)
+                            opt['Logger'].warn("UNLOCKING GPU ID = {}".format(gpu_id))
+                            return
+
+                    except:
+                        opt['Logger'].warn("EXCEPT UNLOCKED GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
+                        time.sleep(0.1)
+
+        else:
+            sim(*args)
 
     return wrapper
 

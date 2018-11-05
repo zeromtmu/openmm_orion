@@ -62,40 +62,10 @@ job.classification = [['Solvation Free Energy']]
 job.tags = [tag for lists in job.classification for tag in lists]
 
 # Ligand setting
-iligs = DatasetReaderCube("Ligands", title="Ligand Reader")
-iligs.promote_parameter("data_in", promoted_name="ligands", title="Ligand Input File", description="Ligand file name")
-job.add_cube(iligs)
+isys = DatasetReaderCube("System", title="System")
+isys.promote_parameter("data_in", promoted_name="system", title="System Input File", description="System file name")
+job.add_cube(isys)
 
-
-chargelig = LigandChargeCube("LigCharge", title="Ligand Charge")
-chargelig.promote_parameter('charge_ligands', promoted_name='charge_ligands',
-                            description="Calculate ligand partial charges", default=True)
-job.add_cube(chargelig)
-
-ligset = LigandSetting("LigandSetting")
-ligset.set_parameters(lig_res_name='LIG')
-job.add_cube(ligset)
-
-
-solvate = SolvationCube("Solvation", title="System Solvation")
-solvate.promote_parameter("density", promoted_name="density", title="Solution density in g/ml", default=1.0,
-                          description="Solution Density in g/ml")
-solvate.promote_parameter("solvents", promoted_name="solvents", title="Solvent components",
-                          default='[H]O[H]',
-                          description="Comma separated smiles strings of solvent components")
-solvate.promote_parameter("molar_fractions", promoted_name="molar_fractions",
-                          title="Molar fractions",
-                          default='1.0',
-                          description="Comma separated strings of solvent molar fractions")
-solvate.set_parameters(distance_between_atoms=2.5)
-solvate.set_parameters(padding_distance=11.0)
-
-job.add_cube(solvate)
-
-ff = ForceFieldCube("ForceField", title="System Parametrization")
-ff.promote_parameter('ligand_forcefield', promoted_name='Ligand ForceField', default='GAFF2')
-ff.set_parameters(lig_res_name='LIG')
-job.add_cube(ff)
 
 # Add YANK Cube
 yank_proxy = YankProxyCube("YankProxy", title="Yank Proxy")
@@ -116,44 +86,6 @@ solvationfe.promote_parameter('hmr', promoted_name='hmr', default=False,
 solvationfe.set_parameters(lig_res_name='LIG')
 job.add_cube(solvationfe)
 
-# Minimization
-minimize = OpenMMminimizeCube("Minimize", title="System Minimization")
-minimize.set_parameters(restraints='noh ligand')
-minimize.set_parameters(restraintWt=5.0)
-minimize.set_parameters(center=True)
-minimize.promote_parameter("hmr", promoted_name="hmr")
-job.add_cube(minimize)
-
-
-# NVT Warm-up
-warmup = OpenMMNvtCube('warmup', title='System Warm Up')
-warmup.set_parameters(time=0.02)
-warmup.promote_parameter("temperature", promoted_name="temperature")
-warmup.set_parameters(restraints="noh ligand")
-warmup.set_parameters(restraintWt=2.0)
-warmup.set_parameters(trajectory_interval=0.0)
-warmup.set_parameters(reporter_interval=0.0)
-warmup.set_parameters(suffix='warmup')
-warmup.promote_parameter("hmr", promoted_name="hmr")
-job.add_cube(warmup)
-
-
-# NPT Equilibration stage
-equil = OpenMMNptCube('equil', title='System Equilibration')
-equil.set_parameters(time=0.02)
-equil.promote_parameter("temperature", promoted_name="temperature")
-equil.promote_parameter("pressure", promoted_name="pressure")
-equil.promote_parameter("hmr", promoted_name="hmr")
-equil.set_parameters(restraints="noh ligand")
-equil.set_parameters(restraintWt=0.1)
-equil.set_parameters(trajectory_interval=0.0)
-equil.set_parameters(reporter_interval=0.0)
-equil.set_parameters(suffix='equil')
-job.add_cube(equil)
-
-test_out = DatasetWriterCube('test_out', title='test_out')
-test_out.promote_parameter("data_out", promoted_name="test_out")
-job.add_cube(test_out)
 
 ofs = DatasetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")
@@ -163,15 +95,7 @@ fail = DatasetWriterCube('fail', title='Failures')
 fail.promote_parameter("data_out", promoted_name="fail")
 job.add_cube(fail)
 
-iligs.success.connect(chargelig.intake)
-chargelig.success.connect(ligset.intake)
-ligset.success.connect(solvate.intake)
-solvate.success.connect(ff.intake)
-ff.success.connect(minimize.intake)
-minimize.success.connect(warmup.intake)
-warmup.success.connect(equil.intake)
-equil.success.connect(yank_proxy.intake)
-equil.success.connect(test_out.intake)
+isys.success.connect(yank_proxy.intake)
 yank_proxy.success.connect(ofs.intake)
 yank_proxy.failure.connect(fail.intake)
 yank_proxy.cycle_out_port.connect(solvationfe.intake)

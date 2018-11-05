@@ -48,7 +48,9 @@ try:
 except: have_gzip = False
 
 import simtk.openmm as mm
+
 import math
+
 import time
 
 from MDCubes.utils import MDSimulations
