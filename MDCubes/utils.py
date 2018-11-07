@@ -129,32 +129,35 @@ def local_cluster(sim):
             while True:
 
                 for gpu_id in gpus_available_indexes:
-                    # opt['Logger'].warn("UNLOCKED GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
+                    file = open(str(gpu_id) + '.txt', 'a')
                     try:
-                        with open(str(gpu_id) + '.txt', 'a') as file:
-                            fcntl.flock(file, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                            opt['Logger'].warn("LOCKED GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
-                            file.write(
+                        fcntl.flock(file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                        opt['Logger'].warn("LOCKED GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
+                        file.write(
                                 "MD - name = {} MOL_ID = {} GPU_IDS = {} GPU_ID = {}\n".format(opt['system_title'],
                                                                                                opt['system_id'],
                                                                                                gpus_available_indexes,
                                                                                                str(gpu_id)))
+                    except BlockingIOError:
+                        time.sleep(3.0)
+
+
                             opt['gpu_id'] = str(gpu_id)
 
                             new_mdstate = sim(mdstate, ff_parameters, opt)
 
-                            time.sleep(5.0)
+                            time.sleep(7.0)
                             fcntl.flock(file, fcntl.LOCK_UN)
-                            time.sleep(1.0)
-                            opt['Logger'].warn("UNLOCKING GPU ID = {}".format(gpu_id))
+                            opt['Logger'].warn("UNLOCKING GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
                             return new_mdstate
 
                     except BlockingIOError:
-                        opt['Logger'].warn("TRY TO UNLOCK GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
-                        time.sleep(0.1)
+                        # opt['Logger'].warn("TRY TO UNLOCK GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
+                        time.sleep(3.0)
 
                     except Exception as e:  # If the simulation fails for other reasons
                         try:
+                            time.sleep(7.0)
                             fcntl.flock(file, fcntl.LOCK_UN)
                         except:
                             pass

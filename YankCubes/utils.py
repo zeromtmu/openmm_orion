@@ -86,7 +86,6 @@ def yank_solvation_initialize(sim):
             while True:
 
                 for gpu_id in gpus_available_indexes:
-                    # opt['Logger'].warn("UNLOCKED GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
                     try:
                         with open(str(gpu_id) + '.txt', 'a') as file:
                             fcntl.flock(file, fcntl.LOCK_EX | fcntl.LOCK_NB)
@@ -97,19 +96,26 @@ def yank_solvation_initialize(sim):
                                                                                                  gpus_available_indexes,
                                                                                                  str(gpu_id)))
 
-                            openmm.Platform.getPlatformByName('CUDA').setPropertyDefaultValue('DeviceIndex', str(gpu_id))
+                            opt['gpu_id'] = str(gpu_id)
 
                             sim(opt)
 
                             time.sleep(5.0)
                             fcntl.flock(file, fcntl.LOCK_UN)
                             time.sleep(1.0)
-                            opt['Logger'].warn("UNLOCKING GPU ID = {}".format(gpu_id))
+                            opt['Logger'].warn("UNLOCKING GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
                             return
 
-                    except:
-                        opt['Logger'].warn("EXCEPT UNLOCKED GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
+                    except BlockingIOError:
+                        # opt['Logger'].warn("TRY TO UNLOCK GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
                         time.sleep(0.1)
+
+                    except Exception as e:  # If the simulation fails for other reasons
+                        try:
+                            fcntl.flock(file, fcntl.LOCK_UN)
+                        except:
+                            pass
+                        raise ValueError("{} Simulation Failed".format(e.message))
 
         else:
             sim(*args)
@@ -220,13 +226,56 @@ def yank_binding_initialize(sim):
         else:
             opt['Logger'].info(opt['yank_template'])
 
-        sim(opt)
+        if 'OE_VISIBLE_DEVICES' in os.environ and not in_orion():
+
+            gpus_available_indexes = os.environ["OE_VISIBLE_DEVICES"].split(',')
+
+            opt['Logger'].info("OE LOCAL FLOE CLUSTER OPTION IN USE")
+
+            while True:
+
+                for gpu_id in gpus_available_indexes:
+                    try:
+                        with open(str(gpu_id) + '.txt', 'a') as file:
+                            fcntl.flock(file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                            opt['Logger'].warn("LOCKED GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
+                            file.write(
+                                "YANK - name = {} MOL_ID = {} GPU_IDS = {} GPU_ID = {}\n".format(opt['system_title'],
+                                                                                                 opt['system_id'],
+                                                                                                 gpus_available_indexes,
+                                                                                                 str(gpu_id)))
+
+                            opt['gpu_id'] = str(gpu_id)
+
+                            sim(opt)
+
+                            time.sleep(5.0)
+                            fcntl.flock(file, fcntl.LOCK_UN)
+                            time.sleep(1.0)
+                            opt['Logger'].warn("UNLOCKING GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
+                            return
+
+                    except BlockingIOError:
+                        # opt['Logger'].warn("TRY TO UNLOCK GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
+                        time.sleep(0.1)
+
+                    except Exception as e:  # If the simulation fails for other reasons
+                        try:
+                            fcntl.flock(file, fcntl.LOCK_UN)
+                        except:
+                            pass
+                        raise ValueError("{} Simulation Failed".format(e.message))
+        else:
+            sim(*args)
 
     return wrapper
 
 
 @yank_solvation_initialize
 def run_yank_solvation(opt):
+
+    if opt['gpu_id']:
+        openmm.Platform.getPlatformByName('CUDA').setPropertyDefaultValue('DeviceIndex', opt['gpu_id'])
 
     # Build the Yank Experiment
     yaml_builder = ExperimentBuilder(opt['yank_template'])
@@ -239,6 +288,9 @@ def run_yank_solvation(opt):
 
 @yank_binding_initialize
 def run_yank_binding(opt):
+
+    if opt['gpu_id']:
+        openmm.Platform.getPlatformByName('CUDA').setPropertyDefaultValue('DeviceIndex', opt['gpu_id'])
 
     # Build the Yank Experiment
     yaml_builder = ExperimentBuilder(opt['yank_template'])
