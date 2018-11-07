@@ -381,6 +381,17 @@ class OpenMMSimulations(MDSimulations):
 
         return new_mdstate
 
+    def clean_up(self):
+
+        if not hasattr(self, 'omm_simulation'):
+            raise ValueError("The OpenMM Simulation has not been defined")
+
+        del self.omm_simulation.context
+        del self.omm_simulation.integrator
+        del self.omm_simulation
+
+        return
+
 
 def getReporters(totalSteps=None, outfname=None, **opt):
     """

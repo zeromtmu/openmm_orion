@@ -88,6 +88,7 @@ def yank_solvation_initialize(sim):
                 for gpu_id in gpus_available_indexes:
                     try:
                         with open(str(gpu_id) + '.txt', 'a') as file:
+
                             fcntl.flock(file, fcntl.LOCK_EX | fcntl.LOCK_NB)
                             opt['Logger'].warn("LOCKED GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
                             file.write(
@@ -101,19 +102,19 @@ def yank_solvation_initialize(sim):
                             sim(opt)
 
                             time.sleep(5.0)
-                            fcntl.flock(file, fcntl.LOCK_UN)
-                            time.sleep(1.0)
                             opt['Logger'].warn("UNLOCKING GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
+                            fcntl.flock(file, fcntl.LOCK_UN)
+
                             return
 
                     except BlockingIOError:
-                        # opt['Logger'].warn("TRY TO UNLOCK GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
                         time.sleep(0.1)
 
                     except Exception as e:  # If the simulation fails for other reasons
                         try:
+                            time.sleep(5.0)
                             fcntl.flock(file, fcntl.LOCK_UN)
-                        except:
+                        except Exception as e:
                             pass
                         raise ValueError("{} Simulation Failed".format(e.message))
 
@@ -250,19 +251,19 @@ def yank_binding_initialize(sim):
                             sim(opt)
 
                             time.sleep(5.0)
-                            fcntl.flock(file, fcntl.LOCK_UN)
-                            time.sleep(1.0)
                             opt['Logger'].warn("UNLOCKING GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
+                            fcntl.flock(file, fcntl.LOCK_UN)
+
                             return
 
                     except BlockingIOError:
-                        # opt['Logger'].warn("TRY TO UNLOCK GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
                         time.sleep(0.1)
 
                     except Exception as e:  # If the simulation fails for other reasons
                         try:
+                            time.sleep(5.0)
                             fcntl.flock(file, fcntl.LOCK_UN)
-                        except:
+                        except Exception as e:
                             pass
                         raise ValueError("{} Simulation Failed".format(e.message))
         else:

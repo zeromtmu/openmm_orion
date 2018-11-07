@@ -111,6 +111,10 @@ class MDSimulations(ABC):
     def update_state(self):
         pass
 
+    @abstractmethod
+    def clean_up(self):
+        pass
+
 
 def local_cluster(sim):
 
@@ -130,35 +134,35 @@ def local_cluster(sim):
 
                 for gpu_id in gpus_available_indexes:
 
-                    file = open(str(gpu_id) + '.txt', 'a')
-
                     try:
-                        fcntl.flock(file, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                        opt['Logger'].warn("LOCKED GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
-                        file.write(
-                                "MD - name = {} MOL_ID = {} GPU_IDS = {} GPU_ID = {}\n".format(opt['system_title'],
-                                                                                               opt['system_id'],
-                                                                                               gpus_available_indexes,
-                                                                                               str(gpu_id)))
-                        opt['gpu_id'] = str(gpu_id)
+                        with open(str(gpu_id) + '.txt', 'a') as file:
 
-                        new_mdstate = sim(mdstate, ff_parameters, opt)
+                            fcntl.flock(file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                            opt['Logger'].warn("LOCKED GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
+                            file.write(
+                                    "MD - name = {} MOL_ID = {} GPU_IDS = {} GPU_ID = {}\n".format(opt['system_title'],
+                                                                                                   opt['system_id'],
+                                                                                                   gpus_available_indexes,
+                                                                                                   str(gpu_id)))
+                            opt['gpu_id'] = str(gpu_id)
 
-                        time.sleep(5.0)
-                        fcntl.flock(file, fcntl.LOCK_UN)
-                        opt['Logger'].warn("UNLOCKING GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
-                        return new_mdstate
+                            new_mdstate = sim(mdstate, ff_parameters, opt)
+
+                            time.sleep(5.0)
+                            opt['Logger'].warn("UNLOCKING GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
+                            fcntl.flock(file, fcntl.LOCK_UN)
+                            return new_mdstate
 
                     except BlockingIOError:
-                        time.sleep(0.5)
+                        time.sleep(0.1)
 
-                    # except Exception as e:  # If the simulation fails for other reasons
-                    #     try:
-                    #         time.sleep(7.0)
-                    #         fcntl.flock(file, fcntl.LOCK_UN)
-                    #     except:
-                    #         pass
-                    #     raise ValueError("{} Simulation Failed".format(e.message))
+                    except Exception as e:  # If the simulation fails for other reasons
+                        try:
+                            time.sleep(5.0)
+                            fcntl.flock(file, fcntl.LOCK_UN)
+                        except Exception as e:
+                            pass
+                        raise ValueError("{} Simulation Failed".format(e.message))
         else:
             new_mdstate = sim(*args)
             return new_mdstate
@@ -178,6 +182,8 @@ def md_simulation(mdstate, ff_parameters, opt):
         MDSim.run()
 
         new_mdstate = MDSim.update_state()
+
+        MDSim.clean_up()
 
         return new_mdstate
     else:
