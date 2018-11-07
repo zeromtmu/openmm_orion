@@ -129,7 +129,9 @@ def local_cluster(sim):
             while True:
 
                 for gpu_id in gpus_available_indexes:
+
                     file = open(str(gpu_id) + '.txt', 'a')
+
                     try:
                         fcntl.flock(file, fcntl.LOCK_EX | fcntl.LOCK_NB)
                         opt['Logger'].warn("LOCKED GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
@@ -138,30 +140,25 @@ def local_cluster(sim):
                                                                                                opt['system_id'],
                                                                                                gpus_available_indexes,
                                                                                                str(gpu_id)))
-                    except BlockingIOError:
-                        time.sleep(3.0)
+                        opt['gpu_id'] = str(gpu_id)
 
+                        new_mdstate = sim(mdstate, ff_parameters, opt)
 
-                            opt['gpu_id'] = str(gpu_id)
-
-                            new_mdstate = sim(mdstate, ff_parameters, opt)
-
-                            time.sleep(7.0)
-                            fcntl.flock(file, fcntl.LOCK_UN)
-                            opt['Logger'].warn("UNLOCKING GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
-                            return new_mdstate
+                        time.sleep(5.0)
+                        fcntl.flock(file, fcntl.LOCK_UN)
+                        opt['Logger'].warn("UNLOCKING GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
+                        return new_mdstate
 
                     except BlockingIOError:
-                        # opt['Logger'].warn("TRY TO UNLOCK GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
-                        time.sleep(3.0)
+                        time.sleep(0.5)
 
-                    except Exception as e:  # If the simulation fails for other reasons
-                        try:
-                            time.sleep(7.0)
-                            fcntl.flock(file, fcntl.LOCK_UN)
-                        except:
-                            pass
-                        raise ValueError("{} Simulation Failed".format(e.message))
+                    # except Exception as e:  # If the simulation fails for other reasons
+                    #     try:
+                    #         time.sleep(7.0)
+                    #         fcntl.flock(file, fcntl.LOCK_UN)
+                    #     except:
+                    #         pass
+                    #     raise ValueError("{} Simulation Failed".format(e.message))
         else:
             new_mdstate = sim(*args)
             return new_mdstate
