@@ -111,7 +111,7 @@ class TestMDOrionFloes(FloeTestCase):
     def test_omm_npt_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "MDnpt.py"),
-            run_timeout=1200,
+            run_timeout=1500,
             queue_timeout=600
         )
 

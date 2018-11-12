@@ -80,7 +80,7 @@ def dataset(ctx, filename, id, profile=None, max_retries=2):
 
 
 @dataset.command("trajectory")
-@click.option("--format", help="Trajectory format", type=click.Choice(['h5', 'dcd', 'tar.gz']), default='h5')
+@click.option("--format", help="Trajectory format", type=click.Choice(['h5', 'tar.gz']), default='h5')
 @click.option("--stgn", help="MD Stage number", default="last")
 @click.option("--fixname", help="Edit the trajectory file name", default=None)
 @click.pass_context
@@ -140,12 +140,6 @@ def trajectory_extraction(ctx, format, stgn, fixname):
             else:
                 print("No MD trajectory found in the selected stage record {}".format(stage.get_value(Fields.stage_name)))
                 continue
-
-            if format == 'dcd':
-                print(fnt)
-                trj_mdtraj = md.load(fnt)
-                trj_mdtraj[0].save(os.path.splitext(fnt)[0]+'.pdb')
-                trj_mdtraj.save(os.path.splitext(fnt)[0]+'.dcd')
 
             if fixname is not None:
                 stage.set_value(Fields.trajectory, fnt)

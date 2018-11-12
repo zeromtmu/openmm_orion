@@ -109,6 +109,11 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
         default=500,
         help_text="Number of MD steps per iteration")
 
+    checkpoint_interval = parameter.IntegerParameter(
+        'checkpoint_interval',
+        default=50,
+        help_text="Save Yank info every specified Yank iterations")
+
     nonbondedCutoff = parameter.DecimalParameter(
         'nonbondedCutoff',
         default=10.0,
@@ -194,12 +199,12 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
 
             # Current number of iterations
             current_iterations = record.get_value(current_iteration_field)
-                
+
             if current_iterations == 0:
                 opt['minimize'] = True
                 opt['resume_sim'] = False
                 opt['resume_setup'] = False
-                iterations_per_cube = 10
+                iterations_per_cube = opt['checkpoint_interval']
             else:
 
                 iterations_per_cube_field = OEField("iterations_per_cube", Types.Int)
@@ -215,9 +220,6 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                 opt['new_iterations'] = opt['iterations']
             else:
                 opt['new_iterations'] = current_iterations + iterations_per_cube
-
-            # Checkpoint interval
-            opt['checkpoint_interval'] = opt['new_iterations'] - current_iterations
 
             self.log.info("[{}] current iterations {}".format(self.title, current_iterations))
             self.log.info("[{}] new_iterations {}".format(self.title, opt['new_iterations']))
@@ -369,12 +371,18 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                     if iterations_per_cube == 0:
                         raise ValueError("Total running time per cube > max Orion running time per cube")
 
+                    # Optimize the number of iterations per cube to be a multiple of the set checkpoint interval
+                    iterations_per_cube_opt = int(iterations_per_cube / opt['checkpoint_interval']) * opt['checkpoint_interval']
+
+                    if iterations_per_cube_opt < opt['checkpoint_interval']:
+                        raise ValueError("Total running time per cube < checkpoint interval")
+
                     iterations_per_cube_field = OEField("iterations_per_cube", Types.Int)
 
-                    record.set_value(iterations_per_cube_field, iterations_per_cube)
+                    record.set_value(iterations_per_cube_field, iterations_per_cube_opt)
 
                     self.log.info("{} iterations per cube saved on the record: {}".format(self.title,
-                                                                                          iterations_per_cube))
+                                                                                          iterations_per_cube_opt))
 
                 # Run Yank analysis
                 if opt['new_iterations'] == opt['iterations']:
@@ -567,6 +575,11 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
         default=500,
         help_text="Number of MD steps per iteration")
 
+    checkpoint_interval = parameter.IntegerParameter(
+        'checkpoint_interval',
+        default=50,
+        help_text="Save Yank info every specified Yank iterations")
+
     timestep = parameter.DecimalParameter(
         'timestep',
         default=2.0,
@@ -694,7 +707,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                 opt['minimize'] = True
                 opt['resume_sim'] = False
                 opt['resume_setup'] = False
-                iterations_per_cube = 10
+                iterations_per_cube = opt['checkpoint_interval']
             else:
 
                 iterations_per_cube_field = OEField("iterations_per_cube", Types.Int)
@@ -710,9 +723,6 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                 opt['new_iterations'] = opt['iterations']
             else:
                 opt['new_iterations'] = current_iterations + iterations_per_cube
-
-            # Checkpoint interval
-            opt['checkpoint_interval'] = opt['new_iterations'] - current_iterations
 
             self.log.info("[{}] current iterations {}".format(self.title, current_iterations))
             self.log.info("[{}] new_iterations {}".format(self.title, opt['new_iterations']))
@@ -878,6 +888,12 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     if iterations_per_cube == 0:
                         raise ValueError("Total running time per cube > max Orion running time per cube")
 
+                    # Optimize the number of iterations per cube to be a multiple of the set checkpoint interval
+                    iterations_per_cube_opt = int(iterations_per_cube / opt['checkpoint_interval']) * opt['checkpoint_interval']
+
+                    if iterations_per_cube_opt < opt['checkpoint_interval']:
+                        raise ValueError("Total running time per cube < checkpoint interval")
+
                 # Run the analysis
                 if opt['new_iterations'] == opt['iterations']:
 
@@ -922,9 +938,9 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     record.set_value(Fields.pmd_structure, solvated_complex_parmed_structure)
 
                     iterations_per_cube_field = OEField("iterations_per_cube", Types.Int)
-                    record.set_value(iterations_per_cube_field, iterations_per_cube)
+                    record.set_value(iterations_per_cube_field, iterations_per_cube_opt)
                     self.log.info("[{}] iterations per cube saved on the record: {}".format(self.title,
-                                                                                            iterations_per_cube))
+                                                                                            iterations_per_cube_opt))
 
             record.set_value(current_iteration_field, opt['new_iterations'])
             record.set_value(Fields.primary_molecule, complex)
