@@ -130,39 +130,50 @@ def local_cluster(sim):
 
             opt['Logger'].info("OE LOCAL FLOE CLUSTER OPTION IN USE")
 
+            if 'OE_MAX' in os.environ:
+                opt['OE_MAX'] = int(os.environ["OE_MAX"])
+            else:
+                opt['OE_MAX'] = 1
+
+            opt['Logger'].info("OE MAX = {}".format(opt['OE_MAX']))
+
             while True:
 
                 for gpu_id in gpus_available_indexes:
 
-                    try:
-                        with open(str(gpu_id) + '.txt', 'a') as file:
+                    for p in range(0, opt['OE_MAX']):
 
-                            fcntl.flock(file, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                            opt['Logger'].warn("LOCKED GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
-                            file.write(
-                                    "MD - name = {} MOL_ID = {} GPU_IDS = {} GPU_ID = {}\n".format(opt['system_title'],
-                                                                                                   opt['system_id'],
-                                                                                                   gpus_available_indexes,
-                                                                                                   str(gpu_id)))
-                            opt['gpu_id'] = str(gpu_id)
+                        fn = str(gpu_id) + '_' + str(p) + '.txt'
 
-                            new_mdstate = sim(mdstate, ff_parameters, opt)
-
-                            time.sleep(5.0)
-                            opt['Logger'].warn("UNLOCKING GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
-                            fcntl.flock(file, fcntl.LOCK_UN)
-                            return new_mdstate
-
-                    except BlockingIOError:
-                        time.sleep(0.1)
-
-                    except Exception as e:  # If the simulation fails for other reasons
                         try:
-                            time.sleep(5.0)
-                            fcntl.flock(file, fcntl.LOCK_UN)
-                        except Exception as e:
-                            pass
-                        raise ValueError("{} Simulation Failed".format(e.message))
+                            with open(fn, 'a') as file:
+
+                                fcntl.flock(file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                                opt['Logger'].warn("LOCKED GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
+                                file.write(
+                                        "MD - name = {} MOL_ID = {} GPU_IDS = {} GPU_ID = {}\n".format(opt['system_title'],
+                                                                                                       opt['system_id'],
+                                                                                                       gpus_available_indexes,
+                                                                                                       str(gpu_id)))
+                                opt['gpu_id'] = str(gpu_id)
+
+                                new_mdstate = sim(mdstate, ff_parameters, opt)
+
+                                time.sleep(5.0)
+                                opt['Logger'].warn("UNLOCKING GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
+                                fcntl.flock(file, fcntl.LOCK_UN)
+                                return new_mdstate
+
+                        except BlockingIOError:
+                            time.sleep(0.1)
+
+                        except Exception as e:  # If the simulation fails for other reasons
+                            try:
+                                time.sleep(5.0)
+                                fcntl.flock(file, fcntl.LOCK_UN)
+                            except Exception as e:
+                                pass
+                            raise ValueError("{} Simulation Failed".format(e.message))
         else:
             new_mdstate = sim(*args)
             return new_mdstate
