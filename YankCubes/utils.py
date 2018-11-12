@@ -71,7 +71,7 @@ def yank_solvation_initialize(sim):
         # Print Yank Template
         opt['Logger'].info(opt['yank_template'])
 
-        sim(opt)
+        sim(*args)
 
     return wrapper
 
@@ -179,7 +179,7 @@ def yank_binding_initialize(sim):
         else:
             opt['Logger'].info(opt['yank_template'])
 
-        sim(opt)
+        sim(*args)
 
     return wrapper
 
@@ -216,10 +216,10 @@ def run_yank_analysis(opt):
     analysis = experiment_to_analyze.auto_analyze()
 
     # Calculate free energy and its error
-    DeltaG = analysis['free_energy']['free_energy_diff_unit'].\
-                 in_units_of(unit.kilocalorie_per_mole) / unit.kilocalorie_per_mole
-    dDeltaG = analysis['free_energy']['free_energy_diff_error_unit'].\
-                  in_units_of(unit.kilocalorie_per_mole) / unit.kilocalorie_per_mole
+    DeltaG = analysis['free_energy']['free_energy_diff_unit'].in_units_of(
+        unit.kilocalorie_per_mole) / unit.kilocalorie_per_mole
+    dDeltaG = analysis['free_energy']['free_energy_diff_error_unit'].in_units_of(
+        unit.kilocalorie_per_mole) / unit.kilocalorie_per_mole
 
     opt_1 = '--store={}'.format(exp_dir)
 

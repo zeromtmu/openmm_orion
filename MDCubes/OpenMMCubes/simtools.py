@@ -48,7 +48,9 @@ try:
 except: have_gzip = False
 
 import simtk.openmm as mm
+
 import math
+
 import time
 
 from MDCubes.utils import MDSimulations
@@ -378,6 +380,17 @@ class OpenMMSimulations(MDSimulations):
             new_mdstate.set_velocities(self.omm_state.getVelocities(asNumpy=False))
 
         return new_mdstate
+
+    def clean_up(self):
+
+        if not hasattr(self, 'omm_simulation'):
+            raise ValueError("The OpenMM Simulation has not been defined")
+
+        del self.omm_simulation.context
+        del self.omm_simulation.integrator
+        del self.omm_simulation
+
+        return
 
 
 def getReporters(totalSteps=None, outfname=None, **opt):
