@@ -17,16 +17,26 @@
 
 
 from openeye import oechem
+
 from oeommtools import utils as oeommutils
+
 import MDOrion
+
 from simtk.openmm import app
+
 import parmed
+
 from openeye import oequacpac
+
 from LigPrepCubes import ff_utils
+
 import numpy as np
+
 import itertools
+
 import os
 
+from tempfile import TemporaryDirectory
 
 proteinResidues = ['ALA', 'ASN', 'CYS', 'GLU', 'HIS',
                    'LEU', 'MET', 'PRO', 'THR', 'TYR',
@@ -58,6 +68,7 @@ def applyffProtein(protein, opt):
     topology, positions = oeommutils.oemol_to_openmmTop(protein)
 
     forcefield = app.ForceField(opt['protein_forcefield'])
+
     unmatched_residues = forcefield.getUnmatchedResidues(topology)
 
     if unmatched_residues:

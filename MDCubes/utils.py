@@ -149,7 +149,7 @@ def local_cluster(sim):
                             with open(fn, 'a') as file:
 
                                 fcntl.flock(file, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                                opt['Logger'].warn("LOCKED GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
+                                # opt['Logger'].warn("LOCKED GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
                                 file.write(
                                         "MD - name = {} MOL_ID = {} GPU_IDS = {} GPU_ID = {}\n".format(opt['system_title'],
                                                                                                        opt['system_id'],
@@ -160,7 +160,7 @@ def local_cluster(sim):
                                 new_mdstate = sim(mdstate, ff_parameters, opt)
 
                                 time.sleep(5.0)
-                                opt['Logger'].warn("UNLOCKING GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
+                                # opt['Logger'].warn("UNLOCKING GPU ID = {} - MOL ID = {}".format(gpu_id, opt['system_id']))
                                 fcntl.flock(file, fcntl.LOCK_UN)
                                 return new_mdstate
 

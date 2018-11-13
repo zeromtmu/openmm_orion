@@ -188,6 +188,7 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
 
             # Set Parmed structure box_vectors
             is_periodic = True
+
             try:
                 vec_data = pack_utils.getData(system_reassembled, tag='box_vectors')
                 vec = pack_utils.decodePyObj(vec_data)
