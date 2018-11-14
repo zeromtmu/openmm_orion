@@ -127,7 +127,7 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
 
     implicit_solvent = parameter.StringParameter(
         'implicit_solvent',
-        default='OBC2',
+        default='None',
         choices=['None', 'HCT', 'OBC1', 'OBC2', 'GBn', 'GBn2'],
         help_text="Implicit Solvent Model")
 
