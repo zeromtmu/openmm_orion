@@ -195,8 +195,7 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
                 system_structure.box_vectors = vec
             except:
                 is_periodic = False
-                self.log.warn("System {} has been parametrize without periodic box vectors "
-                              "for vacuum simulation".format(system_title))
+                self.log.warn("System {} has been parametrize without periodic box vectors ".format(system_title))
 
             # Set atom serial numbers, Ligand name and HETATM flag
             for at in system_reassembled.GetAtoms():

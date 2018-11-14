@@ -36,8 +36,6 @@ import itertools
 
 import os
 
-from tempfile import TemporaryDirectory
-
 proteinResidues = ['ALA', 'ASN', 'CYS', 'GLU', 'HIS',
                    'LEU', 'MET', 'PRO', 'THR', 'TYR',
                    'ARG', 'ASP', 'GLN', 'GLY', 'ILE',

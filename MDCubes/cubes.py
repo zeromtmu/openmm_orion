@@ -125,6 +125,12 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
         None means no bonds are constrained.
         HBonds means bonds with hydrogen are constrained""")
 
+    implicit_solvent = parameter.StringParameter(
+        'implicit_solvent',
+        default='OBC2',
+        choices=['None', 'HCT', 'OBC1', 'OBC2', 'GBn', 'GBn2'],
+        help_text="Implicit Solvent Model")
+
     center = parameter.BooleanParameter(
         'center',
         default=True,
@@ -385,6 +391,12 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
         Which type of constraints to add to the system (e.g., SHAKE).
         None means no bonds are constrained.
         HBonds means bonds with hydrogen are constrained""")
+
+    implicit_solvent = parameter.StringParameter(
+        'implicit_solvent',
+        default='None',
+        choices=['None', 'HCT', 'OBC1', 'OBC2', 'GBn', 'GBn2'],
+        help_text="Implicit Solvent Model")
 
     trajectory_interval = parameter.DecimalParameter(
         'trajectory_interval',
@@ -685,6 +697,12 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
         Which type of constraints to add to the system (e.g., SHAKE).
         None means no bonds are constrained.
         HBonds means bonds with hydrogen are constrained""")
+
+    implicit_solvent = parameter.StringParameter(
+        'implicit_solvent',
+        default='None',
+        choices=['None', 'HCT', 'OBC1', 'OBC2', 'GBn', 'GBn2'],
+        help_text="Implicit Solvent Model")
 
     trajectory_interval = parameter.DecimalParameter(
         'trajectory_interval',
