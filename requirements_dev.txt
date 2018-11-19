@@ -9,5 +9,5 @@ wcwidth==0.1.7
 OpenEye-Artemis==0.3.0
 OpenEye-ensemble2img==0.1.1
 OpenEye_oetrajanalysis==0.1.4.3
-OpenEye-orionplatform==0.1.8
+OpenEye-orionplatform==0.1.10
 Openeye-toolkits==2018.2.1

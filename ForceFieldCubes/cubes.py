@@ -210,6 +210,15 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
                 raise ValueError("OEMol system {} and generated Parmed structure "
                                  "mismatch atom numbers".format(system_title))
 
+            # Copying the charges between the parmed structure and the oemol
+            for parm_at, oe_at in zip(system_structure.atoms, system_reassembled.GetAtoms()):
+
+                if parm_at.atomic_number != oe_at.GetAtomicNum():
+                    raise ValueError("Atomic number mismatch between the Parmed and the OpenEye topologies: {} - {}".
+                                     format(parm_at.atomic_number, oe_at.GetAtomicNum()))
+
+                oe_at.SetPartialCharge(parm_at.charge)
+
             # Check if it is possible to create the OpenMM System
             if is_periodic:
                 system_structure.createSystem(nonbondedMethod=app.CutoffPeriodic,

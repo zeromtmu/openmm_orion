@@ -255,7 +255,7 @@ def info_extraction(ctx):
                     print("{} {} name = {} type = {} value = {}".format(blank * (level + 1), dis,
                                                                         field.get_name(),
                                                                         field.get_type(),
-                                                                        str(record.get_value(field))[0:15]))
+                                                                        str(record.get_value(field))[0:50]))
                 else:
                     print("{} {} name = {} type = {}".format(blank * (level + 1), dis,
                                                              field.get_name(),

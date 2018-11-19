@@ -35,7 +35,8 @@ from MDCubes.cubes import (OpenMMminimizeCube,
                            OpenMMNvtCube,
                            OpenMMNptCube)
 
-job = WorkFloe("Solvation Free Energy")
+job = WorkFloe("Solvation Free Energy",
+               title="Solvation Free Energy")
 
 job.description = """
 The Solvation Free Energy protocol performs Solvation Free Energy Calculations (SFEC) on

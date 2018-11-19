@@ -40,7 +40,8 @@ from YankCubes.cubes import (SyncBindingFECube,
 from cuberecord import (DatasetWriterCube,
                         DatasetReaderCube)
 
-job = WorkFloe('Binding Affinity Replica Exchange')
+job = WorkFloe('Binding Affinity Replica Exchange',
+               title='Binding Affinity Replica Exchange')
 
 job.description = """
 NOTE: this is an Alpha Test version. 

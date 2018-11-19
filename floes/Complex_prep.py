@@ -33,7 +33,8 @@ from ComplexPrepCubes.cubes import (ComplexPrepCube,
 
 from ForceFieldCubes.cubes import ForceFieldCube
 
-job = WorkFloe("Complex Preparation")
+job = WorkFloe("Complex Preparation",
+               title="Complex Preparation")
 
 job.description = """
 Complex Preparation Workflow

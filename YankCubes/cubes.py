@@ -62,6 +62,10 @@ from Standards.utils import ParmedData
 
 from MDCubes.utils import MDState
 
+from orionclient.session import in_orion, OrionSession
+
+from orionclient.types import File
+
 
 class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
     version = "0.0.0"
@@ -323,7 +327,7 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
 
                     filename = os.path.join(output_directory, "yank_files.tar")
 
-                    fn_local = omm_utils.download_file(yank_files, filename, delete=True)
+                    fn_local = omm_utils.download_file(yank_files, filename, delete=False)
 
                     with tarfile.open(fn_local) as tar:
                         tar.extractall(path=output_directory)
@@ -399,7 +403,7 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                     record.set_value(dG_Field, dDeltaG_solvation)
 
                 # Tar the Yank temp dir with its content:
-                tar_fn = os.path.basename(output_directory) + '.tar.gz'
+                tar_fn = os.path.basename(output_directory+"_" + opt['system_title']) + '.tar.gz'
                 with tarfile.open(tar_fn, mode='w:gz') as archive:
                     archive.add(output_directory, arcname='.', recursive=True)
 
@@ -415,6 +419,13 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                                                           MDRecords.MDSystemRecord(system, mdstate),
                                                           log=str_logger,
                                                           trajectory=lf)
+                if current_iterations == 0:
+                    record.set_value(Fields.trj_garbage_field, [lf])
+                else:
+                    trj_garbage_list = record.get_value(Fields.trj_garbage_field)
+                    trj_garbage_list.append(lf)
+                    record.set_value(Fields.trj_garbage_field, trj_garbage_list)
+
                 # md_stages.append(md_stage_record)
                 md_stages[-1] = md_stage_record
 
@@ -823,7 +834,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
                     filename = os.path.join(output_directory, "yank_files.tar")
 
-                    fn_local = omm_utils.download_file(yank_files, filename, delete=True)
+                    fn_local = omm_utils.download_file(yank_files, filename, delete=False)
 
                     with tarfile.open(fn_local) as tar:
                         tar.extractall(path=output_directory)
@@ -930,6 +941,11 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     # md_stages.append(md_stage_record)
                     md_stages[-1] = md_stage_record
                     record.set_value(Fields.md_stages, md_stages)
+
+                    trj_garbage_list = record.get_value(Fields.trj_garbage_field)
+                    trj_garbage_list.append(lf)
+                    record.set_value(Fields.trj_garbage_field, trj_garbage_list)
+
                 else:
                     record = OERecord()
                     record.set_value(Fields.md_stages, [md_stage_record])
@@ -941,6 +957,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     record.set_value(iterations_per_cube_field, iterations_per_cube_opt)
                     self.log.info("[{}] iterations per cube saved on the record: {}".format(self.title,
                                                                                             iterations_per_cube_opt))
+                    record.set_value(Fields.trj_garbage_field, [lf])
 
             record.set_value(current_iteration_field, opt['new_iterations'])
             record.set_value(Fields.primary_molecule, complex)
@@ -1019,7 +1036,26 @@ class YankProxyCube(OERecordComputeCube):
 
                 if current_iteration == self.opt['iterations']:
                     self.opt['Logger'].info("{} Finishing...".format(self.title))
+
+                    # Clean up trajectories in Orion
+                    if not record.has_value(Fields.trj_garbage_field):
+                        raise ValueError("The trajectory garbage field is missing")
+
+                    trj_garbage_list = record.get_value(Fields.trj_garbage_field)
+
+                    if len(trj_garbage_list) > 1:
+                        if in_orion():
+                            session = OrionSession()
+
+                            for file_id in trj_garbage_list[:-1]:
+                                resource = session.get_resource(File, file_id)
+                                session.delete_resource(resource)
+
+                        trj_garbage_list = [trj_garbage_list[-1]]
+                        record.set_value(Fields.trj_garbage_field, trj_garbage_list)
+
                     self.success.emit(record)
+
                 else:
                     self.opt['Logger'].warn("{} Forwarding to Cycle...".format(self.title))
                     self.cycle_out_port.emit(record)

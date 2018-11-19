@@ -37,7 +37,8 @@ from ProtPrepCubes.cubes import ProteinSetting
 from LigPrepCubes.cubes import (LigandChargeCube,
                                 LigandSetting)
 
-job = WorkFloe('Short Trajectory MD')
+job = WorkFloe('Short Trajectory MD',
+               title='Short Trajectory MD')
 
 job.description = """
 NOTE: this is an Alpha Test version.

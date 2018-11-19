@@ -95,6 +95,12 @@ class Fields:
 
     yank_analysis = OEField("Yank_Analysis_OPLMD", Types.String)
 
+    # Clean up trajectories
+    if in_orion():
+        trj_garbage_field = OEField("trj_garbage_OPLMD", Types.IntVec)
+    else:
+        trj_garbage_field = OEField("trj_garbage_OPLMD", Types.StringVec)
+
 
 # ---------------- Record Standards -------------- #
 

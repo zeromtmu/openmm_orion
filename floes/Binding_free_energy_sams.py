@@ -40,7 +40,8 @@ from YankCubes.cubes import (SyncBindingFECube,
 from cuberecord import (DatasetWriterCube,
                         DatasetReaderCube)
 
-job = WorkFloe('Binding Affinity Self-Adjusted Mixture Sampling')
+job = WorkFloe('Binding Affinity Self-Adjusted Mixture Sampling',
+               title='Binding Affinity Self-Adjusted Mixture Sampling')
 
 job.description = """
 NOTE: this is an Alpha Test version. 

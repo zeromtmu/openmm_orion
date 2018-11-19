@@ -35,7 +35,8 @@ from ForceFieldCubes.cubes import ForceFieldCube
 
 from MDCubes.cubes import OpenMMminimizeCube
 
-job = WorkFloe("Complex Preparation with Minimization")
+job = WorkFloe("Complex Preparation with Minimization",
+               title="Complex Preparation with Minimization")
 
 job.description = """
 Complex Preparation Workflow

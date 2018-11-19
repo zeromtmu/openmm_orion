@@ -41,7 +41,8 @@ from TrjAnalysisCubes.TrajToOEMol import TrajToOEMolCube
 from TrjAnalysisCubes.LigBasedTrajClustering import ClusterOETrajCube
 from TrjAnalysisCubes.MDTrajAnalysisFloeReport import MDTrajAnalysisClusterReport
 
-job = WorkFloe('Short Trajectory MD with Analysis')
+job = WorkFloe('Short Trajectory MD with Analysis',
+               title='Short Trajectory MD with Analysis')
 
 job.description = """
 NOTE: this is an Alpha Test version.

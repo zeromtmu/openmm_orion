@@ -289,12 +289,14 @@ def applyffExcipients(excipients, opt):
         else:
             excipients_structure = unrc_struc
 
-        return excipients_structure
+        # return excipients_structure
     else:  # All the excipients are recognized by the selected FF
         omm_system = forcefield.createSystem(topology, rigidWater=False)
         excipients_structure = parmed.openmm.load_topology(topology, omm_system, xyz=positions)
 
-        return excipients_structure
+        # return excipients_structure
+
+    return excipients_structure
 
 
 def applyffLigand(ligand, opt):
