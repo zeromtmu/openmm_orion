@@ -21,6 +21,7 @@ from orionclient.session import OrionSession
 
 from artemis.wrappers import (WorkFloeWrapper,
                               DatasetWrapper,
+                              FileWrapper,
                               OutputDatasetWrapper)
 
 from artemis.test import FloeTestCase
@@ -239,6 +240,68 @@ class TestYankBindingFloes(FloeTestCase):
                 "promoted": {
                     "ligands": ligand_file.identifier,
                     "protein": protein_file.identifier,
+                    "iterations": 13,
+                    "out": output_file.identifier,
+                    "fail": fail_output_file.identifier
+                }
+            }
+        )
+
+        self.assertWorkFloeComplete(workfloe)
+
+        fail_ifs = oechem.oeifstream()
+        records_fail = []
+
+        while True:
+            record_fail = read_mol_record(fail_ifs)
+            if record_fail is None:
+                break
+            records_fail.append(record_fail)
+        fail_ifs.close()
+
+        count = len(records_fail)
+        # The fail record must be empty
+        self.assertEqual(count, 0)
+
+    @pytest.mark.floetest
+    @pytest.mark.slow
+    def test_yank_binding_yaml_user_file(self):
+        workfloe = WorkFloeWrapper.get_workfloe(
+            os.path.join(FLOES_DIR, "Binding_free_energy_detailed.py"),
+            run_timeout=12000,
+            queue_timeout=1200
+        )
+
+        ligand_file = DatasetWrapper.get_dataset(
+            os.path.join(
+                FILE_DIR,
+                "toluene.oeb"
+            )
+        )
+
+        protein_file = DatasetWrapper.get_dataset(
+            os.path.join(
+                FILE_DIR,
+                "lysozyme.pdb"
+            )
+        )
+
+        user_yaml_file = FileWrapper.get_file(
+            os.path.join(
+                FILE_DIR,
+                "boresch.yaml"
+            )
+        )
+
+        output_file = OutputDatasetWrapper(extension=".oedb")
+        fail_output_file = OutputDatasetWrapper(extension=".oedb")
+
+        workfloe.start(
+            {
+                "promoted": {
+                    "ligands": ligand_file.identifier,
+                    "protein": protein_file.identifier,
+                    "yaml": user_yaml_file.identifier,
                     "iterations": 13,
                     "out": output_file.identifier,
                     "fail": fail_output_file.identifier

@@ -959,6 +959,10 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                                                                                             iterations_per_cube_opt))
                     record.set_value(Fields.trj_garbage_field, [lf])
 
+                    if opt['new_iterations'] == opt['iterations']:
+                        record.set_value(DG_Field, DeltaG_binding)
+                        record.set_value(dG_Field, dDeltaG_binding)
+
             record.set_value(current_iteration_field, opt['new_iterations'])
             record.set_value(Fields.primary_molecule, complex)
 

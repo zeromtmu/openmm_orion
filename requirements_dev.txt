@@ -1,5 +1,5 @@
 # PIP
-invoke==1.0.0
+invoke==1.2.0
 pip==18.0
 pytest==3.6.1
 six==1.11.0
