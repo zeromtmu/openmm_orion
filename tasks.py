@@ -16,9 +16,23 @@
 # or its use.
 
 import os
+
+import copy
+
 import shutil
+
 from invoke import task, run
+
 from json import loads, dump
+
+from glob import iglob
+
+from importlib.machinery import SourceFileLoader
+
+import MDOrion
+
+PACKAGE_DIR = os.path.dirname(os.path.dirname(MDOrion.__file__))
+FLOES_DIR = os.path.join(PACKAGE_DIR, "floes")
 
 @task
 def flake8(ctx):
@@ -63,24 +77,10 @@ def testorion(ctx, profile=""):
 
 
 @task
-def clean(ctx):
-    """
-    Clean up doc and package builds
-    """
-    clean_pyc(ctx)
-    clean_docs(ctx)
-    clean_pycache(ctx)
-    shutil.rmtree("dist", ignore_errors=True)
-    shutil.rmtree("build", ignore_errors=True)
-    egg_path = "{}.egg-info".format("MDOrion".replace("-", "_"))
-    if os.path.isfile(egg_path):
-        os.remove(egg_path)
-    elif os.path.isdir(egg_path):
-        shutil.rmtree(egg_path)
-    shutil.rmtree(".pytest_cache", ignore_errors=True)
-
-@task
 def setversion(ctx, new_version):
+    """
+    Set the package version
+    """
     fn = os.path.join("./MDOrion", "__init__.py")
 
     with open(fn, "r") as f:
@@ -97,6 +97,68 @@ def setversion(ctx, new_version):
 
     spec['version'] = MDOrion.__version__
     dump(spec, open('manifest.json', 'w'), sort_keys=True, indent=4)
+
+
+@task
+def release(ctx):
+    """
+    Create a package for the distribution. All the floes where
+    the release variable is set to True are included in the package
+    """
+    floes = os.path.basename(FLOES_DIR)
+
+    fns = [f for f in iglob(floes + '/**/*.py', recursive=True) if os.path.isfile(f)]
+
+    fns = [os.path.basename(fn) for fn in fns]
+
+    fns.sort()
+
+    release_list = []
+
+    for fn in fns:
+        m = SourceFileLoader(fn, os.path.join(floes, fn)).load_module()
+        try:
+            m.release
+            release_list.append(fn)
+        except AttributeError:
+            continue
+
+    inc = ""
+    for fn in release_list:
+        inc += "include floes/" + fn + '\n'
+
+    with open(os.path.join(PACKAGE_DIR, "MANIFEST.in"), "r") as f:
+        lines = f.readlines()
+
+    original = copy.deepcopy(lines)
+
+    lines = ["{}".format(inc) if 'graft floes' in line else line for line in lines]
+
+    with open("MANIFEST.in", "w") as f:
+        f.writelines(lines)
+
+    run("python setup.py sdist")
+
+    with open("MANIFEST.in", "w") as f:
+        f.writelines(original)
+
+
+@task
+def clean(ctx):
+    """
+    Clean up doc and package builds
+    """
+    clean_pyc(ctx)
+    clean_docs(ctx)
+    clean_pycache(ctx)
+    shutil.rmtree("dist", ignore_errors=True)
+    shutil.rmtree("build", ignore_errors=True)
+    egg_path = "{}.egg-info".format("MDOrion".replace("-", "_"))
+    if os.path.isfile(egg_path):
+        os.remove(egg_path)
+    elif os.path.isdir(egg_path):
+        shutil.rmtree(egg_path)
+    shutil.rmtree(".pytest_cache", ignore_errors=True)
 
 
 @task

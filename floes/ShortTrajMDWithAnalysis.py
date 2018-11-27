@@ -17,6 +17,7 @@
 # liable for any damages or liability in connection with the Sample Code
 # or its use.
 
+release = True
 
 from floe.api import WorkFloe
 

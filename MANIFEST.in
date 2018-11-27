@@ -3,14 +3,6 @@ include README.md
 include requirements_dev.txt
 include env.yaml
 
-# Include all the floes directory
 graft floes
-
-# The following floes are added just for the release
-# include floes/Binding_free_energy_repex.py
-# include floes/Binding_free_energy_sams.py
-# include floes/Binding_free_energy_detailed.py
-# include floes/Solvation_free_energy.py
-# include floes/ShortTrajMDWithAnalysis.py
 
 graft MDCubes
