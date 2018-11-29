@@ -29,6 +29,8 @@ from glob import iglob
 
 from importlib.machinery import SourceFileLoader
 
+import importlib
+
 import MDOrion
 
 PACKAGE_DIR = os.path.dirname(os.path.dirname(MDOrion.__file__))
@@ -81,6 +83,9 @@ def setversion(ctx, new_version):
     """
     Set the package version
     """
+
+    clean(ctx)
+
     fn = os.path.join("./MDOrion", "__init__.py")
 
     with open(fn, "r") as f:
@@ -93,7 +98,7 @@ def setversion(ctx, new_version):
 
     spec = loads(open('manifest.json', 'r').read())
 
-    import MDOrion
+    importlib.reload(MDOrion)
 
     spec['version'] = MDOrion.__version__
     dump(spec, open('manifest.json', 'w'), sort_keys=True, indent=4)
@@ -105,6 +110,9 @@ def release(ctx):
     Create a package for the distribution. All the floes where
     the release variable is set to True are included in the package
     """
+
+    clean(ctx)
+
     floes = os.path.basename(FLOES_DIR)
 
     fns = [f for f in iglob(floes + '/**/*.py', recursive=True) if os.path.isfile(f)]

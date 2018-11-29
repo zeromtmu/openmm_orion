@@ -911,9 +911,9 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     DeltaG_binding, dDeltaG_binding = yankutils.run_yank_analysis(opt)
 
                     # Create OE Field to save the solvation Free Energy in kcal/mol
-                    DG_Field = OEField('Solvation FE', Types.Float,
+                    DG_Field = OEField('Binding FE', Types.Float,
                                        meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal_per_mol))
-                    dG_Field = OEField('Solvation FE Error', Types.Float,
+                    dG_Field = OEField('Binding FE Error', Types.Float,
                                        meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal_per_mol))
 
                     record.set_value(DG_Field, DeltaG_binding)

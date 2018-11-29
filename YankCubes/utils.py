@@ -114,11 +114,22 @@ def yank_binding_initialize(sim):
 
             # Loading the user Yaml file
             try:
-                fn = opt['user_yank_yaml_file']
+                if in_orion():
+                    if not isinstance(opt['user_yank_yaml_file'], dict):
+                        fn = opt['user_yank_yaml_file']
+                    else:
+                        file_id = opt['user_yank_yaml_file']['file']
+                        session = OrionSession()
+                        resource = session.get_resource(File, file_id)
+                        fn = os.path.join(opt['output_directory'], "user_yank_orion.yaml")
+                        resource.download_to_file(fn)
+                else:
+                    fn = opt['user_yank_yaml_file']
+
                 with open(fn, 'r') as yaml_file:
                     yank_yaml_user = yaml.load(yaml_file)
             except:
-                raise IOError("It was not possible to load the provided yaml file")
+                raise IOError("It was not possible to load the provided yaml file {}".format(opt['user_yank_yaml_file']))
 
             yank_yaml_merge = dict(yank_yaml_template)
 
@@ -134,7 +145,6 @@ def yank_binding_initialize(sim):
 
                     yank_yaml_merge['experiments'] = yank_yaml_user['experiments']
 
-                    # yank_template = yank_yaml_merge
                 else:
                     yank_yaml_merge['experiments'] = ["exp"]
 
