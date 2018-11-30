@@ -86,6 +86,21 @@ class TestYankSolvationOrionFloes(FloeTestCase):
         # The fail record must be empty
         self.assertEqual(count, 0)
 
+        # Check output
+        ifs = oechem.oeifstream(output_file.path)
+        records = []
+
+        while True:
+            record = read_mol_record(ifs)
+            if record is None:
+                break
+            records.append(record)
+        ifs.close()
+
+        count = len(records)
+        # The records list must have just one record
+        self.assertEqual(count, 1)
+
     @pytest.mark.floetest
     @pytest.mark.slow
     def test_yank_solvation_multi_ligs_floe(self):
@@ -131,3 +146,18 @@ class TestYankSolvationOrionFloes(FloeTestCase):
         count = len(records_fail)
         # The fail record must be empty
         self.assertEqual(count, 0)
+
+        # Check output
+        ifs = oechem.oeifstream(output_file.path)
+        records = []
+
+        while True:
+            record = read_mol_record(ifs)
+            if record is None:
+                break
+            records.append(record)
+        ifs.close()
+
+        count = len(records)
+        # The records list must have just one record
+        self.assertEqual(count, 5)
