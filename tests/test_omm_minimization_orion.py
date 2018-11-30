@@ -109,7 +109,7 @@ class TestMDOrionFloes(FloeTestCase):
 
         count = len(records)
 
-        # The records list must have just one record
+        # Check the out record list
         self.assertEqual(count, 1)
 
         # Calculate the initial potential energy

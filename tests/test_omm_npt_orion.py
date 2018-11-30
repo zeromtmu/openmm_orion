@@ -177,7 +177,7 @@ class TestMDOrionFloes(FloeTestCase):
         ifs.close()
 
         count = len(records)
-        # The records list must have just one record
+        # Check the out record list
         self.assertEqual(count, 1)
 
         for record in records:
