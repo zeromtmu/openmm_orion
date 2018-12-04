@@ -113,6 +113,30 @@ class TrajPBSACube(ParallelMixin, OERecordComputeCube):
             zapBindSA6_field = OEField("OEZap_SA6_Bind", Types.FloatVec,
                                  meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal))
             trajPBSA.set_value( zapBindSA6_field, zapBindSA6)
+
+            # If the OETraj Interaction Energies has been done calculate MMPBSA values
+            if 'TrajIntE' in analysesDone:
+                opt['Logger'].info('{} found TrajIntE analyses'.format(system_title) )
+
+                # Extract the relevant P-L Interaction Energies from the record
+                oeTrjIntERecord = utl.RequestOEField( record, 'TrajIntE', Types.Record)
+                opt['Logger'].info('{} found TrajIntE record'.format(system_title) )
+                PLIntE = utl.RequestOEField( oeTrjIntERecord,
+                                     'protein_ligand_interactionEnergy', Types.FloatVec)
+                opt['Logger'].info('{} found Protein-Ligand force field interaction energies'
+                    .format( system_title) )
+                # Calculate  and store MMPB and MMPBSA energies on the trajPBSA record
+                zapMMPB = [eInt+eDesol for eInt,eDesol in zip(PLIntE,zapDesolEl)]
+                zapMMPB_field = OEField("OEZap_MMPB_Bind", Types.FloatVec,
+                                     meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal))
+                trajPBSA.set_value( zapMMPB_field, zapMMPB)
+                #
+                zapMMPBSA = [eMMPB+eSA6 for eMMPB,eSA6 in zip(zapMMPB,zapBindSA6)]
+                zapMMPBSA_field = OEField("OEZap_MMPBSA6_Bind", Types.FloatVec,
+                                     meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal))
+                trajPBSA.set_value( zapMMPBSA_field, zapMMPBSA)
+
+
             # Add the trajPBSA record to the parent record
             record.set_value( OEField( 'TrajPBSA', Types.Record), trajPBSA)
             analysesDone.append( 'TrajPBSA')
