@@ -367,6 +367,10 @@ class ComplexPrepCube(OERecordComputeCube):
 
                 new_record = OERecord()
 
+                # Copy all the ligand fields into the new record
+                for field in record.get_fields():
+                    new_record.set_value(field, record.get_value(field))
+
                 new_record.set_value(Fields.primary_molecule, new_complex)
                 new_record.set_value(Fields.title, complex_title)
                 new_record.set_value(Fields.ligand, ligand)
