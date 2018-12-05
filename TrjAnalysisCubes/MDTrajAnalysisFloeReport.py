@@ -3,7 +3,7 @@ import traceback
 import re
 
 
-from datarecord import Types
+from datarecord import Types, OEField
 
 from cuberecord import OERecordComputeCube
 from Standards import Fields
@@ -447,6 +447,12 @@ class MDTrajAnalysisClusterReport(OERecordComputeCube):
                 rmsdInit=trim_svg(rmsdInit_svg)))
 
             report_file.close()
+
+            # Store the html on the TrajClus record
+            with open( "./"+reportFName, "r", encoding='utf-8') as ifs:
+                trajHTML = ifs.read()
+            trajHTML_field = OEField("TrajAnalysisHTML", Types.String)
+            clusRecord.set_value( trajHTML_field, trajHTML)
 
             if in_orion():
                 session = OrionSession()
