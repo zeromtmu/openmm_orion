@@ -76,7 +76,7 @@ class TrajPBSACube(ParallelMixin, OERecordComputeCube):
                 .format( system_title, protTraj.NumAtoms(), protTraj.NumConfs()) )
 
             # Compute PBSA energies for the protein-ligand complex
-            zapBind, zapBindEl, zapDesolEl, zapIntEl, zapBindSA25, saBuried = mmpbsa.TrajPBSA(
+            zapBind, zapBindPB, zapDesolEl, zapIntEl, zapBindSA25, saBuried = mmpbsa.TrajPBSA(
                                        ligTraj, protTraj)
             if zapBind is None:
                 raise ValueError('{} Calculation of PBSA energies failed'.format(system_title) )
@@ -91,15 +91,15 @@ class TrajPBSACube(ParallelMixin, OERecordComputeCube):
                                 meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal))
             trajPBSA.set_value( zapBind_field, zapBind)
             #
-            zapBindEl_field = OEField("OEZap_PB_Interaction", Types.FloatVec,
+            zapBindPB_field = OEField("OEZap_PB_Bind", Types.FloatVec,
                                 meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal))
-            trajPBSA.set_value( zapBindEl_field, zapBindEl)
+            trajPBSA.set_value( zapBindPB_field, zapBindPB)
             #
             zapDesolEl_field = OEField("OEZap_PB_Desolvation", Types.FloatVec,
                                  meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal))
             trajPBSA.set_value( zapDesolEl_field, zapDesolEl)
             #
-            zapIntEl_field = OEField("OEZap_PB_Bind", Types.FloatVec,
+            zapIntEl_field = OEField("OEZap_PB_Interaction", Types.FloatVec,
                                  meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal))
             trajPBSA.set_value( zapIntEl_field, zapIntEl)
             #
