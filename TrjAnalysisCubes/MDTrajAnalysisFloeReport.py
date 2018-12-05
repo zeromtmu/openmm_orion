@@ -453,6 +453,7 @@ class MDTrajAnalysisClusterReport(OERecordComputeCube):
                 trajHTML = ifs.read()
             trajHTML_field = OEField("TrajAnalysisHTML", Types.String)
             clusRecord.set_value( trajHTML_field, trajHTML)
+            record.set_value( OEField( 'TrajClus', Types.Record), clusRecord)
 
             if in_orion():
                 session = OrionSession()

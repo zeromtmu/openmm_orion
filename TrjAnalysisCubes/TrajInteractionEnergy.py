@@ -58,7 +58,7 @@ class TrajInteractionEnergyCube(ParallelMixin, OERecordComputeCube):
             # Logger string
             opt['Logger'].info(' Beginning TrajInteractionEnergyCube')
             system_title = utl.RequestOEFieldType( record, Fields.title)
-            opt['Logger'].info('{} Attempting to compute MD Traj protein-ligand Intereaction energies'
+            opt['Logger'].info('{} Attempting to compute MD Traj protein-ligand Interaction energies'
                 .format(system_title) )
 
             # Check that the OETraj analysis has been done
