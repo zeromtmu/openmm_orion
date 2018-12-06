@@ -146,7 +146,8 @@ class LigandSetting(OERecordComputeCube):
     def begin(self):
         self.opt = vars(self.args)
         self.opt['Logger'] = self.log
-        self.count = 0
+        self.total_count = 0
+        self.ligand_count = 0
 
     def process(self, record, port):
         try:
@@ -182,7 +183,7 @@ class LigandSetting(OERecordComputeCube):
                 name = ligand.GetTitle()[0:12]
 
                 if not name:
-                    name = 'LIG' + str(self.count)
+                    name = 'LIG' + str(self.total_count)
 
                 ligand_title = 'l' + name
 
@@ -191,15 +192,19 @@ class LigandSetting(OERecordComputeCube):
 
                 # conf_mol.SetTitle(ligand_title)
 
-                record.set_value(Fields.id, self.count)
+                record.set_value(Fields.id, self.total_count)
+                record.set_value(Fields.ligid, self.ligand_count)
+                record.set_value(Fields.confid, num_conf_counter)
                 record.set_value(Fields.title, ligand_title)
                 record.set_value(Fields.primary_molecule, conf_mol)
 
                 num_conf_counter += 1
 
-                self.count += 1
+                self.total_count += 1
 
                 self.success.emit(record)
+
+            self.ligand_count += 1
 
         except:
             self.log.error(traceback.format_exc())

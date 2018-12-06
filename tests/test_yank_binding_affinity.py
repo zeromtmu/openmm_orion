@@ -81,7 +81,14 @@ class TestYankBindingFloes(FloeTestCase):
                     "iterations": 13,
                     "out": output_file.identifier,
                     "fail": fail_output_file.identifier
+                },
+
+                "cube": {
+                    "YankABFE": {
+                        "checkpoint_interval": 10
+                    }
                 }
+
             }
         )
 
@@ -150,6 +157,12 @@ class TestYankBindingFloes(FloeTestCase):
                     "iterations": 13,
                     "out": output_file.identifier,
                     "fail": fail_output_file.identifier
+                },
+
+                "cube": {
+                    "YankABFE": {
+                        "checkpoint_interval": 10
+                    }
                 }
             }
         )
@@ -219,6 +232,12 @@ class TestYankBindingFloes(FloeTestCase):
                     "iterations": 13,
                     "out": output_file.identifier,
                     "fail": fail_output_file.identifier
+                },
+
+                "cube": {
+                    "YankABFE": {
+                        "checkpoint_interval": 10
+                    }
                 }
             }
         )
@@ -288,6 +307,12 @@ class TestYankBindingFloes(FloeTestCase):
                     "iterations": 13,
                     "out": output_file.identifier,
                     "fail": fail_output_file.identifier
+                },
+
+                "cube": {
+                    "YankABFE": {
+                        "checkpoint_interval": 10
+                    }
                 }
             }
         )
@@ -365,7 +390,14 @@ class TestYankBindingFloes(FloeTestCase):
                     "iterations": 13,
                     "out": output_file.identifier,
                     "fail": fail_output_file.identifier
+                },
+
+                "cube": {
+                    "YankABFE": {
+                        "checkpoint_interval": 10
+                    }
                 }
+
             }
         )
 
