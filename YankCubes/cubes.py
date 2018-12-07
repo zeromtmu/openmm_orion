@@ -505,6 +505,10 @@ class SyncBindingFECube(OERecordComputeCube):
                                                                   pair[1].get_value(Fields.title),
                                                                   pair[1].get_value(Fields.id)))
 
+                # Copy all the ligand fields into the new record
+                for field in pair[0].get_fields():
+                    new_record.set_value(field, pair[0].get_value(field))
+
                 complex_solvated = pair[1].get_value(Fields.primary_molecule)
                 new_record.set_value(Fields.primary_molecule, complex_solvated)
                 new_record.set_value(Fields.id, pair[1].get_value(Fields.id))
@@ -947,7 +951,18 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     record.set_value(Fields.trj_garbage_field, trj_garbage_list)
 
                 else:
+                    # old_record_copy = OERecord(record)
+
+                    # new record
                     record = OERecord()
+
+                    # # Copy all the ligand fields into the new record
+                    # for field in old_record_copy.get_fields():
+                    #     # Skipping
+                    #     if field.get_name() == "ligand_pmd_solvated" or field.get_name() == "complex_pmd_solvated":
+                    #         continue
+                    #     record.set_value(field, old_record_copy.get_value(field))
+
                     record.set_value(Fields.md_stages, [md_stage_record])
                     record.set_value(Fields.id, opt['system_id'])
                     record.set_value(Fields.title, opt['system_title'])
