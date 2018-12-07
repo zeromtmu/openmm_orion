@@ -85,7 +85,7 @@ class TestMDOrionFloes(FloeTestCase):
     def test_omm_minimization_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "MDminimize.py"),
-            run_timeout=1200,
+            run_timeout=1500,
             queue_timeout=600
         )
 
@@ -109,7 +109,7 @@ class TestMDOrionFloes(FloeTestCase):
 
         count = len(records)
 
-        # The records list must have just one record
+        # Check the out record list
         self.assertEqual(count, 1)
 
         # Calculate the initial potential energy

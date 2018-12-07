@@ -1,5 +1,5 @@
 # PIP
-invoke==1.0.0
+invoke==1.2.0
 pip==18.0
 pytest==3.6.1
 six==1.11.0
@@ -9,5 +9,5 @@ wcwidth==0.1.7
 OpenEye-Artemis==0.3.0
 OpenEye-ensemble2img==0.1.1
 OpenEye_oetrajanalysis==0.1.4.3
-OpenEye-orionplatform==0.1.7
+OpenEye-orionplatform==0.1.12
 Openeye-toolkits==2018.2.1

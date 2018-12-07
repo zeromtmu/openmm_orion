@@ -21,7 +21,8 @@ from floe.api import WorkFloe
 from MDCubes.cubes import OpenMMNvtCube
 from cuberecord import DatasetReaderCube, DatasetWriterCube
 
-job = WorkFloe("NVT Simulation")
+job = WorkFloe("NVT Simulation",
+               title="NVT Simulation")
 
 job.description = """
 NVT simulation of an OpenMM-ready System

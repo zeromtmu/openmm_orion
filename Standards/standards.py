@@ -27,8 +27,6 @@ from datarecord import (Types,
                         OEField,
                         OERecord)
 
-from cuberecord import Types as TypesCR
-
 
 # ------------ Stage Standard Names ------------- #
 
@@ -48,6 +46,12 @@ class Fields:
 
     # The ID field should be used as identification number for ligands, proteins or complexes
     id = OEField("ID_OPLMD", Types.Int, meta=OEFieldMeta().set_option(Meta.Source.ID))
+
+    # The LigID field is used to keep track of the ligand order
+    ligid = OEField("LigID_OPLMD", Types.Int, meta=OEFieldMeta().set_option(Meta.Source.ID))
+
+    # The ConfID field is used to identify a particular conformer of a ligand
+    confid = OEField("ConfID_OPLMD", Types.Int, meta=OEFieldMeta().set_option(Meta.Source.ID))
 
     # The Ligand field should be used to save in a record a ligand as an OEMolecule
     ligand = OEField("Ligand_OPLMD", Types.Chem.Mol, meta=OEFieldMeta().set_option(Meta.Hints.Chem.Ligand))
@@ -81,13 +85,13 @@ class Fields:
 
     # Trajectory
     if in_orion():
-        trajectory = OEField("Trajectory_OPLMD", TypesCR.Orion.File)
+        trajectory = OEField("Trajectory_OPLMD", Types.Int)
     else:
         trajectory = OEField("Trajectory_OPLMD", Types.String)
 
     # This Field is introduced to deal with record trajectory field
     # that are linked to Orion S3 storage but they are locally used
-    orion_local_trj_field = OEField("Trajectory_OPLMD", TypesCR.Orion.File)
+    orion_local_trj_field = OEField("Trajectory_OPLMD", Types.Int)
 
     # Stage list Field
     md_stages = OEField("MDStages_OPLMD", Types.RecordVec)
@@ -96,6 +100,12 @@ class Fields:
     md_stage = OEField("MDStages_OPLMD", Types.Record)
 
     yank_analysis = OEField("Yank_Analysis_OPLMD", Types.String)
+
+    # Clean up trajectories
+    if in_orion():
+        trj_garbage_field = OEField("trj_garbage_OPLMD", Types.IntVec)
+    else:
+        trj_garbage_field = OEField("trj_garbage_OPLMD", Types.StringVec)
 
 
 # ---------------- Record Standards -------------- #

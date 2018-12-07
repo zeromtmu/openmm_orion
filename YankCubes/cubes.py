@@ -62,6 +62,10 @@ from Standards.utils import ParmedData
 
 from MDCubes.utils import MDState
 
+from orionclient.session import in_orion, OrionSession
+
+from orionclient.types import File
+
 
 class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
     version = "0.0.0"
@@ -109,14 +113,18 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
         default=500,
         help_text="Number of MD steps per iteration")
 
+    checkpoint_interval = parameter.IntegerParameter(
+        'checkpoint_interval',
+        default=50,
+        help_text="Save Yank info every specified Yank iterations")
+
     nonbondedCutoff = parameter.DecimalParameter(
         'nonbondedCutoff',
         default=10.0,
         help_text="The non-bonded cutoff in angstroms")
 
-    ligand_res_name = parameter.StringParameter(
-        'ligand_res_name',
-        required=True,
+    lig_res_name = parameter.StringParameter(
+        'lig_res_name',
         default='LIG',
         help_text='Ligand residue name')
 
@@ -133,6 +141,7 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
     def begin(self):
         self.opt = vars(self.args)
         self.opt['Logger'] = self.log
+        self.opt['SimType'] = 'yank_solvation'
 
     def process(self, record, port):
 
@@ -194,12 +203,12 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
 
             # Current number of iterations
             current_iterations = record.get_value(current_iteration_field)
-                
+
             if current_iterations == 0:
                 opt['minimize'] = True
                 opt['resume_sim'] = False
                 opt['resume_setup'] = False
-                iterations_per_cube = 10
+                iterations_per_cube = opt['checkpoint_interval']
             else:
 
                 iterations_per_cube_field = OEField("iterations_per_cube", Types.Int)
@@ -216,14 +225,11 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
             else:
                 opt['new_iterations'] = current_iterations + iterations_per_cube
 
-            # Checkpoint interval
-            opt['checkpoint_interval'] = opt['new_iterations'] - current_iterations
-
             self.log.info("[{}] current iterations {}".format(self.title, current_iterations))
             self.log.info("[{}] new_iterations {}".format(self.title, opt['new_iterations']))
             self.log.info("[{}] checkpoint_interval {}".format(self.title, opt['checkpoint_interval']))
 
-            prot_split, lig_split, water, excipients = oeommutils.split(system, ligand_res_name=opt['ligand_res_name'])
+            prot_split, lig_split, water, excipients = oeommutils.split(system, ligand_res_name=opt['lig_res_name'])
 
             fchg_lig = 0
             for at in lig_split.GetAtoms():
@@ -321,7 +327,7 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
 
                     filename = os.path.join(output_directory, "yank_files.tar")
 
-                    fn_local = omm_utils.download_file(yank_files, filename, delete=True)
+                    fn_local = omm_utils.download_file(yank_files, filename, delete=False)
 
                     with tarfile.open(fn_local) as tar:
                         tar.extractall(path=output_directory)
@@ -369,12 +375,18 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                     if iterations_per_cube == 0:
                         raise ValueError("Total running time per cube > max Orion running time per cube")
 
+                    # Optimize the number of iterations per cube to be a multiple of the set checkpoint interval
+                    iterations_per_cube_opt = int(iterations_per_cube / opt['checkpoint_interval']) * opt['checkpoint_interval']
+
+                    if iterations_per_cube_opt < opt['checkpoint_interval']:
+                        raise ValueError("Total running time per cube < checkpoint interval")
+
                     iterations_per_cube_field = OEField("iterations_per_cube", Types.Int)
 
-                    record.set_value(iterations_per_cube_field, iterations_per_cube)
+                    record.set_value(iterations_per_cube_field, iterations_per_cube_opt)
 
                     self.log.info("{} iterations per cube saved on the record: {}".format(self.title,
-                                                                                          iterations_per_cube))
+                                                                                          iterations_per_cube_opt))
 
                 # Run Yank analysis
                 if opt['new_iterations'] == opt['iterations']:
@@ -391,7 +403,7 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                     record.set_value(dG_Field, dDeltaG_solvation)
 
                 # Tar the Yank temp dir with its content:
-                tar_fn = os.path.basename(output_directory) + '.tar.gz'
+                tar_fn = os.path.basename(output_directory+"_" + opt['system_title']) + '.tar.gz'
                 with tarfile.open(tar_fn, mode='w:gz') as archive:
                     archive.add(output_directory, arcname='.', recursive=True)
 
@@ -407,6 +419,13 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                                                           MDRecords.MDSystemRecord(system, mdstate),
                                                           log=str_logger,
                                                           trajectory=lf)
+                if current_iterations == 0:
+                    record.set_value(Fields.trj_garbage_field, [lf])
+                else:
+                    trj_garbage_list = record.get_value(Fields.trj_garbage_field)
+                    trj_garbage_list.append(lf)
+                    record.set_value(Fields.trj_garbage_field, trj_garbage_list)
+
                 # md_stages.append(md_stage_record)
                 md_stages[-1] = md_stage_record
 
@@ -485,6 +504,10 @@ class SyncBindingFECube(OERecordComputeCube):
                                                                   pair[0].get_value(Fields.id),
                                                                   pair[1].get_value(Fields.title),
                                                                   pair[1].get_value(Fields.id)))
+
+                # Copy all the ligand fields into the new record
+                for field in pair[0].get_fields():
+                    new_record.set_value(field, pair[0].get_value(field))
 
                 complex_solvated = pair[1].get_value(Fields.primary_molecule)
                 new_record.set_value(Fields.primary_molecule, complex_solvated)
@@ -567,6 +590,11 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
         default=500,
         help_text="Number of MD steps per iteration")
 
+    checkpoint_interval = parameter.IntegerParameter(
+        'checkpoint_interval',
+        default=50,
+        help_text="Save Yank info every specified Yank iterations")
+
     timestep = parameter.DecimalParameter(
         'timestep',
         default=2.0,
@@ -577,8 +605,8 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
         default=10.0,
         help_text="The non-bonded cutoff in angstroms")
 
-    ligand_resname = parameter.StringParameter(
-        'ligand_resname',
+    lig_res_name = parameter.StringParameter(
+        'lig_res_name',
         default='LIG',
         help_text='The decoupling ligand residue name')
 
@@ -630,6 +658,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
     def begin(self):
         self.opt = vars(self.args)
         self.opt['Logger'] = self.log
+        self.opt['SimType'] = 'yank_binding'
 
     def process(self, record, port):
 
@@ -693,7 +722,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                 opt['minimize'] = True
                 opt['resume_sim'] = False
                 opt['resume_setup'] = False
-                iterations_per_cube = 10
+                iterations_per_cube = opt['checkpoint_interval']
             else:
 
                 iterations_per_cube_field = OEField("iterations_per_cube", Types.Int)
@@ -710,16 +739,13 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
             else:
                 opt['new_iterations'] = current_iterations + iterations_per_cube
 
-            # Checkpoint interval
-            opt['checkpoint_interval'] = opt['new_iterations'] - current_iterations
-
             self.log.info("[{}] current iterations {}".format(self.title, current_iterations))
             self.log.info("[{}] new_iterations {}".format(self.title, opt['new_iterations']))
             self.log.info("[{}] checkpoint_interval {}".format(self.title, opt['checkpoint_interval']))
 
             # Split the complex in components
             protein_split, ligand_split, water, excipients = oeommutils.split(complex,
-                                                                              ligand_res_name=self.opt['ligand_resname'])
+                                                                              ligand_res_name=self.opt['lig_res_name'])
             fchg_lig = 0
             for at in ligand_split.GetAtoms():
                 fchg_lig += at.GetFormalCharge()
@@ -812,7 +838,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
                     filename = os.path.join(output_directory, "yank_files.tar")
 
-                    fn_local = omm_utils.download_file(yank_files, filename, delete=True)
+                    fn_local = omm_utils.download_file(yank_files, filename, delete=False)
 
                     with tarfile.open(fn_local) as tar:
                         tar.extractall(path=output_directory)
@@ -877,15 +903,21 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     if iterations_per_cube == 0:
                         raise ValueError("Total running time per cube > max Orion running time per cube")
 
+                    # Optimize the number of iterations per cube to be a multiple of the set checkpoint interval
+                    iterations_per_cube_opt = int(iterations_per_cube / opt['checkpoint_interval']) * opt['checkpoint_interval']
+
+                    if iterations_per_cube_opt < opt['checkpoint_interval']:
+                        raise ValueError("Total running time per cube < checkpoint interval")
+
                 # Run the analysis
                 if opt['new_iterations'] == opt['iterations']:
 
                     DeltaG_binding, dDeltaG_binding = yankutils.run_yank_analysis(opt)
 
                     # Create OE Field to save the solvation Free Energy in kcal/mol
-                    DG_Field = OEField('Solvation FE', Types.Float,
+                    DG_Field = OEField('Binding FE', Types.Float,
                                        meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal_per_mol))
-                    dG_Field = OEField('Solvation FE Error', Types.Float,
+                    dG_Field = OEField('Binding FE Error', Types.Float,
                                        meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal_per_mol))
 
                     record.set_value(DG_Field, DeltaG_binding)
@@ -913,6 +945,11 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     # md_stages.append(md_stage_record)
                     md_stages[-1] = md_stage_record
                     record.set_value(Fields.md_stages, md_stages)
+
+                    trj_garbage_list = record.get_value(Fields.trj_garbage_field)
+                    trj_garbage_list.append(lf)
+                    record.set_value(Fields.trj_garbage_field, trj_garbage_list)
+
                 else:
                     record = OERecord()
                     record.set_value(Fields.md_stages, [md_stage_record])
@@ -921,9 +958,14 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     record.set_value(Fields.pmd_structure, solvated_complex_parmed_structure)
 
                     iterations_per_cube_field = OEField("iterations_per_cube", Types.Int)
-                    record.set_value(iterations_per_cube_field, iterations_per_cube)
+                    record.set_value(iterations_per_cube_field, iterations_per_cube_opt)
                     self.log.info("[{}] iterations per cube saved on the record: {}".format(self.title,
-                                                                                            iterations_per_cube))
+                                                                                            iterations_per_cube_opt))
+                    record.set_value(Fields.trj_garbage_field, [lf])
+
+                    if opt['new_iterations'] == opt['iterations']:
+                        record.set_value(DG_Field, DeltaG_binding)
+                        record.set_value(dG_Field, dDeltaG_binding)
 
             record.set_value(current_iteration_field, opt['new_iterations'])
             record.set_value(Fields.primary_molecule, complex)
@@ -1002,7 +1044,26 @@ class YankProxyCube(OERecordComputeCube):
 
                 if current_iteration == self.opt['iterations']:
                     self.opt['Logger'].info("{} Finishing...".format(self.title))
+
+                    # Clean up trajectories in Orion
+                    if not record.has_value(Fields.trj_garbage_field):
+                        raise ValueError("The trajectory garbage field is missing")
+
+                    trj_garbage_list = record.get_value(Fields.trj_garbage_field)
+
+                    if len(trj_garbage_list) > 1:
+                        if in_orion():
+                            session = OrionSession()
+
+                            for file_id in trj_garbage_list[:-1]:
+                                resource = session.get_resource(File, file_id)
+                                session.delete_resource(resource)
+
+                        trj_garbage_list = [trj_garbage_list[-1]]
+                        record.set_value(Fields.trj_garbage_field, trj_garbage_list)
+
                     self.success.emit(record)
+
                 else:
                     self.opt['Logger'].warn("{} Forwarding to Cycle...".format(self.title))
                     self.cycle_out_port.emit(record)

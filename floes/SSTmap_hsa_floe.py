@@ -22,7 +22,9 @@ from cuberecord import DatasetWriterCube, DatasetReaderCube
 from TrjAnalysisCubes.sstmap_cubes import SSTMapHsa
 
 
-job = WorkFloe("SSTMAP HSA")
+job = WorkFloe("SSTMap HSA",
+               title="SSTMap HSA")
+
 job.classification = [['Water Thermodynamics', 'SSTMAP']]
 job.tags = [tag for lists in job.classification for tag in lists]
 

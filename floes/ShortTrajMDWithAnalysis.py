@@ -17,6 +17,7 @@
 # liable for any damages or liability in connection with the Sample Code
 # or its use.
 
+release = True
 
 from floe.api import WorkFloe
 
@@ -41,7 +42,8 @@ from TrjAnalysisCubes.TrajToOEMol import TrajToOEMolCube
 from TrjAnalysisCubes.LigBasedTrajClustering import ClusterOETrajCube
 from TrjAnalysisCubes.MDTrajAnalysisFloeReport import MDTrajAnalysisClusterReport
 
-job = WorkFloe('Short Trajectory MD with Analysis')
+job = WorkFloe('Short Trajectory MD with Analysis',
+               title='Short Trajectory MD with Analysis')
 
 job.description = """
 NOTE: this is an Alpha Test version.
@@ -92,6 +94,7 @@ chargelig.promote_parameter('charge_ligands', promoted_name='charge_ligands',
                             description="Charge the ligand or not", default=True)
 
 ligset = LigandSetting("LigandSetting", title="Ligand Setting")
+ligset.set_parameters(lig_res_name='LIG')
 
 # Protein Reading cube. The protein prefix parameter is used to select a name for the
 # output system files
@@ -104,6 +107,7 @@ protset.promote_parameter("protein_prefix", promoted_name="protein_prefix", defa
 
 # Complex cube used to assemble the ligands and the solvated protein
 complx = ComplexPrepCube("Complex", title="Complex Preparation")
+complx.set_parameters(lig_res_name='LIG')
 
 # The solvation cube is used to solvate the system and define the ionic strength of the solution
 
@@ -118,7 +122,7 @@ solvate.set_parameters(close_solvent=True)
 ff = ForceFieldCube("ForceField", title="System Parametrization")
 ff.promote_parameter('ligand_forcefield', promoted_name='ligand_ff', default='GAFF2')
 ff.promote_parameter('other_forcefield', promoted_name='other_ff', default='GAFF2')
-
+ff.set_parameters(lig_res_name='LIG')
 
 prod = OpenMMNptCube("Production", title="Production")
 prod.promote_parameter('time', promoted_name='prod_ns', default=2.0,

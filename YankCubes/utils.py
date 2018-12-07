@@ -71,7 +71,7 @@ def yank_solvation_initialize(sim):
         # Print Yank Template
         opt['Logger'].info(opt['yank_template'])
 
-        sim(opt)
+        sim(*args)
 
     return wrapper
 
@@ -99,7 +99,7 @@ def yank_binding_initialize(sim):
             complex_xml_fn=opt['solvated_complex_omm_serialized_fn'],
             solvent_pdb_fn=opt['solvated_ligand_structure_fn'],
             solvent_xml_fn=opt['solvated_ligand_omm_serialized_fn'],
-            ligand_resname=opt['ligand_resname'],
+            ligand_resname=opt['lig_res_name'],
             solvent_dsl=opt['solvent_str_names'],
             sampler=opt['sampler'],
             restraints=opt['restraints'],
@@ -114,11 +114,22 @@ def yank_binding_initialize(sim):
 
             # Loading the user Yaml file
             try:
-                fn = opt['user_yank_yaml_file']
+                if in_orion():
+                    if not isinstance(opt['user_yank_yaml_file'], dict):
+                        fn = opt['user_yank_yaml_file']
+                    else:
+                        file_id = opt['user_yank_yaml_file']['file']
+                        session = OrionSession()
+                        resource = session.get_resource(File, file_id)
+                        fn = os.path.join(opt['output_directory'], "user_yank_orion.yaml")
+                        resource.download_to_file(fn)
+                else:
+                    fn = opt['user_yank_yaml_file']
+
                 with open(fn, 'r') as yaml_file:
                     yank_yaml_user = yaml.load(yaml_file)
             except:
-                raise IOError("It was not possible to load the provided yaml file")
+                raise IOError("It was not possible to load the provided yaml file {}".format(opt['user_yank_yaml_file']))
 
             yank_yaml_merge = dict(yank_yaml_template)
 
@@ -134,7 +145,6 @@ def yank_binding_initialize(sim):
 
                     yank_yaml_merge['experiments'] = yank_yaml_user['experiments']
 
-                    # yank_template = yank_yaml_merge
                 else:
                     yank_yaml_merge['experiments'] = ["exp"]
 
@@ -179,7 +189,7 @@ def yank_binding_initialize(sim):
         else:
             opt['Logger'].info(opt['yank_template'])
 
-        sim(opt)
+        sim(*args)
 
     return wrapper
 
@@ -216,10 +226,10 @@ def run_yank_analysis(opt):
     analysis = experiment_to_analyze.auto_analyze()
 
     # Calculate free energy and its error
-    DeltaG = analysis['free_energy']['free_energy_diff_unit'].\
-                 in_units_of(unit.kilocalorie_per_mole) / unit.kilocalorie_per_mole
-    dDeltaG = analysis['free_energy']['free_energy_diff_error_unit'].\
-                  in_units_of(unit.kilocalorie_per_mole) / unit.kilocalorie_per_mole
+    DeltaG = analysis['free_energy']['free_energy_diff_unit'].in_units_of(
+        unit.kilocalorie_per_mole) / unit.kilocalorie_per_mole
+    dDeltaG = analysis['free_energy']['free_energy_diff_error_unit'].in_units_of(
+        unit.kilocalorie_per_mole) / unit.kilocalorie_per_mole
 
     opt_1 = '--store={}'.format(exp_dir)
 

@@ -148,7 +148,6 @@ class SolvationCube(ParallelMixin, OERecordComputeCube):
 
     solvents = parameter.StringParameter(
         'solvents',
-        required=True,
         default='[H]O[H]',
         help_text='Select solvents. The solvents are specified as comma separated smiles strings'
                   'e.g. [H]O[H], C(Cl)(Cl)Cl, CS(=O)C')
@@ -161,7 +160,6 @@ class SolvationCube(ParallelMixin, OERecordComputeCube):
 
     verbose = parameter.BooleanParameter(
         'verbose',
-        required=True,
         default=False,
         help_text='Output Packmol log')
 
@@ -279,7 +277,6 @@ class ComplexPrepCube(OERecordComputeCube):
     # Ligand Residue Name
     lig_res_name = parameter.StringParameter('lig_res_name',
                                              default='LIG',
-                                             required=True,
                                              help_text='The ligand residue name',
                                              level=ADVANCED)
 
@@ -369,6 +366,10 @@ class ComplexPrepCube(OERecordComputeCube):
                 new_complex.SetTitle(ligand.GetTitle())
 
                 new_record = OERecord()
+
+                # Copy all the ligand fields into the new record
+                for field in record.get_fields():
+                    new_record.set_value(field, record.get_value(field))
 
                 new_record.set_value(Fields.primary_molecule, new_complex)
                 new_record.set_value(Fields.title, complex_title)

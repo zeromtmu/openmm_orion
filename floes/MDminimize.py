@@ -21,7 +21,8 @@ from floe.api import WorkFloe
 from MDCubes.cubes import OpenMMminimizeCube
 from cuberecord import DatasetReaderCube, DatasetWriterCube
 
-job = WorkFloe("Minimize")
+job = WorkFloe("Minimize",
+               title="Minimize")
 
 job.description = """
 Minimize an OpenMM-ready solvated complex

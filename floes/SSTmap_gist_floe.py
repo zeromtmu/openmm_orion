@@ -23,7 +23,8 @@ from cuberecord import DatasetWriterCube, DatasetReaderCube
 from TrjAnalysisCubes.sstmap_cubes import SSTMapGist
 from LigPrepCubes.cubes import LigandSetting
 
-job = WorkFloe("SSTMAP GIST")
+job = WorkFloe("SSTMap GIST",
+               title="SSTMap GIST")
 
 job.classification = [['Water Thermodynamics', 'SSTMAP']]
 job.tags = [tag for lists in job.classification for tag in lists]

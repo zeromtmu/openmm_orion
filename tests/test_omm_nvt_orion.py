@@ -105,11 +105,11 @@ def calculate_VT(mdstate, parmed_structure):
 class TestMDOrionFloes(FloeTestCase):
 
     @pytest.mark.floetest
-    @pytest.mark.moderate
+    @pytest.mark.fast
     def test_omm_nvt_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "MDnvt.py"),
-            run_timeout=1200,
+            run_timeout=1500,
             queue_timeout=600
         )
 
@@ -174,7 +174,7 @@ class TestMDOrionFloes(FloeTestCase):
         ifs.close()
 
         count = len(records)
-        # The records list must have just one record
+        # Check the out record list
         self.assertEqual(count, 1)
 
         for record in records:

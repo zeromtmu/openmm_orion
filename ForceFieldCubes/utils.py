@@ -17,16 +17,24 @@
 
 
 from openeye import oechem
-from oeommtools import utils as oeommutils
-import MDOrion
-from simtk.openmm import app
-import parmed
-from openeye import oequacpac
-from LigPrepCubes import ff_utils
-import numpy as np
-import itertools
-import os
 
+from oeommtools import utils as oeommutils
+
+import MDOrion
+
+from simtk.openmm import app
+
+import parmed
+
+from openeye import oequacpac
+
+from LigPrepCubes import ff_utils
+
+import numpy as np
+
+import itertools
+
+import os
 
 proteinResidues = ['ALA', 'ASN', 'CYS', 'GLU', 'HIS',
                    'LEU', 'MET', 'PRO', 'THR', 'TYR',
@@ -58,6 +66,7 @@ def applyffProtein(protein, opt):
     topology, positions = oeommutils.oemol_to_openmmTop(protein)
 
     forcefield = app.ForceField(opt['protein_forcefield'])
+
     unmatched_residues = forcefield.getUnmatchedResidues(topology)
 
     if unmatched_residues:
@@ -280,12 +289,14 @@ def applyffExcipients(excipients, opt):
         else:
             excipients_structure = unrc_struc
 
-        return excipients_structure
+        # return excipients_structure
     else:  # All the excipients are recognized by the selected FF
         omm_system = forcefield.createSystem(topology, rigidWater=False)
         excipients_structure = parmed.openmm.load_topology(topology, omm_system, xyz=positions)
 
-        return excipients_structure
+        # return excipients_structure
+
+    return excipients_structure
 
 
 def applyffLigand(ligand, opt):
@@ -313,7 +324,7 @@ def applyffLigand(ligand, opt):
     # Parametrize the Ligand
     pmd = ff_utils.ParamLigStructure(ligand, opt['ligand_forcefield'], prefix_name=opt['prefix_name'])
     ligand_structure = pmd.parameterize()
-    ligand_structure.residues[0].name = opt['ligand_res_name']
+    ligand_structure.residues[0].name = opt['lig_res_name']
     opt['Logger'].info("[{}] Ligand parametrized by using: {}".format(opt['CubeTitle'],
                                                                       opt['ligand_forcefield']))
 

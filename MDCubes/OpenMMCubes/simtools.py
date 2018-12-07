@@ -48,7 +48,9 @@ try:
 except: have_gzip = False
 
 import simtk.openmm as mm
+
 import math
+
 import time
 
 from MDCubes.utils import MDSimulations
@@ -103,6 +105,15 @@ class OpenMMSimulations(MDSimulations):
                                                         constraints=eval("app.%s" % opt['constraints']),
                                                         removeCMMotion=False,
                                                         hydrogenMass=4.0 * unit.amu if opt['hmr'] else None)
+        # Add Implicit Solvent Force
+        if opt['implicit_solvent'] != 'None':
+            opt['Logger'].info("[{}] Implicit Solvent Selected".format(opt['CubeTitle']))
+
+            implicit_force = parmed_structure.omm_gbsa_force(eval("app.%s" % opt['implicit_solvent']),
+                                                             temperature=opt['temperature'] * unit.kelvin,
+                                                             nonbondedMethod=eval("app.%s" % opt['nonbondedMethod']),
+                                                             nonbondedCutoff=opt['nonbondedCutoff'] * unit.angstroms)
+            self.system.addForce(implicit_force)
 
         # OpenMM Integrator
         integrator = openmm.LangevinIntegrator(opt['temperature'] * unit.kelvin, 1 / unit.picoseconds, self.stepLen)
@@ -378,6 +389,17 @@ class OpenMMSimulations(MDSimulations):
             new_mdstate.set_velocities(self.omm_state.getVelocities(asNumpy=False))
 
         return new_mdstate
+
+    def clean_up(self):
+
+        if not hasattr(self, 'omm_simulation'):
+            raise ValueError("The OpenMM Simulation has not been defined")
+
+        del self.omm_simulation.context
+        del self.omm_simulation.integrator
+        del self.omm_simulation
+
+        return
 
 
 def getReporters(totalSteps=None, outfname=None, **opt):

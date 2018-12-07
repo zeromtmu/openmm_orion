@@ -78,20 +78,17 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
 
     ligand_forcefield = parameter.StringParameter(
         'ligand_forcefield',
-        required=True,
         default='GAFF',
         choices=['GAFF', 'GAFF2', 'SMIRNOFF'],
         help_text='Force field to parametrize the ligand')
 
-    ligand_res_name = parameter.StringParameter(
-        'ligand_res_name',
-        required=True,
+    lig_res_name = parameter.StringParameter(
+        'lig_res_name',
         default='LIG',
         help_text='Ligand residue name')
 
     other_forcefield = parameter.StringParameter(
         'other_forcefield',
-        required=True,
         default='GAFF',
         choices=['GAFF', 'GAFF2', 'SMIRNOFF'],
         help_text='Force field used to parametrize other molecules not recognized by the protein force field')
@@ -119,7 +116,7 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
                 system_title = record.get_value(Fields.title)
 
             # Split the complex in components in order to apply the FF
-            protein, ligand, water, excipients = oeommutils.split(system, ligand_res_name=opt['ligand_res_name'])
+            protein, ligand, water, excipients = oeommutils.split(system, ligand_res_name=opt['lig_res_name'])
 
             self.log.info("[{}] \nComplex name: {}\nProtein atom numbers = {}\nLigand atom numbers = {}\n"
                           "Water atom numbers = {}\nExcipients atom numbers = {}".format(opt['CubeTitle'],
@@ -191,14 +188,14 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
 
             # Set Parmed structure box_vectors
             is_periodic = True
+
             try:
                 vec_data = pack_utils.getData(system_reassembled, tag='box_vectors')
                 vec = pack_utils.decodePyObj(vec_data)
                 system_structure.box_vectors = vec
             except:
                 is_periodic = False
-                self.log.warn("System {} has been parametrize without periodic box vectors "
-                              "for vacuum simulation".format(system_title))
+                self.log.warn("System {} has been parametrize without periodic box vectors ".format(system_title))
 
             # Set atom serial numbers, Ligand name and HETATM flag
             for at in system_reassembled.GetAtoms():
@@ -212,6 +209,15 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
             if system_reassembled.GetMaxAtomIdx() != system_structure.topology.getNumAtoms():
                 raise ValueError("OEMol system {} and generated Parmed structure "
                                  "mismatch atom numbers".format(system_title))
+
+            # Copying the charges between the parmed structure and the oemol
+            for parm_at, oe_at in zip(system_structure.atoms, system_reassembled.GetAtoms()):
+
+                if parm_at.atomic_number != oe_at.GetAtomicNum():
+                    raise ValueError("Atomic number mismatch between the Parmed and the OpenEye topologies: {} - {}".
+                                     format(parm_at.atomic_number, oe_at.GetAtomicNum()))
+
+                oe_at.SetPartialCharge(parm_at.charge)
 
             # Check if it is possible to create the OpenMM System
             if is_periodic:

@@ -17,7 +17,6 @@
 # liable for any damages or liability in connection with the Sample Code
 # or its use.
 
-
 release = True
 
 from floe.api import WorkFloe
@@ -43,28 +42,30 @@ from YankCubes.cubes import (SyncBindingFECube,
 from cuberecord import (DatasetWriterCube,
                         DatasetReaderCube)
 
-job = WorkFloe('Binding Affinity Self-Adjusted Mixture Sampling',
-               title='Binding Affinity Self-Adjusted Mixture Sampling')
+job = WorkFloe('Binding Affinity Detailed',
+               title='Binding Affinity Detailed')
 
 job.description = """
 NOTE: this is an Alpha Test version. 
 We are actively working on improving Yank in Orion
 
 The Absolute Binding Affinity Free Energy protocol (ABFE) performs Binding Affinity calculations
-on a set of provided ligands and related receptor by using YANK Self-Adjusted Mixture Sampling
-( http://getyank.org/latest/ ). The ligands need to have coordinates and correct chemistry.
-Each ligand can have multiple conformers, but each conformer will be treated as a different ligand
-and prepared to run ABFE. The protein needs to be prepared at MD preparation standard. This includes
-capping the protein, resolve missing atoms in protein residues and resolve missing protein loops.
-The parametrization of some "known unknown" non standard protein residues is partially supported.
-Ligands need to be already posed in the protein binding site. A complex (Bonded State) is formed,
-solvated and parametrized accordingly to the selected force fields. In a similar fashion the Unbounded
-state is also prepared. Minimization, Warm up (NVT) and Equilibration (NPT) stages are performed
-an the Bonded and Unbounded states. In order to minimize Molecular Dynamics (MD) failures along
-these stages, positional harmonic restraints are applied on the ligand and protein with different
-force constants. At the end of the equilibration stages the ABFE calculations are run by YANK with
-the selected parameters. Calculated Binding Affinities for each ligand are output with the related
-floe reports.
+on a set of provided ligands posed in a receptor by using YANK ( http://getyank.org/latest/ ). This floe 
+also accept a YANK yaml file provided by the user. Some of the parameters provided from the yaml file
+are merged with the YANK cube parameters to perform the simulation. 
+The ligands need to have coordinates and correct chemistry. Each ligand can have multiple conformers,
+but each conformer will be prepared and treated as a different ligand.
+The protein needs to be prepared to MD standard: This includes capping the protein,
+resolving missing atoms in protein residues and resolving missing protein loops.
+The parametrization of some common non-standard protein residues is partially supported.
+Though input separately from the protein, Ligands need to be already posed in the
+protein binding site.
+A bound complex is formed, solvated and parametrized according to the selected force fields.
+The unbound state is similarly prepared. For both bound and unbound states the ABFE
+calculation is preceded by minimization, warm up, and equilibration in the presence of
+positional harmonic restraints.
+The ABFE calculation is then run by YANK with the selected parameters.
+The output floe report for each ligand contains the calculated binding affinity and health checks.
 
 Required Input Parameters:
 -----------
@@ -73,8 +74,8 @@ protein: Dataset of the prepared protein
 
 Outputs:
 --------
-out : Dataset of the solvated systems with the calculated binding free energies and
-floe reports
+* out : Dataset of the solvated systems with the calculated binding free energies
+* floe report : An analysis of the results for each ligand
 """
 
 job.classification = [['BindingFreeEnergy', 'Yank']]
@@ -87,7 +88,7 @@ job.add_cube(iligs)
 
 chargelig = LigandChargeCube("LigCharge", title="Ligand Charge")
 chargelig.promote_parameter('charge_ligands', promoted_name='charge_ligands',
-                            description="Charge the ligand or not", default=True)
+                            description="Calculate ligand partial charges", default=True)
 job.add_cube(chargelig)
 
 ligset = LigandSetting("LigandSetting", title="Ligand Setting")
@@ -138,7 +139,7 @@ yank_proxy.promote_parameter('iterations', promoted_name='iterations',
 job.add_cube(yank_proxy)
 
 # First Yank Cube used to build the UI interface
-abfe = YankBindingFECube("YankABFE", title="Yank ABFE SAMS")
+abfe = YankBindingFECube("YankABFE", title="Yank ABFE")
 abfe.promote_parameter('iterations', promoted_name='iterations',
                        description="Total Number of Yank iterations for the entire floe. "
                                    "A Yank iteration is 500 MD steps")
@@ -149,14 +150,15 @@ abfe.promote_parameter('pressure', promoted_name='pressure', default=1.0,
 abfe.promote_parameter('hmr', promoted_name='hmr', default=False,
                        description='Hydrogen Mass Repartitioning')
 abfe.promote_parameter('restraints', promoted_name='restraints',
-                        default='boresch',
+                       default='boresch',
                        description='Select the restraint types to apply to the ligand during the '
                                    'alchemical decoupling. Choices: harmonic, boresch')
 abfe.set_parameters(lig_res_name='LIG')
 abfe.promote_parameter('verbose', promoted_name='verbose', default=False, description="Yank verbose mode on/off")
-# abfe.promote_parameter('user_yank_yaml_file', promoted_name='yaml', default=None)
-abfe.set_parameters(sampler='sams')
-abfe.promote_parameter('protocol_sams', promoted_name='protocol_sams', default='windows_sams')
+abfe.promote_parameter('user_yank_yaml_file', promoted_name='yaml', default=None)
+abfe.set_parameters(sampler='repex')
+abfe.promote_parameter('protocol_repex', promoted_name='protocol_repex', default='windows_29',
+                       description="Select the Repex window schedule protocol")
 job.add_cube(abfe)
 
 # Minimization
@@ -272,7 +274,7 @@ equilLigand.set_parameters(reporter_interval=0.0)
 equilLigand.set_parameters(suffix='equil')
 job.add_cube(equilLigand)
 
-sync = SyncBindingFECube("SyncCube", title="Unbound and Bound State Synchronization")
+sync = SyncBindingFECube("SyncCube", title="Unbound and Bound States Synchronization")
 job.add_cube(sync)
 
 ofs = DatasetWriterCube('ofs', title='Out')

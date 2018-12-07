@@ -21,7 +21,8 @@ from floe.api import WorkFloe
 from MDCubes.cubes import OpenMMNptCube
 from cuberecord import DatasetReaderCube, DatasetWriterCube
 
-job = WorkFloe("NPT Production")
+job = WorkFloe("NPT Production",
+               title="NPT Production")
 
 job.description = """
 NPT simulation of an OpenMM-ready System

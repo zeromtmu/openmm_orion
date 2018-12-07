@@ -33,7 +33,8 @@ from ComplexPrepCubes.cubes import (ComplexPrepCube,
 
 from ForceFieldCubes.cubes import ForceFieldCube
 
-job = WorkFloe("Complex Preparation")
+job = WorkFloe("Complex Preparation",
+               title="Complex Preparation")
 
 job.description = """
 Complex Preparation Workflow
@@ -59,12 +60,14 @@ job.tags = [tag for lists in job.classification for tag in lists]
 iligs = DatasetReaderCube("Ligand Reader", title="Ligand Reader")
 iligs.promote_parameter("data_in", promoted_name="ligands", title="Ligand Input File", description="Ligand file name")
 
+
 chargelig = LigandChargeCube("LigCharge", title='Ligand Charge')
 chargelig.promote_parameter('charge_ligands', promoted_name='charge_ligands',
                             description="Charge the ligand or not", default=True)
 
 
 ligset = LigandSetting("LigandSetting")
+ligset.set_parameters(lig_res_name='LIG')
 
 iprot = DatasetReaderCube("Protein Reader", title="Protein Reader")
 iprot.promote_parameter("data_in", promoted_name="protein", title="Protein Input File", description="Protein file name")
@@ -72,6 +75,7 @@ iprot.promote_parameter("data_in", promoted_name="protein", title="Protein Input
 protset = ProteinSetting("ProteinSetting")
 
 complx = ComplexPrepCube("Complex")
+complx.set_parameters(lig_res_name='LIG')
 
 solvate = SolvationCube("Hydration", title='System Hydration')
 solvate.promote_parameter('density', promoted_name='density', default=1.03,
@@ -84,11 +88,12 @@ solvate.set_parameters(close_solvent=True)
 ff = ForceFieldCube("ForceField", title="System Parametrization")
 ff.promote_parameter('ligand_forcefield', promoted_name='ligand_ff', default='GAFF2')
 ff.promote_parameter('other_forcefield', promoted_name='other_ff', default='GAFF2')
+ff.set_parameters(lig_res_name='LIG')
 
-ofs = DatasetWriterCube('ofs', title='OFS-Success')
+ofs = DatasetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")
 
-fail = DatasetWriterCube('fail', title='OFS-Failure')
+fail = DatasetWriterCube('fail', title='Failures')
 fail.promote_parameter("data_out", promoted_name="fail")
 
 job.add_cubes(iligs, chargelig, ligset, iprot, protset, complx, solvate, ff, ofs, fail)

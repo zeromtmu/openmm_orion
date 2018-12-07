@@ -17,6 +17,8 @@
 # liable for any damages or liability in connection with the Sample Code
 # or its use.
 
+release = True
+
 from floe.api import WorkFloe
 
 from cuberecord import (DatasetWriterCube,
@@ -35,7 +37,8 @@ from MDCubes.cubes import (OpenMMminimizeCube,
                            OpenMMNvtCube,
                            OpenMMNptCube)
 
-job = WorkFloe("Solvation Free Energy")
+job = WorkFloe("Solvation Free Energy",
+               title="Solvation Free Energy")
 
 job.description = """
 The Solvation Free Energy protocol performs Solvation Free Energy Calculations (SFEC) on
@@ -73,27 +76,28 @@ chargelig.promote_parameter('charge_ligands', promoted_name='charge_ligands',
 job.add_cube(chargelig)
 
 ligset = LigandSetting("LigandSetting")
+ligset.set_parameters(lig_res_name='LIG')
 job.add_cube(ligset)
 
 
 solvate = SolvationCube("Solvation", title="System Solvation")
 solvate.promote_parameter("density", promoted_name="density", title="Solution density in g/ml", default=1.0,
                           description="Solution Density in g/ml")
-#solvate.promote_parameter("solvents", promoted_name="solvents", title="Solvent components",
-#                          default='[H]O[H]',
-#                          description="Comma separated smiles strings of solvent components")
-#solvate.promote_parameter("molar_fractions", promoted_name="molar_fractions",
-#                          title="Molar fractions",
-#                          default='1.0',
-#                          description="Comma separated strings of solvent molar fractions")
+solvate.promote_parameter("solvents", promoted_name="solvents", title="Solvent components",
+                          default='[H]O[H]',
+                          description="Comma separated smiles strings of solvent components")
+solvate.promote_parameter("molar_fractions", promoted_name="molar_fractions",
+                          title="Molar fractions",
+                          default='1.0',
+                          description="Comma separated strings of solvent molar fractions")
 solvate.set_parameters(distance_between_atoms=2.5)
 solvate.set_parameters(padding_distance=11.0)
 
 job.add_cube(solvate)
 
-
 ff = ForceFieldCube("ForceField", title="System Parametrization")
 ff.promote_parameter('ligand_forcefield', promoted_name='Ligand ForceField', default='GAFF2')
+ff.set_parameters(lig_res_name='LIG')
 job.add_cube(ff)
 
 # Add YANK Cube
@@ -112,6 +116,7 @@ solvationfe.promote_parameter('pressure', promoted_name='pressure', default=1.0,
                               description='Pressure (atm)')
 solvationfe.promote_parameter('hmr', promoted_name='hmr', default=False,
                               description='Hydrogen Mass Repartitioning')
+solvationfe.set_parameters(lig_res_name='LIG')
 job.add_cube(solvationfe)
 
 # Minimization
