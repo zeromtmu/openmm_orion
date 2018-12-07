@@ -28,6 +28,7 @@
         "packmol==18.169",
         "parmed==3.0.1",
         "pdbfixer==1.4",
+        "pip==18.0",
         "pymbar==3.0.3",
         "pyparsing==2.1.1",
         "python==3.5.6",
