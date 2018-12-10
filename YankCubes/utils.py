@@ -115,6 +115,7 @@ def yank_solvation_initialize(sim):
 
                                 time.sleep(5.0)
                                 fcntl.flock(file, fcntl.LOCK_UN)
+                                return
 
                         except BlockingIOError:
                             time.sleep(0.1)
@@ -283,7 +284,7 @@ def yank_binding_initialize(sim):
 
                                 time.sleep(5.0)
                                 fcntl.flock(file, fcntl.LOCK_UN)
-
+                                return
                         except BlockingIOError:
                             time.sleep(0.1)
 
