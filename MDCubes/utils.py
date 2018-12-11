@@ -173,7 +173,7 @@ def local_cluster(sim):
                                 fcntl.flock(file, fcntl.LOCK_UN)
                             except Exception as e:
                                 pass
-                            raise ValueError("{} Simulation Failed".format(e.message))
+                            raise ValueError("{} Simulation Failed".format(str(e)))
         else:
             new_mdstate = sim(*args)
             return new_mdstate

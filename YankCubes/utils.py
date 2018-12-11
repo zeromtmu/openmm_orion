@@ -244,19 +244,19 @@ def run_yank_analysis(opt):
         subprocess.check_call(['yank', 'analyze', 'report', opt_1, opt_2, opt_3])
 
         # Upload Floe Report
-        if in_orion():
-            session = OrionSession()
-
-            file_upload = File.upload(session,
-                                      "{}.html".format(opt['system_title']),
-                                      result_fn)
-
-            session.tag_resource(file_upload, "floe_report")
-
-            job_id = environ.get('ORION_JOB_ID')
-
-            if job_id:
-                session.tag_resource(file_upload, "Job {}".format(job_id))
+        # if in_orion():
+        #     session = OrionSession()
+        #
+        #     file_upload = File.upload(session,
+        #                               "{}.html".format(opt['system_title']),
+        #                               result_fn)
+        #
+        #     session.tag_resource(file_upload, "floe_report")
+        #
+        #     job_id = environ.get('ORION_JOB_ID')
+        #
+        #     if job_id:
+        #         session.tag_resource(file_upload, "Job {}".format(job_id))
 
     except subprocess.SubprocessError:
         opt['Logger'].warn("The result file have not been generated")
