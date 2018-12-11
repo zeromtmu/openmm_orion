@@ -126,7 +126,7 @@ def yank_solvation_initialize(sim):
                                 fcntl.flock(file, fcntl.LOCK_UN)
                             except Exception as e:
                                 pass
-                            raise ValueError("{} Simulation Failed".format(e.message))
+                            raise ValueError("{} Simulation Failed".format(str(e)))
         else:
             sim(*args)
 
@@ -294,7 +294,7 @@ def yank_binding_initialize(sim):
                                 fcntl.flock(file, fcntl.LOCK_UN)
                             except Exception as e:
                                 pass
-                            raise ValueError("{} Simulation Failed".format(e.message))
+                            raise ValueError("{} Simulation Failed".format(str(e)))
         else:
             sim(*args)
 
