@@ -1111,9 +1111,10 @@ class YankProxyCube(OERecordComputeCube):
 
                     report_string = record.get_value(OEField("report_html", Types.String))
 
+                    ligand_split.SetTitle(opt['system_title'])
+
                     self.floe_report_dic[opt['system_id']] = (report_string,
-                                                              ligand_split,
-                                                              opt['system_title'])
+                                                              ligand_split)
 
                     record.delete_field(OEField("report_html", Types.String))
 
@@ -1176,16 +1177,20 @@ class YankProxyCube(OERecordComputeCube):
             <main class="grid">
             """
 
-            for (report_string, ligand, ligand_name) in self.floe_report_dic.values():
+            for (report_string, ligand) in self.floe_report_dic.values():
                 with TemporaryDirectory() as output_directory:
+
                     img_fn = os.path.join(output_directory, "img.png")
                     oedepict.OEPrepareDepiction(ligand)
-                    oedepict.OERenderMolecule(img_fn, ligand)
+                    width, height = 150, 150
+                    opts = oedepict.OE2DMolDisplayOptions(width, height, oedepict.OEScale_AutoScale)
+                    disp = oedepict.OE2DMolDisplay(ligand, opts)
+                    oedepict.OERenderMolecule(img_fn, disp)
 
-                    img_resource = self.floe_report.create_resource(ligand_name)
+                    img_resource = self.floe_report.create_resource(ligand.GetTitle())
                     img_resource.set_from_filename(img_fn)
 
-                    page = self.floe_report.create_page(ligand_name, is_index=False)
+                    page = self.floe_report.create_page(ligand.GetTitle(), is_index=False)
                     page_link = page.get_link()
                     page.set_from_string(report_string)
 
