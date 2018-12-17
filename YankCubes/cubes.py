@@ -24,10 +24,8 @@ from cuberecord import OERecordComputeCube
 from cuberecord.ports import RecordInputPort, RecordOutputPort
 
 from datarecord import (Types,
-                        Meta,
                         OEField,
-                        OERecord,
-                        OEFieldMeta)
+                        OERecord)
 
 import MDCubes.utils as omm_utils
 
@@ -399,14 +397,8 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
 
                     DeltaG_solvation, dDeltaG_solvation = yankutils.run_yank_analysis(opt)
 
-                    # Create OE Field to save the Solvation Free Energy in kcal/mol
-                    DG_Field = OEField('Solvation FE', Types.Float,
-                                       meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal_per_mol))
-                    dG_Field = OEField('Solvation FE Error', Types.Float,
-                                       meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal_per_mol))
-
-                    record.set_value(DG_Field, DeltaG_solvation)
-                    record.set_value(dG_Field, dDeltaG_solvation)
+                    record.set_value(Fields.solvation_fe, DeltaG_solvation)
+                    record.set_value(Fields.solvation_fe_err, dDeltaG_solvation)
 
                     result_fn = os.path.join(output_directory, "results.html")
 
@@ -926,15 +918,6 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
                     DeltaG_binding, dDeltaG_binding = yankutils.run_yank_analysis(opt)
 
-                    # Create OE Field to save the solvation Free Energy in kcal/mol
-                    DG_Field = OEField('Binding FE', Types.Float,
-                                       meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal_per_mol))
-                    dG_Field = OEField('Binding FE Error', Types.Float,
-                                       meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal_per_mol))
-
-                    # record.set_value(DG_Field, DeltaG_binding)
-                    # record.set_value(dG_Field, dDeltaG_binding)
-
                 # Tar the Yank temp dir with its content:
                 tar_fn = os.path.basename(output_directory+"_"+opt['system_title']) + '.tar.gz'
                 with tarfile.open(tar_fn, mode='w:gz') as archive:
@@ -987,8 +970,8 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     record.set_value(Fields.trj_garbage_field, [lf])
 
                 if opt['new_iterations'] == opt['iterations']:
-                    record.set_value(DG_Field, DeltaG_binding)
-                    record.set_value(dG_Field, dDeltaG_binding)
+                    record.set_value(Fields.binding_fe, DeltaG_binding)
+                    record.set_value(Fields.binding_fe_err, dDeltaG_binding)
 
                     result_fn = os.path.join(output_directory, "results.html")
 
@@ -1111,10 +1094,18 @@ class YankProxyCube(OERecordComputeCube):
 
                     report_string = record.get_value(OEField("report_html", Types.String))
 
-                    ligand_split.SetTitle(opt['system_title'])
+                    if not record.has_value(Fields.ligand_name):
+                        raise ValueError("Missing the ligand name field")
+
+                    ligand_name = record.get_value(Fields.ligand_name)
+
+                    if len(ligand_name) < 15:
+                        ligand_split.SetTitle(ligand_name)
+                    else:
+                        ligand_split.SetTitle(ligand_name[0:13]+'...')
 
                     self.floe_report_dic[opt['system_id']] = (report_string,
-                                                              ligand_split)
+                                                              ligand_split, ligand_name)
 
                     record.delete_field(OEField("report_html", Types.String))
 
@@ -1167,9 +1158,10 @@ class YankProxyCube(OERecordComputeCube):
     
             .grid a {
             border: 1px solid #ccc;
+            padding: 25px
             }
     
-            .grid img {
+            .grid svg {
             display: block;  
             max-width: 100%;
             }
@@ -1177,26 +1169,40 @@ class YankProxyCube(OERecordComputeCube):
             <main class="grid">
             """
 
-            for (report_string, ligand) in self.floe_report_dic.values():
+            for (report_string, ligand, ligand_title) in self.floe_report_dic.values():
                 with TemporaryDirectory() as output_directory:
 
-                    img_fn = os.path.join(output_directory, "img.png")
+                    img_fn = os.path.join(output_directory, "img.svg")
                     oedepict.OEPrepareDepiction(ligand)
                     width, height = 150, 150
                     opts = oedepict.OE2DMolDisplayOptions(width, height, oedepict.OEScale_AutoScale)
                     disp = oedepict.OE2DMolDisplay(ligand, opts)
                     oedepict.OERenderMolecule(img_fn, disp)
 
-                    img_resource = self.floe_report.create_resource(ligand.GetTitle())
-                    img_resource.set_from_filename(img_fn)
+                    line_svg = ""
+                    marker = False
+                    with open(img_fn, 'r') as file:
+                        for line in file:
+                            if marker:
+                                line_svg += line
+
+                            if line.startswith("<svg"):
+                                marker = True
+                                line_svg += line
+                                line_svg += """<title>{}</title>\n""".format(ligand_title)
+
+                            if line.startswith("</svg>"):
+                                marker = False
 
                     page = self.floe_report.create_page(ligand.GetTitle(), is_index=False)
                     page_link = page.get_link()
                     page.set_from_string(report_string)
 
                     index_content += """
-                    <a href='{}'><img src='{}'/></a>
-                    """.format(page_link, img_resource.get_link())
+                    <a href='{}'>
+                    {}
+                    </a>
+                    """.format(page_link, line_svg)
 
             index_content += """
             </main>

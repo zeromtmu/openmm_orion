@@ -84,7 +84,7 @@ def setversion(ctx, new_version):
     Set the package version
     """
 
-    clean(ctx)
+    # clean(ctx)
 
     fn = os.path.join("./MDOrion", "__init__.py")
 
@@ -111,7 +111,7 @@ def release(ctx):
     the release variable is set to True are included in the package
     """
 
-    clean(ctx)
+    # clean(ctx)
 
     floes = os.path.basename(FLOES_DIR)
 
