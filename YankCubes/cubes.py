@@ -24,10 +24,8 @@ from cuberecord import OERecordComputeCube
 from cuberecord.ports import RecordInputPort, RecordOutputPort
 
 from datarecord import (Types,
-                        Meta,
                         OEField,
-                        OERecord,
-                        OEFieldMeta)
+                        OERecord)
 
 import MDCubes.utils as omm_utils
 
@@ -65,6 +63,12 @@ from MDCubes.utils import MDState
 from orionclient.session import in_orion, OrionSession
 
 from orionclient.types import File
+
+from floereport import FloeReport, LocalFloeReport
+
+from openeye import oedepict
+
+from os import environ
 
 
 class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
@@ -393,14 +397,14 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
 
                     DeltaG_solvation, dDeltaG_solvation = yankutils.run_yank_analysis(opt)
 
-                    # Create OE Field to save the Solvation Free Energy in kcal/mol
-                    DG_Field = OEField('Solvation FE', Types.Float,
-                                       meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal_per_mol))
-                    dG_Field = OEField('Solvation FE Error', Types.Float,
-                                       meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal_per_mol))
+                    record.set_value(Fields.solvation_fe, DeltaG_solvation)
+                    record.set_value(Fields.solvation_fe_err, dDeltaG_solvation)
 
-                    record.set_value(DG_Field, DeltaG_solvation)
-                    record.set_value(dG_Field, dDeltaG_solvation)
+                    result_fn = os.path.join(output_directory, "results.html")
+
+                    with open(result_fn, 'r') as f:
+                        report_html_str = f.read()
+                        record.set_value(OEField("report_html", Types.String), report_html_str)
 
                 # Tar the Yank temp dir with its content:
                 tar_fn = os.path.basename(output_directory+"_" + opt['system_title']) + '.tar.gz'
@@ -914,15 +918,6 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
                     DeltaG_binding, dDeltaG_binding = yankutils.run_yank_analysis(opt)
 
-                    # Create OE Field to save the solvation Free Energy in kcal/mol
-                    DG_Field = OEField('Binding FE', Types.Float,
-                                       meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal_per_mol))
-                    dG_Field = OEField('Binding FE Error', Types.Float,
-                                       meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal_per_mol))
-
-                    record.set_value(DG_Field, DeltaG_binding)
-                    record.set_value(dG_Field, dDeltaG_binding)
-
                 # Tar the Yank temp dir with its content:
                 tar_fn = os.path.basename(output_directory+"_"+opt['system_title']) + '.tar.gz'
                 with tarfile.open(tar_fn, mode='w:gz') as archive:
@@ -951,17 +946,17 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     record.set_value(Fields.trj_garbage_field, trj_garbage_list)
 
                 else:
-                    # old_record_copy = OERecord(record)
+                    old_record_copy = OERecord(record)
 
                     # new record
                     record = OERecord()
 
-                    # # Copy all the ligand fields into the new record
-                    # for field in old_record_copy.get_fields():
-                    #     # Skipping
-                    #     if field.get_name() == "ligand_pmd_solvated" or field.get_name() == "complex_pmd_solvated":
-                    #         continue
-                    #     record.set_value(field, old_record_copy.get_value(field))
+                    # Copy all the ligand fields into the new record
+                    for field in old_record_copy.get_fields():
+                        # Skipping
+                        if field.get_name() == "ligand_pmd_solvated" or field.get_name() == "complex_pmd_solvated":
+                            continue
+                        record.set_value(field, old_record_copy.get_value(field))
 
                     record.set_value(Fields.md_stages, [md_stage_record])
                     record.set_value(Fields.id, opt['system_id'])
@@ -974,9 +969,15 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                                                                                             iterations_per_cube_opt))
                     record.set_value(Fields.trj_garbage_field, [lf])
 
-                    if opt['new_iterations'] == opt['iterations']:
-                        record.set_value(DG_Field, DeltaG_binding)
-                        record.set_value(dG_Field, dDeltaG_binding)
+                if opt['new_iterations'] == opt['iterations']:
+                    record.set_value(Fields.binding_fe, DeltaG_binding)
+                    record.set_value(Fields.binding_fe_err, dDeltaG_binding)
+
+                    result_fn = os.path.join(output_directory, "results.html")
+
+                    with open(result_fn, 'r') as f:
+                        report_html_str = f.read()
+                        record.set_value(OEField("report_html", Types.String), report_html_str)
 
             record.set_value(current_iteration_field, opt['new_iterations'])
             record.set_value(Fields.primary_molecule, complex)
@@ -1021,12 +1022,22 @@ class YankProxyCube(OERecordComputeCube):
     def begin(self):
         self.opt = vars(self.args)
         self.opt['Logger'] = self.log
+        self.floe_report_dic = dict()
+
+        if in_orion():
+            job_id = environ.get('ORION_JOB_ID')
+            self.floe_report = FloeReport.start_report("floe_report", job_id=job_id)
+        else:
+            self.floe_report = LocalFloeReport.start_report("floe_report")
 
     def process(self, record, port):
 
         current_iteration_field = OEField("current_iterations", Types.Int)
 
         try:
+
+            opt = dict(self.opt)
+
             if not record.has_value(Fields.title):
                 self.opt['Logger'].warn("Missing record Title field")
 
@@ -1056,6 +1067,48 @@ class YankProxyCube(OERecordComputeCube):
                 if current_iteration == self.opt['iterations']:
                     self.opt['Logger'].info("{} Finishing...".format(self.title))
 
+                    # Create reports
+                    if not record.has_value(Fields.primary_molecule):
+                        raise ValueError("The Primary Molecule is missing field")
+
+                    complex = record.get_value(Fields.primary_molecule)
+
+                    # Split the complex in components
+                    protein_split, ligand_split, water, excipients = oeommutils.split(complex,
+                                                                                      ligand_res_name='LIG')
+                    if not record.has_value(Fields.title):
+                        self.opt['Logger'].warn("Missing record Title field")
+                        system_title = complex.GetTitle()[0:12]
+                    else:
+                        system_title = record.get_value(Fields.title)
+
+                    opt['system_title'] = system_title
+
+                    if not record.has_value(Fields.id):
+                        raise ValueError("Missing the ID field")
+
+                    opt['system_id'] = record.get_value(Fields.id)
+
+                    if not record.has_value(OEField("report_html", Types.String)):
+                        raise ValueError("Missing the report field")
+
+                    report_string = record.get_value(OEField("report_html", Types.String))
+
+                    if not record.has_value(Fields.ligand_name):
+                        raise ValueError("Missing the ligand name field")
+
+                    ligand_name = record.get_value(Fields.ligand_name)
+
+                    if len(ligand_name) < 15:
+                        ligand_split.SetTitle(ligand_name)
+                    else:
+                        ligand_split.SetTitle(ligand_name[0:13]+'...')
+
+                    self.floe_report_dic[opt['system_id']] = (report_string,
+                                                              ligand_split, ligand_name)
+
+                    record.delete_field(OEField("report_html", Types.String))
+
                     # Clean up trajectories in Orion
                     if not record.has_value(Fields.trj_garbage_field):
                         raise ValueError("The trajectory garbage field is missing")
@@ -1078,10 +1131,90 @@ class YankProxyCube(OERecordComputeCube):
                 else:
                     self.opt['Logger'].warn("{} Forwarding to Cycle...".format(self.title))
                     self.cycle_out_port.emit(record)
+
         except:
             # Attach an error message to the molecule that failed
             self.log.error(traceback.format_exc())
             # Return failed mol
             self.failure.emit(record)
+
+        return
+
+    def end(self):
+
+        try:
+            self.opt['Logger'].info("....Generating Floe Report")
+
+            index = self.floe_report.create_page("index", is_index=True)
+
+            index_content = """
+            <style>
+            .grid { 
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            grid-gap: 20px;
+            align-items: stretch;
+            }
+    
+            .grid a {
+            border: 1px solid #ccc;
+            padding: 25px
+            }
+    
+            .grid svg {
+            display: block;  
+            max-width: 100%;
+            }
+            </style>
+            <main class="grid">
+            """
+
+            for (report_string, ligand, ligand_title) in self.floe_report_dic.values():
+                with TemporaryDirectory() as output_directory:
+
+                    img_fn = os.path.join(output_directory, "img.svg")
+                    oedepict.OEPrepareDepiction(ligand)
+                    width, height = 150, 150
+                    opts = oedepict.OE2DMolDisplayOptions(width, height, oedepict.OEScale_AutoScale)
+                    disp = oedepict.OE2DMolDisplay(ligand, opts)
+                    oedepict.OERenderMolecule(img_fn, disp)
+
+                    line_svg = ""
+                    marker = False
+                    with open(img_fn, 'r') as file:
+                        for line in file:
+                            if marker:
+                                line_svg += line
+
+                            if line.startswith("<svg"):
+                                marker = True
+                                line_svg += line
+                                line_svg += """<title>{}</title>\n""".format(ligand_title)
+
+                            if line.startswith("</svg>"):
+                                marker = False
+
+                    page = self.floe_report.create_page(ligand.GetTitle(), is_index=False)
+                    page_link = page.get_link()
+                    page.set_from_string(report_string)
+
+                    index_content += """
+                    <a href='{}'>
+                    {}
+                    </a>
+                    """.format(page_link, line_svg)
+
+            index_content += """
+            </main>
+            """
+
+            self.opt['Logger'].warn(index_content)
+
+            index.set_from_string(index_content)
+
+            self.floe_report.finish_report()
+
+        except Exception as e:
+            self.opt['Warning'].warn("It was not possible to generate the floe report: {}".format(str(e)))
 
         return

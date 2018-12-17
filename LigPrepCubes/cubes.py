@@ -169,6 +169,8 @@ class LigandSetting(OERecordComputeCube):
                                                 ligand.GetTitle(),
                                                 oechem.OECalculateMolecularWeight(ligand)))
 
+            record.set_value(Fields.ligand_name, ligand.GetTitle())
+
             for at in ligand.GetAtoms():
                 residue = oechem.OEAtomGetResidue(at)
                 residue.SetName(self.args.lig_res_name)
