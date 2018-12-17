@@ -91,26 +91,24 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
             lastName = utl.RequestOEFieldType(md_stageLast_record, Fields.stage_name)
             # end debug Bayly
 
-            if lastName != 'NPT':
-                raise ValueError('Cannot find the NPT stage')
+            if lastName != 'Production':
+                raise ValueError('Cannot find the Production stage')
 
+            # copy the trajecotry file into the Temporary directory
             with TemporaryDirectory() as output_directory:
 
                 opt['Logger'].info('{} Temp Directory: {}'.format(system_title, output_directory))
 
-                if md_stageLast_record.has_value(Fields.trajectory):
+                # kludge for local floe with traj already in current directory
+                trajID = system_title+'_'+str(idx)+'-prod.h5'
+                if os.path.exists( trajID):
+                    opt['Logger'].info('{} local Trajectory file {} exists'.format( system_title, trajID))
+                elif md_stageLast_record.has_value(Fields.trajectory):
                     trajID = md_stageLast_record.get_value(Fields.trajectory)
 
                 elif md_stageLast_record.has_value(Fields.orion_local_trj_field):
                     opt['Logger'].info('{} Orion S3 Trajectory Field Detected'.format( system_title))
-                    # if traj has been downloaded, build the name and check for it
-                    trajID = system_title+'_'+str(idx)+'-prod.h5'
-                    if os.path.exists( trajID):
-                        opt['Logger'].info('{} ... but local Trajectory file {} exists'.format( system_title, trajID))
-                    else:
-                        trajID = md_stageLast_record.get_value(Fields.orion_local_trj_field)
-                    # raise ValueError("Found Orion S3 Trajectory Field but stopping anyway")
-                    # End Bayly debug
+                    trajID = md_stageLast_record.get_value(Fields.orion_local_trj_field)
 
                 else:
                     raise ValueError("No trajectory have been found in the selected stage record {}".format(
@@ -127,7 +125,7 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
 
                 setupType = utl.RequestOEFieldType(md_stage0_record, Fields.stage_type)
 
-                if setupName != 'SETUP':
+                if setupType != 'SETUP':
                     raise ValueError('{} Cannot find the SETUP stage'.format(system_title))
 
                 md_system = utl.RequestOEFieldType(md_stage0_record, Fields.md_system)

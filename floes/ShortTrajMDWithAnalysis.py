@@ -39,6 +39,8 @@ from LigPrepCubes.cubes import (LigandChargeCube,
                                 LigandSetting)
 
 from TrjAnalysisCubes.TrajToOEMol import TrajToOEMolCube
+from TrjAnalysisCubes.TrajInteractionEnergy import TrajInteractionEnergyCube
+from TrjAnalysisCubes.TrajPBSA import TrajPBSACube
 from TrjAnalysisCubes.LigBasedTrajClustering import ClusterOETrajCube
 from TrjAnalysisCubes.MDTrajAnalysisFloeReport import MDTrajAnalysisClusterReport
 
@@ -78,6 +80,7 @@ protein (file): dataset of the prepared protein structure.
 Outputs:
 --------
 floe report: html page of the Analysis of each ligand.
+out (.oedb file): file of the Analysis results for all ligands.
 """
 # Locally the floe can be invoked by running the terminal command:
 # python floes/ShortTrajMD.py --ligands ligands.oeb --protein protein.oeb --out prod.oeb
@@ -203,20 +206,25 @@ equil3.set_parameters(trajectory_interval=0.0)
 equil3.set_parameters(reporter_interval=0.001)
 equil3.set_parameters(suffix='equil3')
 
-ofs = DatasetWriterCube('ofs', title='Out')
-ofs.promote_parameter("data_out", promoted_name="out")
+ofsMD = DatasetWriterCube('ofsMD', title='MD Out')
+ofsMD.promote_parameter("data_out", promoted_name="md_out")
 
 fail = DatasetWriterCube('fail', title='Failures')
 fail.promote_parameter("data_out", promoted_name="fail")
 
 trajCube = TrajToOEMolCube("TrajToOEMolCube")
+IntECube = TrajInteractionEnergyCube("TrajInteractionEnergyCube")
+PBSACube = TrajPBSACube("TrajPBSACube")
 clusCube = ClusterOETrajCube("ClusterOETrajCube")
-reportCube = MDTrajAnalysisClusterReport("MDTrajAnalysisClusterReport")
+htmlCube = MDTrajAnalysisClusterReport("MDTrajAnalysisClusterReport")
+
+ofsAnlys = DatasetWriterCube('ofsAnlys', title='Analysis Out')
+ofsAnlys.promote_parameter("data_out", promoted_name="analysis_out")
 
 
 job.add_cubes(iligs, ligset, iprot, protset, chargelig, complx, solvate, ff,
-              minComplex, warmup, equil1, equil2, equil3, prod, ofs, fail,
-              trajCube, clusCube, reportCube)
+              minComplex, warmup, equil1, equil2, equil3, prod, ofsMD, fail,
+              trajCube, IntECube, PBSACube, clusCube, htmlCube, ofsAnlys )
 
 
 iligs.success.connect(chargelig.intake)
@@ -233,10 +241,13 @@ equil1.success.connect(equil2.intake)
 equil2.success.connect(equil3.intake)
 equil3.success.connect(prod.intake)
 prod.failure.connect(fail.intake)
-prod.success.connect(ofs.intake)
+prod.success.connect(ofsMD.intake)
 prod.success.connect(trajCube.intake)
-trajCube.success.connect(clusCube.intake)
-clusCube.success.connect(reportCube.intake)
+trajCube.success.connect(IntECube.intake)
+IntECube.success.connect(PBSACube.intake)
+PBSACube.success.connect(clusCube.intake)
+clusCube.success.connect(htmlCube.intake)
+htmlCube.success.connect(ofsAnlys.intake)
 
 if __name__ == "__main__":
     job.run()
