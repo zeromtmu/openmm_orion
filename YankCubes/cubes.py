@@ -1168,8 +1168,11 @@ class YankProxyCube(OERecordComputeCube):
             </style>
             <main class="grid">
             """
+            # Sort the dictionary keys by using the ligand ID
+            for key in sorted(self.floe_report_dic.keys()):
 
-            for (report_string, ligand, ligand_title) in self.floe_report_dic.values():
+                report_string, ligand, ligand_title = self.floe_report_dic[key]
+
                 with TemporaryDirectory() as output_directory:
 
                     img_fn = os.path.join(output_directory, "img.svg")
@@ -1179,17 +1182,17 @@ class YankProxyCube(OERecordComputeCube):
                     disp = oedepict.OE2DMolDisplay(ligand, opts)
                     oedepict.OERenderMolecule(img_fn, disp)
 
-                    line_svg = ""
+                    svg_lines = ""
                     marker = False
                     with open(img_fn, 'r') as file:
                         for line in file:
                             if marker:
-                                line_svg += line
+                                svg_lines += line
 
                             if line.startswith("<svg"):
                                 marker = True
-                                line_svg += line
-                                line_svg += """<title>{}</title>\n""".format(ligand_title)
+                                svg_lines += line
+                                svg_lines += """<title>{}</title>\n""".format(ligand_title)
 
                             if line.startswith("</svg>"):
                                 marker = False
@@ -1202,7 +1205,7 @@ class YankProxyCube(OERecordComputeCube):
                     <a href='{}'>
                     {}
                     </a>
-                    """.format(page_link, line_svg)
+                    """.format(page_link, svg_lines)
 
             index_content += """
             </main>
