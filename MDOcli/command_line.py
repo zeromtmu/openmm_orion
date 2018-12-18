@@ -81,7 +81,7 @@ def dataset(ctx, filename, id, profile=None, max_retries=2):
 
 @dataset.command("trajectory")
 @click.option("--format", help="Trajectory format", type=click.Choice(['h5', 'tar.gz']), default='h5')
-@click.option("--stgn", help="MD Stage number", default="last")
+@click.option("--stgn", help="MD Stage number", default="all")
 @click.option("--fixname", help="Edit the trajectory file name", default=None)
 @click.pass_context
 def trajectory_extraction(ctx, format, stgn, fixname):
@@ -236,6 +236,15 @@ def ligand_extraction(ctx):
 @click.pass_context
 def info_extraction(ctx):
 
+    def GetHumanReadable(size, precision=2):
+        suffixes = ['B', 'KB', 'MB', 'GB', 'TB']
+        suffixIndex = 0
+
+        while size > 1024 and suffixIndex < 4:
+            suffixIndex += 1  # increment the index of the suffix
+            size = size / 1024.0  # apply the division
+        return "%.*f %s" % (precision, size, suffixes[suffixIndex])
+
     def recursive_record(record, level=0):
 
         for field in record.get_fields():
@@ -252,27 +261,49 @@ def info_extraction(ctx):
                 if (field.get_type() is Types.String or
                         field.get_type() is Types.Int or
                         field.get_type() is Types.Float):
-                    print("{} {} name = {} type = {} value = {}".format(blank * (level + 1), dis,
-                                                                        field.get_name(),
-                                                                        field.get_type(),
-                                                                        str(record.get_value(field))[0:50]))
+                    print("{} {} name = {}\n        "
+                          "{}type = {}\n        "
+                          "{}value = {}\n        "
+                          "{}size = {}".format(blank * (level + 1),
+                                               dis,
+                                               field.get_name(),
+                                               blank * (level + 1),
+                                               field.get_type(),
+                                               blank * (level + 1),
+                                               str(record.get_value(field))[0:30],
+                                               blank * (level + 1),
+                                               GetHumanReadable(record.get_value_size(field))
+                                               ))
                 else:
-                    print("{} {} name = {} type = {}".format(blank * (level + 1), dis,
-                                                             field.get_name(),
-                                                             field.get_type()))
+                    print("{} {} name = {}\n        "
+                          "{}type = {}\n        "
+                          "{}size = {}".format(blank * (level + 1),
+                                               dis,
+                                               field.get_name(),
+                                               blank * (level + 1),
+                                               field.get_type(),
+                                               blank * (level + 1),
+                                               GetHumanReadable(record.get_value_size(field))
+                                               ))
 
             elif field_type == RecordData:
-                print("{} {} RECORD".format(blank * (level + 1), dis))
+                print("{} {} RECORD: {}".format(blank * (level + 1), dis, field.get_name()))
                 recursive_record(record.get_value(field), level + 1)
 
             elif field_type == RecordVecData:
                 vec = record.get_value(field)
-                print("{} {} RECORD VECTOR containing {} records".format(blank * (level + 1), dis, len(vec)))
+                print("{} {} RECORD VECTOR: {} containing {} records".format(blank * (level + 1),
+                                                                             dis,
+                                                                             field.get_name(),
+                                                                             len(vec)))
                 print("{} |".format(blank * (level + 2)))
                 print("{} |".format(blank * (level + 2)))
 
                 for idx in range(0, len(vec)):
-                    print("{} {} RECORD # {}".format(blank * (level + 2), dis, idx))
+                    print("{} {} RECORD # {}".format(blank * (level + 2),
+                                                     dis,
+                                                     idx))
+
                     recursive_record(vec[idx], level + 2)
                     if idx != len(vec) - 1:
                         print("{} |".format(blank * (level + 2)))

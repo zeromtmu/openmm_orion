@@ -100,7 +100,7 @@ class Fields:
     md_stages = OEField("MDStages_OPLMD", Types.RecordVec)
 
     # Stage Field
-    md_stage = OEField("MDStages_OPLMD", Types.Record)
+    # md_stage = OEField("MDStage_OPLMD", Types.Record)
 
     yank_analysis = OEField("Yank_Analysis_OPLMD", Types.String)
 
