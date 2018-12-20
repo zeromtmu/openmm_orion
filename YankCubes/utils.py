@@ -26,6 +26,8 @@ from yank.analyze import ExperimentAnalyzer
 
 from simtk.openmm import unit
 
+from simtk import openmm
+
 from datetime import timedelta
 
 import os
@@ -39,6 +41,10 @@ from orionclient.types import File
 from os import environ
 
 import yaml
+
+import time
+
+import fcntl
 
 
 def yank_solvation_initialize(sim):
@@ -71,7 +77,58 @@ def yank_solvation_initialize(sim):
         # Print Yank Template
         opt['Logger'].info(opt['yank_template'])
 
-        sim(*args)
+        if 'OE_VISIBLE_DEVICES' in os.environ and not in_orion():
+
+            gpus_available_indexes = os.environ["OE_VISIBLE_DEVICES"].split(',')
+
+            opt['Logger'].info("OE LOCAL FLOE CLUSTER OPTION IN USE")
+
+            if 'OE_MAX' in os.environ:
+                opt['OE_MAX'] = int(os.environ["OE_MAX"])
+            else:
+                opt['OE_MAX'] = 1
+
+            opt['Logger'].info("OE MAX = {}".format(opt['OE_MAX']))
+
+            while True:
+
+                for gpu_id in gpus_available_indexes:
+
+                    for p in range(0, opt['OE_MAX']):
+
+                        fn = str(gpu_id) + '_' + str(p) + '.txt'
+
+                        try:
+                            with open(fn, 'a') as file:
+                                fcntl.flock(file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                                file.write(
+                                    "YANK - name = {} MOL_ID = {} GPU_IDS = {} GPU_ID = {}\n".format(opt['system_title'],
+                                                                                                     opt['system_id'],
+                                                                                                     gpus_available_indexes,
+                                                                                                     str(gpu_id)))
+                                opt['gpu_id'] = str(gpu_id)
+
+                                openmm.Platform.getPlatformByName('CUDA').setPropertyDefaultValue('DeviceIndex',
+                                                                                                  str(gpu_id))
+
+                                sim(opt)
+
+                                time.sleep(5.0)
+                                fcntl.flock(file, fcntl.LOCK_UN)
+                                return
+
+                        except BlockingIOError:
+                            time.sleep(0.1)
+
+                        except Exception as e:  # If the simulation fails for other reasons
+                            try:
+                                time.sleep(5.0)
+                                fcntl.flock(file, fcntl.LOCK_UN)
+                            except Exception as e:
+                                pass
+                            raise ValueError("{} Simulation Failed".format(str(e)))
+        else:
+            sim(*args)
 
     return wrapper
 
@@ -189,7 +246,57 @@ def yank_binding_initialize(sim):
         else:
             opt['Logger'].info(opt['yank_template'])
 
-        sim(*args)
+        if 'OE_VISIBLE_DEVICES' in os.environ and not in_orion():
+
+            gpus_available_indexes = os.environ["OE_VISIBLE_DEVICES"].split(',')
+
+            opt['Logger'].info("OE LOCAL FLOE CLUSTER OPTION IN USE")
+
+            if 'OE_MAX' in os.environ:
+                opt['OE_MAX'] = int(os.environ["OE_MAX"])
+            else:
+                opt['OE_MAX'] = 1
+
+            opt['Logger'].info("OE MAX = {}".format(opt['OE_MAX']))
+
+            while True:
+
+                for gpu_id in gpus_available_indexes:
+
+                    for p in range(0, opt['OE_MAX']):
+
+                        fn = str(gpu_id) + '_' + str(p) + '.txt'
+
+                        try:
+                            with open(fn, 'a') as file:
+                                fcntl.flock(file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                                file.write(
+                                    "YANK - name = {} MOL_ID = {} GPU_IDS = {} GPU_ID = {}\n".format(opt['system_title'],
+                                                                                                     opt['system_id'],
+                                                                                                     gpus_available_indexes,
+                                                                                                     str(gpu_id)))
+                                opt['gpu_id'] = str(gpu_id)
+
+                                openmm.Platform.getPlatformByName('CUDA').setPropertyDefaultValue('DeviceIndex',
+                                                                                                  str(gpu_id))
+
+                                sim(opt)
+
+                                time.sleep(5.0)
+                                fcntl.flock(file, fcntl.LOCK_UN)
+                                return
+                        except BlockingIOError:
+                            time.sleep(0.1)
+
+                        except Exception as e:  # If the simulation fails for other reasons
+                            try:
+                                time.sleep(5.0)
+                                fcntl.flock(file, fcntl.LOCK_UN)
+                            except Exception as e:
+                                pass
+                            raise ValueError("{} Simulation Failed".format(str(e)))
+        else:
+            sim(*args)
 
     return wrapper
 
