@@ -1211,8 +1211,6 @@ class YankProxyCube(OERecordComputeCube):
             </main>
             """
 
-            self.opt['Logger'].warn(index_content)
-
             index.set_from_string(index_content)
 
             self.floe_report.finish_report()
