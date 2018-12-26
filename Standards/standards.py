@@ -104,17 +104,11 @@ class Fields:
 
     yank_analysis = OEField("Yank_Analysis_OPLMD", Types.String)
 
-    binding_fe = OEField('BindingFE_OPLMD', Types.Float,
-                         meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal_per_mol))
+    free_energy = OEField('FE_OPLMD', Types.Float,
+                          meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal_per_mol))
 
-    binding_fe_err = OEField('BindingFE_Error_OPLMD', Types.Float,
-                             meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal_per_mol))
-
-    solvation_fe = OEField('SolvationFE_OPLMD', Types.Float,
-                           meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal_per_mol))
-
-    solvation_fe_err = OEField('SolvationFE_Error_OPLMD', Types.Float,
-                               meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal_per_mol))
+    free_energy_err = OEField('FE_Error_OPLMD', Types.Float,
+                              meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal_per_mol))
 
     # Clean up trajectories
     if in_orion():

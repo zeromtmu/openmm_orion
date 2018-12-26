@@ -397,8 +397,8 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
 
                     DeltaG_solvation, dDeltaG_solvation = yankutils.run_yank_analysis(opt)
 
-                    record.set_value(Fields.solvation_fe, DeltaG_solvation)
-                    record.set_value(Fields.solvation_fe_err, dDeltaG_solvation)
+                    record.set_value(Fields.free_energy, DeltaG_solvation)
+                    record.set_value(Fields.free_energy_err, dDeltaG_solvation)
 
                     result_fn = os.path.join(output_directory, "results.html")
 
@@ -970,8 +970,8 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     record.set_value(Fields.trj_garbage_field, [lf])
 
                 if opt['new_iterations'] == opt['iterations']:
-                    record.set_value(Fields.binding_fe, DeltaG_binding)
-                    record.set_value(Fields.binding_fe_err, dDeltaG_binding)
+                    record.set_value(Fields.free_energy, DeltaG_binding)
+                    record.set_value(Fields.free_energy_err, dDeltaG_binding)
 
                     result_fn = os.path.join(output_directory, "results.html")
 
@@ -1104,8 +1104,13 @@ class YankProxyCube(OERecordComputeCube):
                     else:
                         ligand_split.SetTitle(ligand_name[0:13]+'...')
 
+                    if not record.has_value(Fields.free_energy):
+                        raise ValueError("Missing the free energy field")
+
+                    fe = record.get_value(Fields.free_energy)
+
                     self.floe_report_dic[opt['system_id']] = (report_string,
-                                                              ligand_split, ligand_name)
+                                                              ligand_split, ligand_name, "{:.1f}".format(fe))
 
                     record.delete_field(OEField("report_html", Types.String))
 
@@ -1171,7 +1176,7 @@ class YankProxyCube(OERecordComputeCube):
             # Sort the dictionary keys by using the ligand ID
             for key in sorted(self.floe_report_dic.keys()):
 
-                report_string, ligand, ligand_title = self.floe_report_dic[key]
+                report_string, ligand, ligand_title, fe = self.floe_report_dic[key]
 
                 with TemporaryDirectory() as output_directory:
 
@@ -1204,8 +1209,9 @@ class YankProxyCube(OERecordComputeCube):
                     index_content += """
                     <a href='{}'>
                     {}
+                    <center> <p>&Delta;G = {} kcal/mol</p> </center>
                     </a>
-                    """.format(page_link, svg_lines)
+                    """.format(page_link, svg_lines, fe)
 
             index_content += """
             </main>
