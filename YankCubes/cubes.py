@@ -1170,6 +1170,10 @@ class YankProxyCube(OERecordComputeCube):
             display: block;  
             max-width: 100%;
             }
+            
+            .grid p{
+            text-align: center;
+            }
             </style>
             <main class="grid">
             """
@@ -1209,7 +1213,7 @@ class YankProxyCube(OERecordComputeCube):
                     index_content += """
                     <a href='{}'>
                     {}
-                    <center> <p>&Delta;G = {} kcal/mol</p> </center>
+                    <p>&Delta;G = {} kcal/mol</p>
                     </a>
                     """.format(page_link, svg_lines, fe)
 
