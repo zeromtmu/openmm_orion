@@ -102,8 +102,9 @@ class Fields:
     # Stage Field
     # md_stage = OEField("MDStage_OPLMD", Types.Record)
 
-    yank_analysis = OEField("Yank_Analysis_OPLMD", Types.String)
+    # yank_analysis = OEField("Yank_Analysis_OPLMD", Types.String)
 
+    # Analysis Fields
     free_energy = OEField('FE_OPLMD', Types.Float,
                           meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal_per_mol))
 
