@@ -41,7 +41,7 @@ session = OrionSession()
 class TestYankSolvationOrionFloes(FloeTestCase):
 
     @pytest.mark.floetest
-    @pytest.mark.slow
+    @pytest.mark.fast
     def test_yank_solvation_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "Solvation_free_energy.py"),
@@ -102,7 +102,7 @@ class TestYankSolvationOrionFloes(FloeTestCase):
         self.assertEqual(count, 1)
 
     @pytest.mark.floetest
-    @pytest.mark.slow
+    @pytest.mark.fast
     def test_yank_solvation_multi_ligs_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "Solvation_free_energy.py"),

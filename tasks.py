@@ -61,7 +61,7 @@ def testfloes(ctx):
 
 
 @task
-def testorion(ctx, profile=""):
+def testorion(ctx, profile="", test="all"):
     """
     run tests
     """
@@ -75,7 +75,12 @@ def testorion(ctx, profile=""):
 
     print("Using Orion Profile: {}".format(profile))
 
-    run("ORION_PROFILE={} py.test -s -v --orion ./tests".format(profile))
+    if test == "all":
+        run("ORION_PROFILE={} py.test -s -v --orion ./tests".format(profile))
+    else:
+        run("""ORION_PROFILE={} py.test -s -v --orion -m "{}" ./tests""".format(profile, test))
+
+
 
 
 @task
