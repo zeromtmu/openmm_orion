@@ -911,7 +911,9 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     iterations_per_cube_opt = int(iterations_per_cube / opt['checkpoint_interval']) * opt['checkpoint_interval']
 
                     if iterations_per_cube_opt < opt['checkpoint_interval']:
-                        raise ValueError("Total running time per cube < checkpoint interval")
+                        raise ValueError("Total running time per cube  "
+                                         "< checkpoint interval: {} < {}".format(iterations_per_cube_opt,
+                                                                                 opt['checkpoint_interval']))
 
                 # Run the analysis
                 if opt['new_iterations'] == opt['iterations']:
