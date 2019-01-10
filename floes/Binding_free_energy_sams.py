@@ -43,6 +43,8 @@ from YankCubes.cubes import (SyncBindingFECube,
 from cuberecord import (DatasetWriterCube,
                         DatasetReaderCube)
 
+from TrjAnalysisCubes.traj_cubes import MDFloeReportCube
+
 job = WorkFloe('Binding Affinity Self-Adjusted Mixture Sampling',
                title='Binding Affinity Self-Adjusted Mixture Sampling')
 
@@ -275,6 +277,9 @@ job.add_cube(equilLigand)
 sync = SyncBindingFECube("SyncCube", title="Unbound and Bound State Synchronization")
 job.add_cube(sync)
 
+report = MDFloeReportCube("report", title="Floe Report")
+job.add_cube(report)
+
 ofs = DatasetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")
 job.add_cube(ofs)
@@ -309,9 +314,11 @@ equilLigand.success.connect(sync.solvated_ligand_in_port)
 
 # ABFE Connections
 sync.success.connect(yank_proxy.intake)
-yank_proxy.success.connect(ofs.intake)
+yank_proxy.success.connect(report.intake)
 yank_proxy.failure.connect(fail.intake)
 yank_proxy.cycle_out_port.connect(abfe.intake)
+report.success.connect(ofs.intake)
+report.failure.connect(fail.intake)
 abfe.success.connect(yank_proxy.cycle_in_port)
 abfe.failure.connect(fail.intake)
 

@@ -42,6 +42,8 @@ from TrjAnalysisCubes.TrajToOEMol import TrajToOEMolCube
 from TrjAnalysisCubes.LigBasedTrajClustering import ClusterOETrajCube
 from TrjAnalysisCubes.MDTrajAnalysisFloeReport import MDTrajAnalysisClusterReport
 
+from TrjAnalysisCubes.traj_cubes import MDFloeReportCube
+
 job = WorkFloe('Short Trajectory MD with Analysis',
                title='Short Trajectory MD with Analysis')
 
@@ -211,12 +213,14 @@ fail.promote_parameter("data_out", promoted_name="fail")
 
 trajCube = TrajToOEMolCube("TrajToOEMolCube")
 clusCube = ClusterOETrajCube("ClusterOETrajCube")
-reportCube = MDTrajAnalysisClusterReport("MDTrajAnalysisClusterReport")
+report_gen = MDTrajAnalysisClusterReport("MDTrajAnalysisClusterReport")
+
+report = MDFloeReportCube("report", title="Floe Report")
 
 
 job.add_cubes(iligs, ligset, iprot, protset, chargelig, complx, solvate, ff,
               minComplex, warmup, equil1, equil2, equil3, prod, ofs, fail,
-              trajCube, clusCube, reportCube)
+              trajCube, clusCube, report_gen, report)
 
 
 iligs.success.connect(chargelig.intake)
@@ -236,7 +240,12 @@ prod.failure.connect(fail.intake)
 prod.success.connect(ofs.intake)
 prod.success.connect(trajCube.intake)
 trajCube.success.connect(clusCube.intake)
-clusCube.success.connect(reportCube.intake)
+trajCube.failure.connect(fail.intake)
+clusCube.success.connect(report_gen.intake)
+clusCube.failure.connect(fail.intake)
+report_gen.success.connect(report.intake)
+report_gen.failure.connect(fail.intake)
+report.failure.connect(fail.intake)
 
 if __name__ == "__main__":
     job.run()

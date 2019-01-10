@@ -38,8 +38,6 @@ from orionclient.session import in_orion, OrionSession
 
 from orionclient.types import File
 
-from os import environ
-
 import yaml
 
 import time
@@ -345,10 +343,18 @@ def run_yank_analysis(opt):
 
     opt_3 = '--format=html'
 
+    report_html_str = None
+
     try:
         os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
         subprocess.check_call(['yank', 'analyze', 'report', opt_1, opt_2, opt_3])
+
+        result_fn = os.path.join(opt['output_directory'], "results.html")
+
+        with open(result_fn, 'r') as f:
+            report_html_str = f.read()
+
 
         # Upload Floe Report
         # if in_orion():
@@ -366,9 +372,9 @@ def run_yank_analysis(opt):
         #         session.tag_resource(file_upload, "Job {}".format(job_id))
 
     except subprocess.SubprocessError:
-        opt['Logger'].warn("The result file have not been generated")
+        opt['Logger'].warn("The result html file has not been generated")
 
-    return DeltaG, dDeltaG
+    return DeltaG, dDeltaG, report_html_str
 
 
 def calculate_iteration_time(output_directory, num_iterations):

@@ -111,6 +111,13 @@ class Fields:
     free_energy_err = OEField('FE_Error_OPLMD', Types.Float,
                               meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal_per_mol))
 
+    floe_report = OEField('Floe_report_OPLMD', Types.String)
+
+    floe_report_depiction_lig = OEField("Floe_Report_Ligand_OPLMD", Types.Chem.Mol,
+                                        meta=OEFieldMeta().set_option(Meta.Hints.Chem.Ligand))
+
+    floe_report_label = OEField('Floe_Report_label_OPLMD', Types.String)
+
     # Clean up trajectories
     if in_orion():
         trj_garbage_field = OEField("trj_garbage_OPLMD", Types.IntVec)

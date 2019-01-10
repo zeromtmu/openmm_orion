@@ -1,22 +1,24 @@
-
 import traceback
-import re
 
+import re
 
 from datarecord import Types
 
 from cuberecord import OERecordComputeCube
+
+from floe.api import ParallelMixin
+
 from Standards import Fields
 
-from orionclient.session import in_orion, OrionSession
-from orionclient.types import File
-from os import environ
-
 from openeye import oedepict
+
 import TrjAnalysisCubes.utils as utl
 
 import base64
 
+import os
+
+from tempfile import TemporaryDirectory
 
 _clus_floe_report_header = """
 <html>
@@ -294,8 +296,7 @@ def trim_svg(svg):
     return svg[idx:]
 
 
-#class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
-class MDTrajAnalysisClusterReport(OERecordComputeCube):
+class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
     title = 'Extract relevant outputs of MD Traj Cluster  Analysis'
 
     version = "0.1.0"
@@ -332,38 +333,50 @@ class MDTrajAnalysisClusterReport(OERecordComputeCube):
 
             # title of entire solvated protein-ligand system
             opt['Logger'].info('Starting Floe Report generation for MD Traj Analysis')
-            system_title = utl.RequestOEFieldType( record, Fields.title)
-            opt['Logger'].info('{} Attempting to extract MD Traj Analysis results'
-                .format(system_title) )
-            ligInitPose = utl.RequestOEFieldType( record, Fields.ligand)
-            protInitPose = utl.RequestOEFieldType( record, Fields.protein)
-            asiteSVG = utl.PoseInteractionsSVG( ligInitPose, protInitPose, width=400, height=265)
+
+            system_title = utl.RequestOEFieldType(record, Fields.title)
+
+            opt['Logger'].info('{} Attempting to extract MD Traj Analysis results'.format(system_title))
+
+            ligInitPose = utl.RequestOEFieldType(record, Fields.ligand)
+
+            protInitPose = utl.RequestOEFieldType(record, Fields.protein)
+
+            asiteSVG = utl.PoseInteractionsSVG(ligInitPose, protInitPose, width=400, height=265)
 
             # Extract the traj SVG from the OETraj record
             analysesDone = utl.RequestOEField( record, 'AnalysesDone', Types.StringVec)
+
             if 'OETraj' not in analysesDone:
-                raise ValueError('{} does not have OETraj analyses done'.format(system_title) )
+                raise ValueError('{} does not have OETraj analyses done'.format(system_title))
             else:
-                opt['Logger'].info('{} found OETraj analyses'.format(system_title) )
+                opt['Logger'].info('{} found OETraj analyses'.format(system_title))
+
             # Extract the relevant traj SVG from the OETraj record
-            oetrajRecord = utl.RequestOEField( record, 'OETraj', Types.Record)
+            oetrajRecord = utl.RequestOEField(record, 'OETraj', Types.Record)
             opt['Logger'].info('{} found OETraj record'.format(system_title) )
-            trajSVG = utl.RequestOEField( oetrajRecord, 'TrajSVG', Types.String)
+
+            trajSVG = utl.RequestOEField(oetrajRecord, 'TrajSVG', Types.String)
 
             # Extract the three plots from the TrajClus record
-            analysesDone = utl.RequestOEField( record, 'AnalysesDone', Types.StringVec)
+            analysesDone = utl.RequestOEField(record, 'AnalysesDone', Types.StringVec)
+
             if 'TrajClus' not in analysesDone:
                 raise ValueError('{} does not have TrajClus analyses done'.format(system_title) )
             else:
                 opt['Logger'].info('{} found TrajClus analyses'.format(system_title) )
+
             # Extract the relevant traj SVG from the TrajClus record
-            clusRecord = utl.RequestOEField( record, 'TrajClus', Types.Record)
+            clusRecord = utl.RequestOEField(record, 'TrajClus', Types.Record)
+
             opt['Logger'].info('{} found TrajClus record'.format(system_title) )
-            trajHistRMSD_svg = utl.RequestOEField( clusRecord, 'HistSVG', Types.String)
+
+            trajHistRMSD_svg = utl.RequestOEField(clusRecord, 'HistSVG', Types.String)
             trajClus_svg = utl.RequestOEField( clusRecord, 'ClusSVG', Types.String)
             rmsdInit_svg = utl.RequestOEField( clusRecord, 'rmsdInitPose', Types.String)
             clusTrajSVG = utl.RequestOEField( clusRecord, 'ClusTrajSVG', Types.StringVec)
-            opt['Logger'].info('{} found the TrajClus plots'.format(system_title) )
+
+            opt['Logger'].info('{} found the TrajClus plots'.format(system_title))
 
             # Generate text string about Clustering information
             clusData = {}
@@ -383,80 +396,79 @@ class MDTrajAnalysisClusterReport(OERecordComputeCube):
 
             # get the palette of graph marker colors
             nClustersP1 = clusData['nClusters']+1
-            clusRGB = utl.ColorblindRGBMarkerColors( nClustersP1)
+            clusRGB = utl.ColorblindRGBMarkerColors(nClustersP1)
             clusRGB[-1] = (76, 76, 76)
 
             # write the report
-            reportFName = system_title+'_ClusReport.html'
-            report_file = open( reportFName, 'w')
+            with TemporaryDirectory() as output_directory:
 
-            report_file.write(_clus_floe_report_header)
+                reportFName = os.path.join(output_directory, system_title + '_ClusReport.html')
 
-            for i in range(len(clusTrajSVG)+2):
-                report_file.write("""
-              div.cb-floe-report__tab-wrapper input:nth-of-type({clusID}):checked ~ .cb-floe-report__tab-content:nth-of-type({clusID}) {{ display: block; }}
-            """.format( clusID=i+1))
+                report_file = open(reportFName, 'w')
 
-            report_file.write(_clus_floe_report_header2)
+                report_file.write(_clus_floe_report_header)
 
-            report_file.write(_clus_floe_report_midHtml0.format(
-                query_depiction=oedepict.OEWriteImageToString("svg", img).decode("utf8")))
+                for i in range(len(clusTrajSVG)+2):
+                    report_file.write("""
+                  div.cb-floe-report__tab-wrapper input:nth-of-type({clusID}):checked ~ .cb-floe-report__tab-content:nth-of-type({clusID}) {{ display: block; }}
+                """.format(clusID=i+1))
 
-            analysis_txt = MakeClusterInfoText( clusData,clusRGB)
-            report_file.write("".join(analysis_txt))
+                report_file.write(_clus_floe_report_header2)
 
-            report_file.write(_clus_floe_report_midHtml1 )
+                report_file.write(_clus_floe_report_midHtml0.format(
+                    query_depiction=oedepict.OEWriteImageToString("svg", img).decode("utf8")))
 
-            report_file.write("""      <input type="radio" name="tab" id="cb-floe-report__tab-1-header" checked>
-                  <label class="cb-floe-report__tab-label" for="cb-floe-report__tab-1-header">Overall</label>
+                analysis_txt = MakeClusterInfoText( clusData,clusRGB)
+                report_file.write("".join(analysis_txt))
 
-            """)
-            CurrentTabId = 1
-            for i, (clus,rgb) in enumerate(zip(clusTrajSVG,clusRGB)):
-                CurrentTabId = i+2
+                report_file.write(_clus_floe_report_midHtml1 )
+
+                report_file.write("""      <input type="radio" name="tab" id="cb-floe-report__tab-1-header" checked>
+                      <label class="cb-floe-report__tab-label" for="cb-floe-report__tab-1-header">Overall</label>
+    
+                """)
+                CurrentTabId = 1
+                for i, (clus,rgb) in enumerate(zip(clusTrajSVG,clusRGB)):
+                    CurrentTabId = i+2
+                    report_file.write("""      <input type="radio" name="tab" id="cb-floe-report__tab-{tabID}-header">
+                      <label class="cb-floe-report__tab-label" for="cb-floe-report__tab-{tabID}-header" style="
+                                background-color: rgb({r},{g},{b});
+                                color: white;">Cluster {clusNum}</label>
+    
+                """.format(tabID=CurrentTabId, clusNum=i, r=rgb[0], g=rgb[1], b=rgb[2]))
                 report_file.write("""      <input type="radio" name="tab" id="cb-floe-report__tab-{tabID}-header">
-                  <label class="cb-floe-report__tab-label" for="cb-floe-report__tab-{tabID}-header" style="
-                            background-color: rgb({r},{g},{b});
-                            color: white;">Cluster {clusNum}</label>
+                      <label class="cb-floe-report__tab-label" for="cb-floe-report__tab-{tabID}-header">Initial Pose</label>
+    
+                """.format(tabID=CurrentTabId+1, clusNum=i, r=rgb[0], g=rgb[1], b=rgb[2]))
 
-            """.format( tabID=CurrentTabId, clusNum=i, r=rgb[0], g=rgb[1], b=rgb[2]))
-            report_file.write("""      <input type="radio" name="tab" id="cb-floe-report__tab-{tabID}-header">
-                  <label class="cb-floe-report__tab-label" for="cb-floe-report__tab-{tabID}-header">Initial Pose</label>
-
-            """.format( tabID=CurrentTabId+1, clusNum=i, r=rgb[0], g=rgb[1], b=rgb[2]))
-
-            report_file.write("""      <div class="cb-floe-report__tab-content">
-                    {traj}
-                  </div>
-            """.format(traj=trim_svg(trajSVG)) )
-            for clusSVG in clusTrajSVG:
                 report_file.write("""      <div class="cb-floe-report__tab-content">
-                    {traj}
-                  </div>
-            """.format(traj=trim_svg(clusSVG)) )
-            report_file.write("""      <div class="cb-floe-report__tab-content">
-                    {traj}
-                  </div>
-            """.format(traj=trim_svg(asiteSVG)) )
+                        {traj}
+                      </div>
+                """.format(traj=trim_svg(trajSVG)))
+                for clusSVG in clusTrajSVG:
+                    report_file.write("""      <div class="cb-floe-report__tab-content">
+                        {traj}
+                      </div>
+                """.format(traj=trim_svg(clusSVG)))
+                report_file.write("""      <div class="cb-floe-report__tab-content">
+                        {traj}
+                      </div>
+                """.format(traj=trim_svg(asiteSVG)))
 
-            report_file.write(_clus_floe_report_midHtml2)
+                report_file.write(_clus_floe_report_midHtml2)
 
-            report_file.write(_clus_floe_report_Trailer.format(
-                clusters=trim_svg(trajClus_svg),
-                rmsdInit=trim_svg(rmsdInit_svg)))
+                report_file.write(_clus_floe_report_Trailer.format(
+                    clusters=trim_svg(trajClus_svg),
+                    rmsdInit=trim_svg(rmsdInit_svg)))
 
-            report_file.close()
+                report_file.close()
 
-            if in_orion():
-                session = OrionSession()
+                with open(reportFName, 'r') as f:
+                    report_html_str = f.read()
 
-                ligName = ligInitPose.GetTitle()
-                id_plmd = utl.RequestOEFieldType( record, Fields.id)
-                file_upload = File.upload(session, "Report{} {}".format(id_plmd, ligName), "./"+reportFName)
-                session.tag_resource(file_upload, "floe_report")
-                job_id = environ.get('ORION_JOB_ID')
-                if job_id:
-                    session.tag_resource(file_upload, "Job {}".format(job_id))
+                record.set_value(Fields.floe_report, report_html_str)
+
+                record.set_value(Fields.floe_report_depiction_lig, ligInitPose)
 
             self.success.emit(record)
 
@@ -466,4 +478,5 @@ class MDTrajAnalysisClusterReport(OERecordComputeCube):
             self.failure.emit(record)
 
         return
+
 
