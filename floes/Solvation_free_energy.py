@@ -37,6 +37,9 @@ from MDCubes.cubes import (OpenMMminimizeCube,
                            OpenMMNvtCube,
                            OpenMMNptCube)
 
+from TrjAnalysisCubes.traj_cubes import MDFloeReportCube
+
+
 job = WorkFloe("Solvation Free Energy",
                title="Solvation Free Energy")
 
@@ -154,6 +157,9 @@ equil.set_parameters(reporter_interval=0.0)
 equil.set_parameters(suffix='equil')
 job.add_cube(equil)
 
+report = MDFloeReportCube("report", title="Floe Report")
+job.add_cube(report)
+
 ofs = DatasetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")
 job.add_cube(ofs)
@@ -170,7 +176,9 @@ ff.success.connect(minimize.intake)
 minimize.success.connect(warmup.intake)
 warmup.success.connect(equil.intake)
 equil.success.connect(yank_proxy.intake)
-yank_proxy.success.connect(ofs.intake)
+yank_proxy.success.connect(report.intake)
+report.success.connect(ofs.intake)
+report.failure.connect(fail.intake)
 yank_proxy.failure.connect(fail.intake)
 yank_proxy.cycle_out_port.connect(solvationfe.intake)
 solvationfe.success.connect(yank_proxy.cycle_in_port)

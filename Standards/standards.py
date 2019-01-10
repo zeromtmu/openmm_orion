@@ -116,9 +116,7 @@ class Fields:
     floe_report_depiction_lig = OEField("Floe_Report_Ligand_OPLMD", Types.Chem.Mol,
                                         meta=OEFieldMeta().set_option(Meta.Hints.Chem.Ligand))
 
-    floe_report_value = OEField('Floe_Report_value_OPLMD', Types.Float)
-    floe_report_value_label = OEField('Floe_Report_value_label_OPLMD', Types.Float)
-
+    floe_report_label = OEField('Floe_Report_label_OPLMD', Types.String)
 
     # Clean up trajectories
     if in_orion():
