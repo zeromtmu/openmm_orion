@@ -31,7 +31,7 @@ from datarecord import read_mol_record
 
 from artemis.wrappers import using_orion
 
-num_proc = 5
+num_proc = 3
 
 PACKAGE_DIR = os.path.dirname(os.path.dirname(MDOrion.__file__))
 
@@ -151,6 +151,7 @@ class TestYankSolvationOrionFloes(FloeTestCase):
                 }
             )
         else:
+            print("NOT ORION")
             workfloe.start(
                 {
                     "promoted": {
