@@ -29,6 +29,10 @@ from openeye import oechem
 
 from datarecord import read_mol_record
 
+from artemis.wrappers import using_orion
+
+num_proc = 5
+
 PACKAGE_DIR = os.path.dirname(os.path.dirname(MDOrion.__file__))
 
 FILE_DIR = os.path.join(PACKAGE_DIR, "tests", "data")
@@ -59,16 +63,31 @@ class TestYankSolvationOrionFloes(FloeTestCase):
         output_file = OutputDatasetWrapper(extension=".oedb")
         fail_output_file = OutputDatasetWrapper(extension=".oedb")
 
-        workfloe.start(
-            {
-                "promoted": {
-                    "ligands": ligand_file.identifier,
-                    "iterations": 10,
-                    "out": output_file.identifier,
-                    "fail": fail_output_file.identifier
+        if using_orion:
+            workfloe.start(
+                {
+                    "promoted": {
+                        "ligands": ligand_file.identifier,
+                        "iterations": 10,
+                        "out": output_file.identifier,
+                        "fail": fail_output_file.identifier
+                    }
                 }
-            }
-        )
+            )
+        else:
+            workfloe.start(
+                {
+                    "promoted": {
+                        "ligands": ligand_file.identifier,
+                        "iterations": 10,
+                        "out": output_file.identifier,
+                        "fail": fail_output_file.identifier
+                    },
+
+                    "mp": num_proc
+
+                }
+            )
 
         self.assertWorkFloeComplete(workfloe)
 
@@ -120,16 +139,30 @@ class TestYankSolvationOrionFloes(FloeTestCase):
         output_file = OutputDatasetWrapper(extension=".oedb")
         fail_output_file = OutputDatasetWrapper(extension=".oedb")
 
-        workfloe.start(
-            {
-                "promoted": {
-                    "ligands": ligand_file.identifier,
-                    "iterations": 10,
-                    "out": output_file.identifier,
-                    "fail": fail_output_file.identifier
+        if using_orion:
+            workfloe.start(
+                {
+                    "promoted": {
+                        "ligands": ligand_file.identifier,
+                        "iterations": 10,
+                        "out": output_file.identifier,
+                        "fail": fail_output_file.identifier
+                    }
                 }
-            }
-        )
+            )
+        else:
+            workfloe.start(
+                {
+                    "promoted": {
+                        "ligands": ligand_file.identifier,
+                        "iterations": 10,
+                        "out": output_file.identifier,
+                        "fail": fail_output_file.identifier
+                    },
+
+                    "mp": num_proc
+                }
+            )
 
         self.assertWorkFloeComplete(workfloe)
 
