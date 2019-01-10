@@ -163,7 +163,7 @@ class MDFloeReportCube(OERecordComputeCube):
 
                     img_fn = os.path.join(output_directory, "img.svg")
                     oedepict.OEPrepareDepiction(ligand)
-                    width, height = 150, 150
+                    width, height = 125, 125
                     opts = oedepict.OE2DMolDisplayOptions(width, height, oedepict.OEScale_AutoScale)
                     disp = oedepict.OE2DMolDisplay(ligand, opts)
                     oedepict.OERenderMolecule(img_fn, disp)

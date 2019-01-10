@@ -42,7 +42,7 @@ def flake8(ctx):
 
 
 @task
-def testcubes(ctx):
+def test_cubes(ctx):
     """
     run cube tests
     """
@@ -52,16 +52,19 @@ def testcubes(ctx):
 
 
 @task
-def testfloes(ctx):
+def test_floes(ctx, test="fast"):
     """
     run tests
     """
     clean(ctx)
-    run("py.test -s -v ./tests ")
+    if test == "all":
+        run("py.test -s -v ./tests ")
+    else:
+        run("""py.test -s -v -m "{}" ./tests """.format(test))
 
 
 @task
-def testorion(ctx, profile="", test="all"):
+def test_orion(ctx, profile="", test="all"):
     """
     run tests
     """
@@ -79,8 +82,6 @@ def testorion(ctx, profile="", test="all"):
         run("ORION_PROFILE={} py.test -s -v --orion ./tests".format(profile))
     else:
         run("""ORION_PROFILE={} py.test -s -v --orion -m "{}" ./tests""".format(profile, test))
-
-
 
 
 @task
