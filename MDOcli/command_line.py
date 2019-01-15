@@ -13,8 +13,6 @@ from datarecord.datarecord import RecordVecData, RecordData
 
 from orionclient.types import File
 
-import mdtraj as md
-
 import os
 
 from orionclient.session import (OrionSession,

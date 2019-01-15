@@ -1035,8 +1035,6 @@ class YankProxyCube(OERecordComputeCube):
 
         try:
 
-            opt = dict(self.opt)
-
             if not record.has_value(Fields.title):
                 self.opt['Logger'].warn("Missing record Title field")
 
