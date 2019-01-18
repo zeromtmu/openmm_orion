@@ -16,7 +16,7 @@
 # or its use.
 
 
-__version__ = '0.7.15'
+__version__ = '0.7.15a1'
 
 import ComplexPrepCubes
 import ForceFieldCubes
