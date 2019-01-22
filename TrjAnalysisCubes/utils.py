@@ -2,11 +2,20 @@
 # Copyright (C) 2018 OpenEye Scientific Software, Inc.
 #############################################################################
 import numpy as np
-from openeye import oechem, oedepict, oegrapheme
-import mdtraj as md
-from datarecord import (Types, OEField, OERecord)
 
-def GetCardinalOrderOfProteinResNums( mol):
+from openeye import (oechem,
+                     oedepict,
+                     oegrapheme)
+import mdtraj as md
+
+from datarecord import OEField
+
+import os
+
+from tempfile import TemporaryDirectory
+
+
+def GetCardinalOrderOfProteinResNums(mol):
     # make map of protein res nums to the residue cardinal order index
     resmap = {}
     currRes = -10000
@@ -14,14 +23,14 @@ def GetCardinalOrderOfProteinResNums( mol):
     for atom in mol.GetAtoms(oechem.OEIsBackboneAtom()):
         thisRes = oechem.OEAtomGetResidue(atom)
         resnum = thisRes.GetResidueNumber()
-        if resnum!=currRes:
+        if resnum != currRes:
             currIdx += 1
             currRes = resnum
             resmap[currRes] = currIdx
     return resmap, currIdx
 
 
-def ExtractProtLigActsiteResNums( mol, fromLigCutoff=5.0):
+def ExtractProtLigActsiteResNums(mol, fromLigCutoff=5.0):
     '''Extracts the protein and ligand from a single OEMol containing a protein-ligand
     complex plus other components. A list of protein residues within a cutoff distance
     from the ligand is also returned.
@@ -54,7 +63,7 @@ def ExtractProtLigActsiteResNums( mol, fromLigCutoff=5.0):
     return protein, ligand, actSiteResNums
 
 
-def ExtractAlignedProtLigTraj_hdf5( mol, traj_hdf5Filename, fromLigCutoff=5.0, skip=0):
+def ExtractAlignedProtLigTraj_hdf5(mol, traj_hdf5Filename, fromLigCutoff=5.0, skip=0):
     '''Extracts the aligned protein trajectory and aligned ligand trajectory from
     a MD trajectory of a larger system that includes other components (eg water).
     The passed in OEMol must have the topology that matches the trajectory, and its xyz
@@ -75,7 +84,7 @@ def ExtractAlignedProtLigTraj_hdf5( mol, traj_hdf5Filename, fromLigCutoff=5.0, s
     # get the topology from 1st frame of the traj file
     topologyTraj = md.load_hdf5(traj_hdf5Filename, frame=1)
     # Put the reference mol xyz into the 1-frame topologyTraj to use as a reference in the fit
-    molXyz = oechem.OEDoubleArray( 3*mol.GetMaxAtomIdx())
+    molXyz = oechem.OEDoubleArray(3*mol.GetMaxAtomIdx())
     mol.GetCoords( molXyz)
     molXyzArr = np.array( molXyz)
     molXyzArr.shape = (-1,3)
@@ -83,15 +92,15 @@ def ExtractAlignedProtLigTraj_hdf5( mol, traj_hdf5Filename, fromLigCutoff=5.0, s
     topologyTraj.xyz[0] = molXyzArr/10.0
     # extract protein and ligand molecules from the larger multicomponent system
     # and identify residue numbers for residues within fromLigCutoff of the ligand.
-    protein, ligand, actSiteResNums = ExtractProtLigActsiteResNums( mol, fromLigCutoff)
-    protResMap, numProtRes = GetCardinalOrderOfProteinResNums( protein)
+    protein, ligand, actSiteResNums = ExtractProtLigActsiteResNums(mol, fromLigCutoff)
+    protResMap, numProtRes = GetCardinalOrderOfProteinResNums(protein)
     actSiteResIdxs = set()
     for resnum in actSiteResNums:
         actSiteResIdxs.add( protResMap[resnum])
     # extract protein atom indices: cannot trust mdtraj protein selection so
     # assume they are contiguous and starting the atom list and just get the same
     # number of atoms as in the OpenEye protein
-    protOEIdx = np.array( [ atom.GetIdx() for atom in protein.GetAtoms()] )
+    protOEIdx = np.array([atom.GetIdx() for atom in protein.GetAtoms()])
     # extract ligand atom indices
     #   Note: the ligand must have residue name 'MOL' or 'LIG' (bad, should change)
     ligIdx = topologyTraj.topology.select('resname == MOL or resname == LIG')
@@ -105,7 +114,7 @@ def ExtractAlignedProtLigTraj_hdf5( mol, traj_hdf5Filename, fromLigCutoff=5.0, s
     else:
         trj = trj_initial
     # Image the protein-ligand trajectory so the complex does not jump across box boundaries
-    protlig = topologyTraj.atom_slice( protligIdx)
+    protlig = topologyTraj.atom_slice(protligIdx)
     protligAtoms = [ atom for atom in protlig.topology.atoms]
     inplace = True
     trjImaged = trj.image_molecules(inplace, [protligAtoms])
@@ -119,19 +128,20 @@ def ExtractAlignedProtLigTraj_hdf5( mol, traj_hdf5Filename, fromLigCutoff=5.0, s
     ligTraj = oechem.OEMol(ligand)
     ligTraj.DeleteConfs()
     for frame in trjImaged.xyz:
-        xyzList = [ 10*frame[idx] for idx in ligIdx ]
-        confxyz = oechem.OEFloatArray( np.array(xyzList).ravel() )
-        conf = ligTraj.NewConf( confxyz)
+        xyzList = [10*frame[idx] for idx in ligIdx]
+        confxyz = oechem.OEFloatArray( np.array(xyzList).ravel())
+        conf = ligTraj.NewConf(confxyz)
     # Generate a multiconformer representation of the protein trajectory
     strNumProteinAtomsToSelect = 'index '+str(protOEIdx[0])+' to '+str(protOEIdx[-1])
     protIdx = protlig.topology.select( strNumProteinAtomsToSelect)
     protTraj = oechem.OEMol(protein)
     protTraj.DeleteConfs()
     for frame in trjImaged.xyz:
-        xyzList = [ 10*frame[idx] for idx in protIdx ]
-        confxyz = oechem.OEFloatArray( np.array(xyzList).ravel() )
-        conf = protTraj.NewConf( confxyz)
+        xyzList = [10*frame[idx] for idx in protIdx]
+        confxyz = oechem.OEFloatArray(np.array(xyzList).ravel())
+        conf = protTraj.NewConf(confxyz)
     return protTraj, ligTraj
+
 
 def RequestOEField( record, field, rType):
     if not record.has_value(OEField(field,rType)):
@@ -141,6 +151,7 @@ def RequestOEField( record, field, rType):
     else:
         return record.get_value(OEField(field,rType))
 
+
 def RequestOEFieldType( record, field):
     if not record.has_value(field):
         #opt['Logger'].warn('Missing record field {}'.format( field))
@@ -148,6 +159,7 @@ def RequestOEFieldType( record, field):
         raise ValueError('The record does not have field {}'.format( field.get_name() ))
     else:
         return record.get_value(field)
+
 
 def ColorblindRGBMarkerColors( nColors=0):
     palette = [(0, 114, 178), (0, 158, 115), (213, 94, 0), (204, 121, 167),
@@ -162,6 +174,7 @@ def ColorblindRGBMarkerColors( nColors=0):
         for i in range(n):
             moreRGB = moreRGB+palette
         return( moreRGB[:nColors])
+
 
 def PoseInteractionsSVG(ligand, proteinOrig, width=400, height=300):
     """Generate a OEGrapheme interaction plot for a protein-ligand complex.
@@ -206,3 +219,79 @@ def PoseInteractionsSVG(ligand, proteinOrig, width=400, height=300):
     svgBytes = oedepict.OEWriteImageToString("svg", image)
 
     return svgBytes.decode("utf-8")
+
+
+def ligand_to_svg_stmd(ligand, ligand_name):
+
+    class ColorLigandAtomByBFactor(oegrapheme.OEAtomGlyphBase):
+        def __init__(self, colorg):
+            oegrapheme.OEAtomGlyphBase.__init__(self)
+            self.colorg = colorg
+
+        def RenderGlyph(self, disp, atom):
+            adisp = disp.GetAtomDisplay(atom)
+            if adisp is None or not adisp.IsVisible():
+                return False
+
+            if not oechem.OEHasResidue(atom):
+                return False
+
+            res = oechem.OEAtomGetResidue(atom)
+            bfactor = res.GetBFactor()
+            color = self.colorg.GetColorAt(bfactor)
+
+            pen = oedepict.OEPen(color, color, oedepict.OEFill_On, 1.0)
+            radius = disp.GetScale() / 3.0
+
+            layer = disp.GetLayer(oedepict.OELayerPosition_Below)
+            circlestyle = oegrapheme.OECircleStyle_Default
+            oegrapheme.OEDrawCircle(layer, circlestyle, adisp.GetCoords(), radius, pen)
+            return True
+
+        def CreateCopy(self):
+            return ColorLigandAtomByBFactor(self.colorg).__disown__()
+
+    with TemporaryDirectory() as output_directory:
+
+        img_fn = os.path.join(output_directory, "img.svg")
+
+        oedepict.OEPrepareDepiction(ligand)
+
+        colorg = oechem.OELinearColorGradient()
+        colorg.AddStop(oechem.OEColorStop(0.0, oechem.OEDarkBlue))
+        colorg.AddStop(oechem.OEColorStop(10.0, oechem.OELightBlue))
+        colorg.AddStop(oechem.OEColorStop(25.0, oechem.OEYellowTint))
+        colorg.AddStop(oechem.OEColorStop(50.0, oechem.OERed))
+        colorg.AddStop(oechem.OEColorStop(100.0, oechem.OEDarkRose))
+
+        color_bfactor = ColorLigandAtomByBFactor(colorg)
+
+        width, height = 50, 50
+        opts = oedepict.OE2DMolDisplayOptions(width, height, oedepict.OEScale_AutoScale)
+        disp = oedepict.OE2DMolDisplay(ligand, opts)
+
+        oegrapheme.OEAddGlyph(disp, color_bfactor, oechem.OEIsTrueAtom())
+
+        oedepict.OERenderMolecule(img_fn, disp)
+
+        if len(ligand_name) < 15:
+            ligand.SetTitle(ligand_name)
+        else:
+            ligand.SetTitle(ligand_name[0:13] + '...')
+
+        svg_lines = ""
+        marker = False
+        with open(img_fn, 'r') as file:
+            for line in file:
+                if marker:
+                    svg_lines += line
+
+                if line.startswith("<svg"):
+                    marker = True
+                    svg_lines += line
+                    svg_lines += """<title>{}</title>\n""".format(ligand_name)
+
+                if line.startswith("</svg>"):
+                    marker = False
+
+    return svg_lines

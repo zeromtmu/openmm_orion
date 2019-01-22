@@ -99,11 +99,6 @@ class Fields:
     # Stage list Field
     md_stages = OEField("MDStages_OPLMD", Types.RecordVec)
 
-    # Stage Field
-    # md_stage = OEField("MDStage_OPLMD", Types.Record)
-
-    # yank_analysis = OEField("Yank_Analysis_OPLMD", Types.String)
-
     # Analysis Fields
     free_energy = OEField('FE_OPLMD', Types.Float,
                           meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal_per_mol))
@@ -113,10 +108,10 @@ class Fields:
 
     floe_report = OEField('Floe_report_OPLMD', Types.String)
 
-    floe_report_depiction_lig = OEField("Floe_Report_Ligand_OPLMD", Types.Chem.Mol,
-                                        meta=OEFieldMeta().set_option(Meta.Hints.Chem.Ligand))
+    floe_report_svg_lig_depiction = OEField("Floe_report_lig_svg_OPLMD", Types.String,
+                                            meta=OEFieldMeta().set_option(Meta.Hints.Image_SVG))
 
-    floe_report_label = OEField('Floe_Report_label_OPLMD', Types.String)
+    floe_report_label = OEField('Floe_report_label_OPLMD', Types.String)
 
     # Clean up trajectories
     if in_orion():

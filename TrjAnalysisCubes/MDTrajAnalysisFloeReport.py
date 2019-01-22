@@ -1,12 +1,14 @@
+import os
+
 import traceback
 
 import re
 
+from floe.api import ParallelMixin
+
 from datarecord import Types
 
 from cuberecord import OERecordComputeCube
-
-from floe.api import ParallelMixin
 
 from Standards import Fields
 
@@ -14,11 +16,9 @@ from openeye import oedepict
 
 import TrjAnalysisCubes.utils as utl
 
-import base64
-
-import os
-
 from tempfile import TemporaryDirectory
+
+import base64
 
 _clus_floe_report_header = """
 <html>
@@ -228,7 +228,6 @@ _clus_floe_report_Trailer = """    </div>
 </body>
 </html>"""
 
-
 def MakeClusterInfoText(dataDict, rgbVec):
     # Generate text string about Clustering information
     #
@@ -340,26 +339,31 @@ class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
 
             ligInitPose = utl.RequestOEFieldType(record, Fields.ligand)
 
+            if not record.has_value(Fields.ligand_name):
+                raise ValueError("The ligand name has not been defined")
+
+            lig_name = record.get_value(Fields.ligand_name)
+
             protInitPose = utl.RequestOEFieldType(record, Fields.protein)
 
             asiteSVG = utl.PoseInteractionsSVG(ligInitPose, protInitPose, width=400, height=265)
 
             # Extract the traj SVG from the OETraj record
-            analysesDone = utl.RequestOEField( record, 'AnalysesDone', Types.StringVec)
+            analysesDone = utl.RequestOEField(record, 'AnalysesDone', Types.StringVec)
 
             if 'OETraj' not in analysesDone:
-                raise ValueError('{} does not have OETraj analyses done'.format(system_title))
+                raise ValueError('{} does not have OETraj analyses done'.format(system_title) )
             else:
-                opt['Logger'].info('{} found OETraj analyses'.format(system_title))
+                opt['Logger'].info('{} found OETraj analyses'.format(system_title) )
 
             # Extract the relevant traj SVG from the OETraj record
             oetrajRecord = utl.RequestOEField(record, 'OETraj', Types.Record)
-            opt['Logger'].info('{} found OETraj record'.format(system_title) )
+            opt['Logger'].info('{} found OETraj record'.format(system_title))
 
             trajSVG = utl.RequestOEField(oetrajRecord, 'TrajSVG', Types.String)
 
             # Extract the three plots from the TrajClus record
-            analysesDone = utl.RequestOEField(record, 'AnalysesDone', Types.StringVec)
+            analysesDone = utl.RequestOEField( record, 'AnalysesDone', Types.StringVec)
 
             if 'TrajClus' not in analysesDone:
                 raise ValueError('{} does not have TrajClus analyses done'.format(system_title) )
@@ -370,16 +374,16 @@ class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
             clusRecord = utl.RequestOEField(record, 'TrajClus', Types.Record)
 
             opt['Logger'].info('{} found TrajClus record'.format(system_title) )
-
             trajHistRMSD_svg = utl.RequestOEField(clusRecord, 'HistSVG', Types.String)
-            trajClus_svg = utl.RequestOEField( clusRecord, 'ClusSVG', Types.String)
-            rmsdInit_svg = utl.RequestOEField( clusRecord, 'rmsdInitPose', Types.String)
-            clusTrajSVG = utl.RequestOEField( clusRecord, 'ClusTrajSVG', Types.StringVec)
+            trajClus_svg = utl.RequestOEField(clusRecord, 'ClusSVG', Types.String)
+            rmsdInit_svg = utl.RequestOEField(clusRecord, 'rmsdInitPose', Types.String)
+            clusTrajSVG = utl.RequestOEField(clusRecord, 'ClusTrajSVG', Types.StringVec)
 
-            opt['Logger'].info('{} found the TrajClus plots'.format(system_title))
+            opt['Logger'].info('{} found the TrajClus plots'.format(system_title) )
 
             # Generate text string about Clustering information
             clusData = {}
+
             clusData['nFrames'] = utl.RequestOEField(clusRecord, 'nFrames', Types.Int)
             clusData['ClusterMethod'] = utl.RequestOEField(clusRecord, 'ClusterMethod', Types.String)
             clusData['HDBSCAN_alpha'] = utl.RequestOEField(clusRecord, 'HDBSCAN_alpha', Types.Float)
@@ -396,15 +400,15 @@ class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
 
             # get the palette of graph marker colors
             nClustersP1 = clusData['nClusters']+1
-            clusRGB = utl.ColorblindRGBMarkerColors(nClustersP1)
+            clusRGB = utl.ColorblindRGBMarkerColors( nClustersP1)
             clusRGB[-1] = (76, 76, 76)
 
-            # write the report
             with TemporaryDirectory() as output_directory:
 
+                # write the report
                 reportFName = os.path.join(output_directory, system_title + '_ClusReport.html')
 
-                report_file = open(reportFName, 'w')
+                report_file = open( reportFName, 'w')
 
                 report_file.write(_clus_floe_report_header)
 
@@ -418,10 +422,10 @@ class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
                 report_file.write(_clus_floe_report_midHtml0.format(
                     query_depiction=oedepict.OEWriteImageToString("svg", img).decode("utf8")))
 
-                analysis_txt = MakeClusterInfoText( clusData,clusRGB)
+                analysis_txt = MakeClusterInfoText(clusData, clusRGB)
                 report_file.write("".join(analysis_txt))
 
-                report_file.write(_clus_floe_report_midHtml1 )
+                report_file.write(_clus_floe_report_midHtml1)
 
                 report_file.write("""      <input type="radio" name="tab" id="cb-floe-report__tab-1-header" checked>
                       <label class="cb-floe-report__tab-label" for="cb-floe-report__tab-1-header">Overall</label>
@@ -435,25 +439,25 @@ class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
                                 background-color: rgb({r},{g},{b});
                                 color: white;">Cluster {clusNum}</label>
     
-                """.format(tabID=CurrentTabId, clusNum=i, r=rgb[0], g=rgb[1], b=rgb[2]))
+                """.format( tabID=CurrentTabId, clusNum=i, r=rgb[0], g=rgb[1], b=rgb[2]))
                 report_file.write("""      <input type="radio" name="tab" id="cb-floe-report__tab-{tabID}-header">
                       <label class="cb-floe-report__tab-label" for="cb-floe-report__tab-{tabID}-header">Initial Pose</label>
     
-                """.format(tabID=CurrentTabId+1, clusNum=i, r=rgb[0], g=rgb[1], b=rgb[2]))
+                """.format( tabID=CurrentTabId+1, clusNum=i, r=rgb[0], g=rgb[1], b=rgb[2]))
 
                 report_file.write("""      <div class="cb-floe-report__tab-content">
                         {traj}
                       </div>
-                """.format(traj=trim_svg(trajSVG)))
+                """.format(traj=trim_svg(trajSVG)) )
                 for clusSVG in clusTrajSVG:
                     report_file.write("""      <div class="cb-floe-report__tab-content">
                         {traj}
                       </div>
-                """.format(traj=trim_svg(clusSVG)))
+                """.format(traj=trim_svg(clusSVG)) )
                 report_file.write("""      <div class="cb-floe-report__tab-content">
                         {traj}
                       </div>
-                """.format(traj=trim_svg(asiteSVG)))
+                """.format(traj=trim_svg(asiteSVG)) )
 
                 report_file.write(_clus_floe_report_midHtml2)
 
@@ -466,9 +470,17 @@ class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
                 with open(reportFName, 'r') as f:
                     report_html_str = f.read()
 
+
+                # DEBUG
+                with open("report_debug.html", 'w') as rf:
+                    rf.write(report_html_str)
+
+
                 record.set_value(Fields.floe_report, report_html_str)
 
-                record.set_value(Fields.floe_report_depiction_lig, ligInitPose)
+                lig_svg = utl.ligand_to_svg_stmd(ligInitPose, lig_name)
+
+                record.set_value(Fields.floe_report_svg_lig_depiction, lig_svg)
 
             self.success.emit(record)
 
@@ -478,5 +490,4 @@ class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
             self.failure.emit(record)
 
         return
-
 

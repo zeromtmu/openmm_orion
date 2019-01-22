@@ -206,6 +206,11 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
             # Current number of iterations
             current_iterations = record.get_value(current_iteration_field)
 
+            if not record.has_value(Fields.ligand_name):
+                raise ValueError("The ligand name has not been defined")
+
+            lig_name = record.get_value(Fields.ligand_name)
+
             if current_iterations == 0:
                 opt['minimize'] = True
                 opt['resume_sim'] = False
@@ -424,9 +429,12 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                     if report_str is not None:
                         record.set_value(Fields.floe_report, report_str)
 
-                    record.set_value(Fields.floe_report_depiction_lig, lig_split)
+                    svg_lig = yankutils.ligand_to_svg(lig_split, lig_name)
 
-                    record.set_value(Fields.floe_report_label, "&Delta;Gs = {:.1f} kcal/mol".format(DeltaG_solvation))
+                    record.set_value(Fields.floe_report_svg_lig_depiction, svg_lig)
+
+                    record.set_value(Fields.floe_report_label, "&Delta;Gs = {:.1f} &plusmn; {:.1f} kcal/mol".
+                                     format(DeltaG_solvation, dDeltaG_solvation))
 
                 # md_stages.append(md_stage_record)
                 md_stages[-1] = md_stage_record
@@ -711,6 +719,11 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
             opt['system_id'] = record.get_value(Fields.id)
 
+            if not record.has_value(Fields.ligand_name):
+                raise ValueError("The ligand name has not been defined")
+
+            lig_name = record.get_value(Fields.ligand_name)
+
             if opt['iterations'] <= 0:
                 raise ValueError("The number of iterations cannot be a non-negative number: {}".format(opt['iterations']))
 
@@ -974,9 +987,12 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     if report_str is not None:
                         record.set_value(Fields.floe_report, report_str)
 
-                    record.set_value(Fields.floe_report_depiction_lig, ligand_split)
+                    svg_lig = yankutils.ligand_to_svg(ligand_split, lig_name)
 
-                    record.set_value(Fields.floe_report_label, "&Delta;Gb = {:.1f} kcal/mol".format(DeltaG_binding))
+                    record.set_value(Fields.floe_report_svg_lig_depiction, svg_lig)
+
+                    record.set_value(Fields.floe_report_label, "&Delta;Gs = {:.1f} &plusmn; {:.1f} kcal/mol".
+                                     format(DeltaG_binding, dDeltaG_binding))
 
             record.set_value(current_iteration_field, opt['new_iterations'])
             record.set_value(Fields.primary_molecule, complex)

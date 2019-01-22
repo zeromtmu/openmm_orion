@@ -76,24 +76,19 @@ class MDFloeReportCube(OERecordComputeCube):
             if not record.has_value(Fields.ligand_name):
                 raise ValueError("Missing the ligand name field")
 
-            if not record.has_value(Fields.floe_report_depiction_lig):
-                raise ValueError("Missing the ligand molecule depiction field")
-
-            ligand = record.get_value(Fields.floe_report_depiction_lig)
-
             ligand_name = record.get_value(Fields.ligand_name)
 
-            if len(ligand_name) < 15:
-                ligand.SetTitle(ligand_name)
-            else:
-                ligand.SetTitle(ligand_name[0:13] + '...')
+            if not record.has_value(Fields.floe_report_svg_lig_depiction):
+                raise ValueError("Missing the ligand  depiction field")
+
+            ligand_svg = record.get_value(Fields.floe_report_svg_lig_depiction)
 
             if not record.has_value(Fields.floe_report_label):
                 floe_report_label = ""
             else:
                 floe_report_label = record.get_value(Fields.floe_report_label)
 
-            self.floe_report_dic[system_id] = (report_string, ligand, ligand_name, floe_report_label)
+            self.floe_report_dic[system_id] = (report_string, ligand_svg, ligand_name, floe_report_label)
 
             # Upload Floe Report
             if self.opt['upload']:
@@ -157,42 +152,23 @@ class MDFloeReportCube(OERecordComputeCube):
             # Sort the dictionary keys by using the ligand ID
             for key in sorted(self.floe_report_dic.keys()):
 
-                report_string, ligand, ligand_title, label = self.floe_report_dic[key]
+                report_string, ligand_svg, ligand_title, label = self.floe_report_dic[key]
 
-                with TemporaryDirectory() as output_directory:
+                if len(ligand_title) < 15:
+                    page_title = ligand_title
+                else:
+                    page_title = ligand_title[0:13] + '...'
 
-                    img_fn = os.path.join(output_directory, "img.svg")
-                    oedepict.OEPrepareDepiction(ligand)
-                    width, height = 125, 125
-                    opts = oedepict.OE2DMolDisplayOptions(width, height, oedepict.OEScale_AutoScale)
-                    disp = oedepict.OE2DMolDisplay(ligand, opts)
-                    oedepict.OERenderMolecule(img_fn, disp)
+                page = self.floe_report.create_page(page_title, is_index=False)
+                page_link = page.get_link()
+                page.set_from_string(report_string)
 
-                    svg_lines = ""
-                    marker = False
-                    with open(img_fn, 'r') as file:
-                        for line in file:
-                            if marker:
-                                svg_lines += line
-
-                            if line.startswith("<svg"):
-                                marker = True
-                                svg_lines += line
-                                svg_lines += """<title>{}</title>\n""".format(ligand_title)
-
-                            if line.startswith("</svg>"):
-                                marker = False
-
-                    page = self.floe_report.create_page(ligand.GetTitle(), is_index=False)
-                    page_link = page.get_link()
-                    page.set_from_string(report_string)
-
-                    index_content += """
-                    <a href='{}'>
-                    {}
-                    <p> {} </p>
-                    </a>
-                    """.format(page_link, svg_lines, label)
+                index_content += """
+                <a href='{}'>
+                {}
+                <p> {} </p>
+                </a>
+                """.format(page_link, ligand_svg, label)
 
             index_content += """
             </main>

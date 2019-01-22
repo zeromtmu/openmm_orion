@@ -30,8 +30,6 @@ from simtk import openmm
 
 from datetime import timedelta
 
-import os
-
 import subprocess
 
 from orionclient.session import in_orion, OrionSession
@@ -43,6 +41,12 @@ import yaml
 import time
 
 import fcntl
+
+import os
+
+from openeye import oedepict
+
+from tempfile import TemporaryDirectory
 
 
 def yank_solvation_initialize(sim):
@@ -416,3 +420,39 @@ def calculate_iteration_time(output_directory, num_iterations):
     iterations_per_cube = int(max_cube_running_time / avg_time_per_iteration)
 
     return iterations_per_cube
+
+def ligand_to_svg(ligand, ligand_name):
+
+    with TemporaryDirectory() as output_directory:
+
+        img_fn = os.path.join(output_directory, "img.svg")
+
+        oedepict.OEPrepareDepiction(ligand)
+
+        width, height = 50, 50
+        opts = oedepict.OE2DMolDisplayOptions(width, height, oedepict.OEScale_AutoScale)
+        disp = oedepict.OE2DMolDisplay(ligand, opts)
+
+        oedepict.OERenderMolecule(img_fn, disp)
+
+        if len(ligand_name) < 15:
+            ligand.SetTitle(ligand_name)
+        else:
+            ligand.SetTitle(ligand_name[0:13] + '...')
+
+        svg_lines = ""
+        marker = False
+        with open(img_fn, 'r') as file:
+            for line in file:
+                if marker:
+                    svg_lines += line
+
+                if line.startswith("<svg"):
+                    marker = True
+                    svg_lines += line
+                    svg_lines += """<title>{}</title>\n""".format(ligand_name)
+
+                if line.startswith("</svg>"):
+                    marker = False
+
+    return svg_lines
