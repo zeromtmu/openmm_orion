@@ -432,32 +432,33 @@ class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
     
                 """)
                 CurrentTabId = 1
-                for i, (clus,rgb) in enumerate(zip(clusTrajSVG,clusRGB)):
+                for i, (clus,rgb) in enumerate(zip(clusTrajSVG, clusRGB)):
                     CurrentTabId = i+2
                     report_file.write("""      <input type="radio" name="tab" id="cb-floe-report__tab-{tabID}-header">
                       <label class="cb-floe-report__tab-label" for="cb-floe-report__tab-{tabID}-header" style="
                                 background-color: rgb({r},{g},{b});
                                 color: white;">Cluster {clusNum}</label>
-    
-                """.format( tabID=CurrentTabId, clusNum=i, r=rgb[0], g=rgb[1], b=rgb[2]))
+                                """.format( tabID=CurrentTabId, clusNum=i, r=rgb[0], g=rgb[1], b=rgb[2]))
+
                 report_file.write("""      <input type="radio" name="tab" id="cb-floe-report__tab-{tabID}-header">
                       <label class="cb-floe-report__tab-label" for="cb-floe-report__tab-{tabID}-header">Initial Pose</label>
-    
-                """.format( tabID=CurrentTabId+1, clusNum=i, r=rgb[0], g=rgb[1], b=rgb[2]))
+                      """.format( tabID=CurrentTabId+1, clusNum=i, r=rgb[0], g=rgb[1], b=rgb[2]))
 
                 report_file.write("""      <div class="cb-floe-report__tab-content">
                         {traj}
                       </div>
                 """.format(traj=trim_svg(trajSVG)) )
+
                 for clusSVG in clusTrajSVG:
                     report_file.write("""      <div class="cb-floe-report__tab-content">
                         {traj}
                       </div>
-                """.format(traj=trim_svg(clusSVG)) )
+                      """.format(traj=trim_svg(clusSVG)) )
+
                 report_file.write("""      <div class="cb-floe-report__tab-content">
                         {traj}
                       </div>
-                """.format(traj=trim_svg(asiteSVG)) )
+                      """.format(traj=trim_svg(asiteSVG)) )
 
                 report_file.write(_clus_floe_report_midHtml2)
 
