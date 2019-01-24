@@ -84,7 +84,7 @@ class TestYankSolvationOrionFloes(FloeTestCase):
                         "fail": fail_output_file.identifier
                     },
 
-                    "mp": num_proc
+                    "np": 12
 
                 }
             )
