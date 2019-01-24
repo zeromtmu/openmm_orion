@@ -31,7 +31,7 @@ from datarecord import read_mol_record
 
 from artemis.wrappers import using_orion
 
-num_proc = 5
+num_proc = 1
 
 PACKAGE_DIR = os.path.dirname(os.path.dirname(MDOrion.__file__))
 
@@ -84,7 +84,7 @@ class TestYankSolvationOrionFloes(FloeTestCase):
                         "fail": fail_output_file.identifier
                     },
 
-                    "np": 12
+                    "mp": num_proc
 
                 }
             )
