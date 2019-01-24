@@ -31,7 +31,7 @@ from datarecord import read_mol_record
 
 from artemis.wrappers import using_orion
 
-num_proc = 1
+num_proc = 5
 
 PACKAGE_DIR = os.path.dirname(os.path.dirname(MDOrion.__file__))
 
