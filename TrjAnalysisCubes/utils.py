@@ -255,7 +255,7 @@ def ligand_to_svg_stmd(ligand, ligand_name):
 
         img_fn = os.path.join(output_directory, "img.svg")
 
-        oedepict.OEPrepareDepiction(ligand)
+        oegrapheme.OEPrepareDepictionFrom3D(ligand)
 
         colorg = oechem.OELinearColorGradient()
         colorg.AddStop(oechem.OEColorStop(0.0, oechem.OEDarkBlue))
@@ -266,7 +266,7 @@ def ligand_to_svg_stmd(ligand, ligand_name):
 
         color_bfactor = ColorLigandAtomByBFactor(colorg)
 
-        width, height = 50, 50
+        width, height = 150, 150
         opts = oedepict.OE2DMolDisplayOptions(width, height, oedepict.OEScale_AutoScale)
         disp = oedepict.OE2DMolDisplay(ligand, opts)
 

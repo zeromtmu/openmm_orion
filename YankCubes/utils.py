@@ -421,6 +421,7 @@ def calculate_iteration_time(output_directory, num_iterations):
 
     return iterations_per_cube
 
+
 def ligand_to_svg(ligand, ligand_name):
 
     with TemporaryDirectory() as output_directory:
@@ -429,7 +430,7 @@ def ligand_to_svg(ligand, ligand_name):
 
         oedepict.OEPrepareDepiction(ligand)
 
-        width, height = 50, 50
+        width, height = 150, 150
         opts = oedepict.OE2DMolDisplayOptions(width, height, oedepict.OEScale_AutoScale)
         disp = oedepict.OE2DMolDisplay(ligand, opts)
 

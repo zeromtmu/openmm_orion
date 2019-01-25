@@ -20,6 +20,8 @@ from tempfile import TemporaryDirectory
 
 import base64
 
+from openeye import oechem
+
 _clus_floe_report_header = """
 <html>
 <head>
@@ -339,10 +341,7 @@ class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
 
             ligInitPose = utl.RequestOEFieldType(record, Fields.ligand)
 
-            if not record.has_value(Fields.ligand_name):
-                raise ValueError("The ligand name has not been defined")
-
-            lig_name = record.get_value(Fields.ligand_name)
+            lig_name = utl.RequestOEFieldType(record, Fields.ligand_name)
 
             protInitPose = utl.RequestOEFieldType(record, Fields.protein)
 
@@ -362,6 +361,9 @@ class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
 
             trajSVG = utl.RequestOEField(oetrajRecord, 'TrajSVG', Types.String)
 
+            # Extract Ligand average Bfactor
+            ligand_bfactor = utl.RequestOEField(oetrajRecord, 'LigAverage', Types.Chem.Mol)
+
             # Extract the three plots from the TrajClus record
             analysesDone = utl.RequestOEField( record, 'AnalysesDone', Types.StringVec)
 
@@ -379,7 +381,7 @@ class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
             rmsdInit_svg = utl.RequestOEField(clusRecord, 'rmsdInitPose', Types.String)
             clusTrajSVG = utl.RequestOEField(clusRecord, 'ClusTrajSVG', Types.StringVec)
 
-            opt['Logger'].info('{} found the TrajClus plots'.format(system_title) )
+            opt['Logger'].info('{} found the TrajClus plots'.format(system_title))
 
             # Generate text string about Clustering information
             clusData = {}
@@ -408,7 +410,7 @@ class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
                 # write the report
                 reportFName = os.path.join(output_directory, system_title + '_ClusReport.html')
 
-                report_file = open( reportFName, 'w')
+                report_file = open(reportFName, 'w')
 
                 report_file.write(_clus_floe_report_header)
 
@@ -428,37 +430,36 @@ class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
                 report_file.write(_clus_floe_report_midHtml1)
 
                 report_file.write("""      <input type="radio" name="tab" id="cb-floe-report__tab-1-header" checked>
-                      <label class="cb-floe-report__tab-label" for="cb-floe-report__tab-1-header">Overall</label>
-    
-                """)
+                      <label class="cb-floe-report__tab-label" for="cb-floe-report__tab-1-header">Overall</label>""")
+
                 CurrentTabId = 1
-                for i, (clus,rgb) in enumerate(zip(clusTrajSVG, clusRGB)):
+
+                for i, (clus, rgb) in enumerate(zip(clusTrajSVG, clusRGB)):
                     CurrentTabId = i+2
                     report_file.write("""      <input type="radio" name="tab" id="cb-floe-report__tab-{tabID}-header">
                       <label class="cb-floe-report__tab-label" for="cb-floe-report__tab-{tabID}-header" style="
                                 background-color: rgb({r},{g},{b});
                                 color: white;">Cluster {clusNum}</label>
-                                """.format( tabID=CurrentTabId, clusNum=i, r=rgb[0], g=rgb[1], b=rgb[2]))
+                                """.format(tabID=CurrentTabId, clusNum=i, r=rgb[0], g=rgb[1], b=rgb[2]))
 
                 report_file.write("""      <input type="radio" name="tab" id="cb-floe-report__tab-{tabID}-header">
                       <label class="cb-floe-report__tab-label" for="cb-floe-report__tab-{tabID}-header">Initial Pose</label>
-                      """.format( tabID=CurrentTabId+1, clusNum=i, r=rgb[0], g=rgb[1], b=rgb[2]))
+                      """.format(tabID=CurrentTabId+1, clusNum=i, r=rgb[0], g=rgb[1], b=rgb[2]))
 
                 report_file.write("""      <div class="cb-floe-report__tab-content">
                         {traj}
-                      </div>
-                """.format(traj=trim_svg(trajSVG)) )
+                      </div>""".format(traj=trim_svg(trajSVG)))
 
                 for clusSVG in clusTrajSVG:
                     report_file.write("""      <div class="cb-floe-report__tab-content">
                         {traj}
                       </div>
-                      """.format(traj=trim_svg(clusSVG)) )
+                      """.format(traj=trim_svg(clusSVG)))
 
                 report_file.write("""      <div class="cb-floe-report__tab-content">
                         {traj}
                       </div>
-                      """.format(traj=trim_svg(asiteSVG)) )
+                      """.format(traj=trim_svg(asiteSVG)))
 
                 report_file.write(_clus_floe_report_midHtml2)
 
@@ -471,15 +472,23 @@ class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
                 with open(reportFName, 'r') as f:
                     report_html_str = f.read()
 
-
-                # DEBUG
-                with open("report_debug.html", 'w') as rf:
-                    rf.write(report_html_str)
-
-
                 record.set_value(Fields.floe_report, report_html_str)
 
-                lig_svg = utl.ligand_to_svg_stmd(ligInitPose, lig_name)
+                # Copy Bfactors from the average Bfactor ligand to a copy of the ligand initial pose
+                ligand_init = oechem.OEMol(ligInitPose)
+
+                for at_avg_bfac, at_init in zip(ligand_bfactor.GetAtoms(), ligand_init.GetAtoms()):
+                    if at_avg_bfac.GetAtomicNum() == at_init.GetAtomicNum():
+                        res_avg_bfac = oechem.OEAtomGetResidue(at_avg_bfac)
+                        bfactor_avg = res_avg_bfac.GetBFactor()
+                        res_init = oechem.OEAtomGetResidue(at_init)
+                        res_init.SetBFactor(bfactor_avg)
+                        oechem.OEAtomSetResidue(at_init, res_init)
+                    else:
+                        raise ValueError("Atomic number mismatch {} vs {}".format(at_avg_bfac.GetAtomicNum(),
+                                                                                  at_init.GetAtomicNum()))
+                # Create svg for the report tile
+                lig_svg = utl.ligand_to_svg_stmd(ligand_init, lig_name)
 
                 record.set_value(Fields.floe_report_svg_lig_depiction, lig_svg)
 
