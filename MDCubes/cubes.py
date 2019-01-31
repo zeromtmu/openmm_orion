@@ -167,7 +167,7 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
 
     md_engine = parameter.StringParameter(
         'md_engine',
-        default='OpenMM',
+        default='Gromacs',
         choices=['OpenMM', 'Gromacs'],
         help_text='Select the MD available engine')
 

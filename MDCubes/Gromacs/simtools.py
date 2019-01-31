@@ -38,12 +38,10 @@ class GromacsSimulations(MDSimulations):
         gro_fn = "SYSTEM.gro"
 
         # Save topology
-        # parmed_structure.save(top_fn, overwrite=True)
+        parmed_structure.save(top_fn, overwrite=True)
 
         # Save Coordinates
-        # parmed_structure.save(gro_fn, overwrite=True)
-
-        parmed_structure.save("system.pdb")
+        parmed_structure.save(gro_fn, overwrite=True)
 
 
         # if opt['SimType'] == 'min':
