@@ -221,21 +221,45 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
 
             # Check if it is possible to create the OpenMM System
             if is_periodic:
-                system_structure.createSystem(nonbondedMethod=app.CutoffPeriodic,
-                                              nonbondedCutoff=10.0 * unit.angstroms,
-                                              constraints=app.HBonds,
-                                              removeCMMotion=False)
+                omm_system = system_structure.createSystem(nonbondedMethod=app.CutoffPeriodic,
+                                                           nonbondedCutoff=10.0 * unit.angstroms,
+                                                           constraints=None,
+                                                           removeCMMotion=False,
+                                                           rigidWater=False)
             else:
-                system_structure.createSystem(nonbondedMethod=app.NoCutoff,
-                                              constraints=app.HBonds,
-                                              removeCMMotion=False)
+                omm_system = system_structure.createSystem(nonbondedMethod=app.NoCutoff,
+                                                           constraints=None,
+                                                           removeCMMotion=False,
+                                                           rigidWater=False)
+            # Define unique atom types
+            atom_types_dic = {}
+            count_id = 0
+
+            # Copy the topology and positions
+            topology = system_structure.topology
+            positions = system_structure.positions
+
+            for c in topology.chains():
+                for r in c.residues():
+                    for a in r.atoms():
+                        if r.name + a.name in atom_types_dic:
+                            a.id = atom_types_dic[r.name + a.name]
+                        else:
+                            a.id = 'O' + str(count_id)
+                            count_id += 1
+                            atom_types_dic[r.name + a.name] = a.id
+
+            # Define a new parmed structure with the new unique atom types
+            new_system_structure = parmed.openmm.load_topology(topology,
+                                                               system=omm_system,
+                                                               xyz=positions)
 
             record.set_value(Fields.primary_molecule, system_reassembled)
             record.set_value(Fields.title, system_title)
 
-            record.set_value(Fields.pmd_structure, system_structure)
+            record.set_value(Fields.pmd_structure, new_system_structure)
 
-            mdstate = MDState(system_structure)
+            mdstate = MDState(new_system_structure)
 
             md_stage = MDRecords.MDStageRecord(self.title, MDStageTypes.SETUP,
                                                MDRecords.MDSystemRecord(system_reassembled, mdstate))

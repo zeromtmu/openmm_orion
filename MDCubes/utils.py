@@ -204,6 +204,13 @@ def md_simulation(mdstate, ff_parameters, opt):
 
         MDSim = GromacsSimulations(mdstate, ff_parameters, opt)
 
+        MDSim.run()
+
+        new_mdstate = MDSim.update_state()
+
+        MDSim.clean_up()
+
+        return new_mdstate
 
     else:
         raise ValueError("The selected MD engine is not currently supported: {}".format(opt['md_engine']))

@@ -451,8 +451,8 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
 
     md_engine = parameter.StringParameter(
         'md_engine',
-        default='OpenMM',
-        choices=['OpenMM'],
+        default='Gromacs',
+        choices=['OpenMM', 'Gromacs'],
         help_text='Select the MD available engine')
 
     def begin(self):
@@ -757,8 +757,8 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
 
     md_engine = parameter.StringParameter(
         'md_engine',
-        default='OpenMM',
-        choices=['OpenMM'],
+        default='Gromacs',
+        choices=['OpenMM', 'Gromacs'],
         help_text='Select the MD available engine')
 
     def begin(self):
