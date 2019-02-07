@@ -48,8 +48,8 @@ class TestMDOrionFloes(FloeTestCase):
     def test_STMD_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "ShortTrajMD.py"),
-            run_timeout=12000,
-            queue_timeout=1200
+            run_timeout=43200,
+            queue_timeout=2000
         )
 
         ligand_file = DatasetWrapper.get_dataset(
@@ -130,8 +130,8 @@ class TestMDOrionFloes(FloeTestCase):
     def test_STMD_Analysis_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "ShortTrajMDWithAnalysis.py"),
-            run_timeout=12000,
-            queue_timeout=1200
+            run_timeout=43200,
+            queue_timeout=2000
         )
 
         ligand_file = DatasetWrapper.get_dataset(
@@ -212,8 +212,8 @@ class TestMDOrionFloes(FloeTestCase):
     def test_STMD_large_sys_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "ShortTrajMD.py"),
-            run_timeout=12000,
-            queue_timeout=1200
+            run_timeout=43200,
+            queue_timeout=2000
         )
 
         ligand_file = DatasetWrapper.get_dataset(
@@ -295,8 +295,8 @@ class TestMDOrionFloes(FloeTestCase):
     def test_STMD_multi_ligs_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "ShortTrajMD.py"),
-            run_timeout=12000,
-            queue_timeout=1200
+            run_timeout=43200,
+            queue_timeout=2000
         )
 
         ligand_file = DatasetWrapper.get_dataset(

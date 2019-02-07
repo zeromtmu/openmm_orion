@@ -56,8 +56,8 @@ class TestYankBindingFloes(FloeTestCase):
     def test_yank_binding_repex_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "Binding_free_energy_repex.py"),
-            run_timeout=12000,
-            queue_timeout=1200
+            run_timeout=43200,
+            queue_timeout=2000
         )
 
         ligand_file = DatasetWrapper.get_dataset(
@@ -155,8 +155,8 @@ class TestYankBindingFloes(FloeTestCase):
     def test_yank_binding_repex_multi_ligs_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "Binding_free_energy_repex.py"),
-            run_timeout=12000,
-            queue_timeout=1200
+            run_timeout=43200,
+            queue_timeout=2000
         )
 
         ligand_file = DatasetWrapper.get_dataset(
@@ -251,8 +251,8 @@ class TestYankBindingFloes(FloeTestCase):
     def test_yank_binding_sams_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "Binding_free_energy_sams.py"),
-            run_timeout=12000,
-            queue_timeout=1200
+            run_timeout=43200,
+            queue_timeout=2000
         )
 
         ligand_file = DatasetWrapper.get_dataset(
@@ -347,8 +347,8 @@ class TestYankBindingFloes(FloeTestCase):
     def test_yank_binding_sams_multi_ligs_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "Binding_free_energy_sams.py"),
-            run_timeout=12000,
-            queue_timeout=1200
+            run_timeout=43200,
+            queue_timeout=2000
         )
 
         ligand_file = DatasetWrapper.get_dataset(
@@ -443,8 +443,8 @@ class TestYankBindingFloes(FloeTestCase):
     def test_yank_binding_yaml_user_file(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "Binding_free_energy_detailed.py"),
-            run_timeout=12000,
-            queue_timeout=1200
+            run_timeout=43200,
+            queue_timeout=2000
         )
 
         ligand_file = DatasetWrapper.get_dataset(

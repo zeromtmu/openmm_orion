@@ -49,8 +49,8 @@ class TestYankSolvationOrionFloes(FloeTestCase):
     def test_yank_solvation_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "Solvation_free_energy.py"),
-            run_timeout=8000,
-            queue_timeout=1200
+            run_timeout=43200,
+            queue_timeout=2000
         )
 
         ligand_file = DatasetWrapper.get_dataset(
@@ -125,8 +125,8 @@ class TestYankSolvationOrionFloes(FloeTestCase):
     def test_yank_solvation_multi_ligs_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "Solvation_free_energy.py"),
-            run_timeout=8000,
-            queue_timeout=1200
+            run_timeout=43200,
+            queue_timeout=2000
         )
 
         ligand_file = DatasetWrapper.get_dataset(

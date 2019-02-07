@@ -51,8 +51,8 @@ class TestMDOrionFloes(FloeTestCase):
     def test_compex_prep_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "Complex_prep.py"),
-            run_timeout=1500,
-            queue_timeout=1200
+            run_timeout=43200,
+            queue_timeout=2000
         )
 
         ligand_file = DatasetWrapper.get_dataset(
