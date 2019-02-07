@@ -81,7 +81,7 @@ def test_orion(ctx, profile="", test="all"):
     if test == "all":
         run("ORION_PROFILE={} py.test -s -v --orion ./tests".format(profile))
     else:
-        run("""ORION_PROFILE={} py.test -s -v --orion -m "{}" ./tests""".format(profile, test))
+        run("""ORION_PROFILE={} py.test -s -v --orion --no-cleanup -m "{}" ./tests""".format(profile, test))
 
 
 @task
