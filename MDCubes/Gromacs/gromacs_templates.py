@@ -19,7 +19,7 @@ pbc             = {pbc}     ; Periodic Boundary Conditions in all 3 dimensions
 
 gromacs_nvt_npt = """
 title		= NVT-NPT
-define		= -DPOSRES	; position restrain the protein
+define		= -DPOSRES	; position restrain
 ; Run parameters
 integrator	= md		; leap-frog integrator
 nsteps		= {nsteps:d}		; number od md steps
@@ -28,7 +28,8 @@ dt		    = {timestep:f}		; md timestep
 nstxout		= {trajectory_steps:d}		; save coordinates
 nstvout		= {trajectory_steps:d}		; save velocities 
 nstenergy	= {trajectory_steps:d}		; save energies 
-nstlog		= {report_steps:d}		; update log file 
+nstcalcenergy = {trajectory_steps:d}    ; calculate energy every provided steps
+nstlog		= {reporter_steps:d}		; update log file 
 ; Bond parameters
 continuation	        = no		; Restarting after NVT 
 constraint_algorithm    = lincs	    ; holonomic constraints 

@@ -34,6 +34,9 @@ import parmed
 
 import copy
 
+from oeommtools import utils as oeommutils
+
+
 
 class GromacsSimulations(MDSimulations):
 
@@ -120,6 +123,7 @@ class GromacsSimulations(MDSimulations):
                 nsteps=opt['steps'],
                 timestep=self.stepLen.in_units_of(unit.picoseconds) / unit.picoseconds,
                 reporter_steps=reporter_steps,
+                trajectory_steps=trajectory_steps,
                 temperature=opt['temperature'],
                 pcoupl=pcoupl,
                 pressure=opt['pressure'],
@@ -127,16 +131,51 @@ class GromacsSimulations(MDSimulations):
                 pbc=pbc
             )
 
+            # Apply restraints
+        if opt['restraints']:
+            opt['Logger'].info("[{}] RESTRAINT mask applied to: {}" 
+                               "\tRestraint weight: {}".format(opt['CubeTitle'],
+                                                               opt['restraints'],
+                                                               opt['restraintWt'] * unit.kilocalories_per_mole / unit.angstroms ** 2))
+
+            # Select atom to restraint
+            res_atom_list = sorted(oeommutils.select_oemol_atom_idx_by_language(opt['molecule'], mask=opt['restraints']))
+            opt['Logger'].info("[{}] Number of restraint atoms: {}".format(opt['CubeTitle'],
+                                                                           len(res_atom_list)))
+
+
+
+            opt['grm_res_idx_fn'] = opt['outfname']+'_res.idx'
+
+            # chunks
+            n = 15
+
+            # using list comprehension
+            list_chunks = [res_atom_list[i * n:(i + 1) * n] for i in range((len(res_atom_list) + n - 1) // n)]
+
+            
+
+            # with open(opt['grm_res_idx_fn'], 'w') as ro:
+            #     for at_idx in res_atom_set:
+            #
+
+
+
+
+        sys.exit(-1)
+
+
+
         # Gromacs file names
-        opt['grm_top_fn'] = "SYSTEM.top"
-        opt['grm_gro_fn'] = "SYSTEM.gro"
-        opt['grm_tpr_fn'] = "SYSTEM.tpr"
-        opt['mdp_fn'] = opt['SimType']+".mdp"
-        opt['grm_def_fn'] = opt['SimType']
+        opt['grm_top_fn'] = opt['outfname']+".top"
+        opt['grm_gro_fn'] = opt['outfname']+".gro"
+        opt['grm_tpr_fn'] = opt['outfname']+".tpr"
+        opt['mdp_fn'] = opt['outfname']+".mdp"
+        opt['grm_def_fn'] = opt['outfname']+"_run"
         opt['mdp_template'] = mdp_template
 
         # Generate topology and coordinate files
-        parmed_structure.save(opt['grm_top_fn'], overwrite=True)
+        parmed_structure.save(opt['grm_top_fn'], overwrite=True, combine='all')
         parmed_structure.save(opt['grm_gro_fn'], overwrite=True)
 
         # Generate Gromacs .mdp configuration files

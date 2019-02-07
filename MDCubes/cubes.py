@@ -141,6 +141,11 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
         default=True,
         description='Increase log file verbosity')
 
+    suffix = parameter.StringParameter(
+        'suffix',
+        default='min',
+        help_text='Filename suffix for output simulation files')
+
     platform = parameter.StringParameter(
         'platform',
         default='Auto',
@@ -260,6 +265,7 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
                 opt['Logger'].info("Updating parameters for molecule: {}\n{}".format(system.GetTitle(), new_args))
                 opt.update(new_args)
 
+            opt['outfname'] = '{}-{}'.format(system_title + '_' + str(opt['system_id']), opt['suffix'])
             opt['molecule'] = system
             opt['str_logger'] = str_logger
             opt['Logger'].info('[{}] MINIMIZING System: {}'.format(opt['CubeTitle'], system_title))
