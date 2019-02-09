@@ -477,7 +477,6 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
             opt['CubeTitle'] = self.title
 
             # Logger string
-            # Logger string
             str_logger = '-'*32 + ' NVT CUBE PARAMETERS ' + '-'*32
             str_logger += "\n{:<25} = {:<10}".format("Cube Title", opt['CubeTitle'])
 

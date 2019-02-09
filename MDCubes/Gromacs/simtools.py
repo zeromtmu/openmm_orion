@@ -37,7 +37,6 @@ import copy
 from oeommtools import utils as oeommutils
 
 
-
 class GromacsSimulations(MDSimulations):
 
     def __init__(self, mdstate, parmed_structure, opt):
@@ -131,41 +130,6 @@ class GromacsSimulations(MDSimulations):
                 pbc=pbc
             )
 
-            # Apply restraints
-        if opt['restraints']:
-            opt['Logger'].info("[{}] RESTRAINT mask applied to: {}" 
-                               "\tRestraint weight: {}".format(opt['CubeTitle'],
-                                                               opt['restraints'],
-                                                               opt['restraintWt'] * unit.kilocalories_per_mole / unit.angstroms ** 2))
-
-            # Select atom to restraint
-            res_atom_list = sorted(oeommutils.select_oemol_atom_idx_by_language(opt['molecule'], mask=opt['restraints']))
-            opt['Logger'].info("[{}] Number of restraint atoms: {}".format(opt['CubeTitle'],
-                                                                           len(res_atom_list)))
-
-
-
-            opt['grm_res_idx_fn'] = opt['outfname']+'_res.idx'
-
-            # chunks
-            n = 15
-
-            # using list comprehension
-            list_chunks = [res_atom_list[i * n:(i + 1) * n] for i in range((len(res_atom_list) + n - 1) // n)]
-
-            
-
-            # with open(opt['grm_res_idx_fn'], 'w') as ro:
-            #     for at_idx in res_atom_set:
-            #
-
-
-
-
-        sys.exit(-1)
-
-
-
         # Gromacs file names
         opt['grm_top_fn'] = opt['outfname']+".top"
         opt['grm_gro_fn'] = opt['outfname']+".gro"
@@ -174,21 +138,139 @@ class GromacsSimulations(MDSimulations):
         opt['grm_def_fn'] = opt['outfname']+"_run"
         opt['mdp_template'] = mdp_template
 
-        # Generate topology and coordinate files
-        parmed_structure.save(opt['grm_top_fn'], overwrite=True, combine='all')
+        # Generate coordinate file
         parmed_structure.save(opt['grm_gro_fn'], overwrite=True)
 
         # Generate Gromacs .mdp configuration files
         with open(opt['mdp_fn'], 'w') as of:
             of.write(mdp_template)
 
+        # Apply restraints
+        if opt['restraints']:
+
+            # Generate topology files
+            parmed_structure.save(opt['grm_top_fn'], overwrite=True, combine='all')
+
+            opt['Logger'].info("[{}] RESTRAINT mask applied to: {}"
+                               "\tRestraint weight: {}".format(opt['CubeTitle'],
+                                                               opt['restraints'],
+                                                               opt[
+                                                                   'restraintWt'] * unit.kilocalories_per_mole / unit.angstroms ** 2))
+
+            # Select atom to restraint
+            res_atom_list = sorted(
+                oeommutils.select_oemol_atom_idx_by_language(opt['molecule'], mask=opt['restraints']))
+            opt['Logger'].info("[{}] Number of restraint atoms: {}".format(opt['CubeTitle'],
+                                                                           len(res_atom_list)))
+
+            # Restrained atom index file to be appended to the index file
+            opt['grm_res_idx_fn'] = opt['outfname'] + '_res.idx'
+
+            digits = len(str(abs(res_atom_list[-1])))
+
+            chunk = 15
+            count = 0
+
+            with open(opt['grm_res_idx_fn'], 'w') as f:
+                f.write("[ Restraints_idx ]\n")
+                for i in range(0, len(res_atom_list)):
+                    f.write("{:>{digits}}".format(str(res_atom_list[i] + 1), digits=digits))
+                    if count == chunk - 1 or i == len(res_atom_list) - 1:
+                        count = 0
+                        f.write("\n")
+                    else:
+                        f.write(" ")
+                        count += 1
+
+            # Restrained System index file
+            opt['grm_system_fn'] = opt['outfname']+'_sys'
+
+            p = subprocess.Popen(['gmx',
+                                  'make_ndx',
+                                  '-f', opt['grm_gro_fn'],
+                                  '-o', opt['grm_system_fn']],
+                                 stdin=subprocess.PIPE)
+
+            # Select the System
+            p.communicate(b'0\nq\n')
+
+            append_fns = [opt['grm_system_fn']+'.ndx', opt['grm_res_idx_fn']]
+
+            # Index file name
+            opt['grm_ndx_fn'] = opt['outfname']+'.ndx'
+
+            with open(opt['grm_ndx_fn'], 'w') as outfile:
+                for fn in append_fns:
+                    with open(fn) as infile:
+                        outfile.write(infile.read())
+
+            with open(opt['grm_ndx_fn'], 'r') as f:
+                lines_res = f.readlines()
+
+            count_systems = 0
+            for line in lines_res:
+                if '[' in line:
+                    count_systems += 1
+
+            # Restrains position file name
+            opt['grm_itp_fn'] = opt['outfname']+'.itp'
+
+            indx_selection = str(count_systems-1).encode()
+
+            # Restarints weight
+            res_wgt = opt['restraintWt'] * unit.kilocalories_per_mole / (unit.angstroms ** 2)
+
+            # grm unit
+            res_wgt_grm = str(int(res_wgt.in_units_of(unit.kilojoule_per_mole / (unit.nanometer ** 2)) / (
+                        unit.kilojoule_per_mole / (unit.nanometer ** 2)))).encode()
+
+            p = subprocess.Popen(['gmx', 'genrestr',
+                                  '-f', opt['grm_gro_fn'],
+                                  '-n', opt['grm_ndx_fn'],
+                                  '-o', opt['grm_itp_fn'],
+                                  '-fc', res_wgt_grm, res_wgt_grm, res_wgt_grm],
+                                 stdin=subprocess.PIPE)
+
+            p.communicate(indx_selection)
+
+            new_lines_top = ''
+            with open(opt['grm_top_fn'], 'r') as f:
+                for line in f:
+                    if line.startswith('[ system ]'):
+                        new_lines_top += """
+; Include Position restraint file
+#ifdef POSRES
+#include "{fname}"
+#endif\n\n
+""".format(fname=opt['grm_itp_fn'])
+                    new_lines_top += line
+
+            with open(opt['grm_top_fn'], 'w') as f:
+                f.write(new_lines_top)
+
         # Generate Gromacs .tpr file
-        subprocess.check_call(['gmx',
-                               'grompp',
-                               '-f', opt['mdp_fn'],
-                               '-c', opt['grm_gro_fn'],
-                               '-p', opt['grm_top_fn'],
-                               '-o', opt['grm_tpr_fn']])
+        if opt['restraints']:
+            subprocess.check_call(['gmx',
+                                   'grompp',
+                                   '-f', opt['mdp_fn'],
+                                   '-c', opt['grm_gro_fn'],
+                                   '-r', opt['grm_gro_fn'],
+                                   '-p', opt['grm_top_fn'],
+                                   '-n', opt['grm_ndx_fn'],
+                                   '-o', opt['grm_tpr_fn'],
+                                   '-maxwarn', b'5'])
+
+        else:
+            # Generate topology files
+            parmed_structure.save(opt['grm_top_fn'], overwrite=True)
+
+            subprocess.check_call(['gmx',
+                                   'grompp',
+                                   '-f', opt['mdp_fn'],
+                                   '-c', opt['grm_gro_fn'],
+                                   '-p', opt['grm_top_fn'],
+                                   '-o', opt['grm_tpr_fn'],
+                                   '-maxwarn', b'5'])
 
         self.mdstate = mdstate
         self.parmed_structure = parmed_structure
@@ -203,7 +285,8 @@ class GromacsSimulations(MDSimulations):
                                'mdrun',
                                '-v',
                                '-s', self.opt['grm_tpr_fn'],
-                               '-deffnm', self.opt['grm_def_fn']])
+                               '-deffnm', self.opt['grm_def_fn'],
+                               ])
 
         if self.opt['SimType'] in ['nvt', 'npt']:
             if self.opt['reporter_interval']:

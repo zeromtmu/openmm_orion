@@ -135,7 +135,7 @@ class MDRecords:
 
     class MDStageRecord(OERecord):
 
-        def __init__(self, stage_name, stage_type, system_record, log=None, trajectory=None):
+        def __init__(self, stage_name, stage_type, system_record, log=None, trajectory=None, trajectory_engine=None):
             super().__init__()
             self.set_value(Fields.stage_name, stage_name)
             self.set_value(Fields.stage_type, stage_type)
@@ -143,4 +143,8 @@ class MDRecords:
             if log is not None:
                 self.set_value(Fields.log_data, log)
             if trajectory is not None:
+                # if trajectory_engine is None:
+                #     raise ValueError("The Trajectory engine cannot be None")
+                # trj_field = OEField(Fields.trajectory.get_name(), Fields.trajectory.get_type(),
+                #                     meta=OEFieldMeta().set_option(Meta.Annotation.Description))
                 self.set_value(Fields.trajectory, trajectory)
