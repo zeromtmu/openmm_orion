@@ -16,13 +16,14 @@
 # or its use.
 
 
-import sys
+import tempfile
 
 from simtk import unit
 
 import simtk
 
-from MDCubes.utils import MDSimulations
+from MDCubes.utils import (MDSimulations,
+                           md_keys_converter)
 
 import numpy as np
 
@@ -36,13 +37,19 @@ import copy
 
 from oeommtools import utils as oeommutils
 
+import tarfile
+
+import os
+
+import shutil
+
+from Standards import MDEngines
+
 
 class GromacsSimulations(MDSimulations):
 
     def __init__(self, mdstate, parmed_structure, opt):
         super().__init__(mdstate, parmed_structure, opt)
-
-        opt['Logger'].warn(">>>>>>>>>>>>>>>> GROMACS ENGINE <<<<<<<<<<<<<<<<<<<<")
 
         topology = parmed_structure.topology
         positions = mdstate.get_positions()
@@ -52,6 +59,8 @@ class GromacsSimulations(MDSimulations):
         self.stepLen = 0.002 * unit.picoseconds
 
         opt['timestep'] = self.stepLen
+
+        cutoff = opt['nonbondedCutoff'] * unit.angstroms
 
         # Centering the system
         if opt['center'] and box is not None:
@@ -73,8 +82,11 @@ class GromacsSimulations(MDSimulations):
 
         if box is not None:
             pbc = 'xyz'
+            nslist = 10
         else:
             pbc = 'no'
+            cutoff = 0.0
+            nslist = 0
 
         if opt['SimType'] == 'min':
 
@@ -85,6 +97,8 @@ class GromacsSimulations(MDSimulations):
 
             mdp_template = gromacs_minimization.format(
                 nsteps=max_minimization_steps,
+                nslist=1,
+                cutoff=cutoff.in_units_of(unit.nanometer) / unit.nanometer,
                 pbc=pbc
             )
 
@@ -98,7 +112,7 @@ class GromacsSimulations(MDSimulations):
 
             if opt['SimType'] == "npt":
                 pcoupl = 'Parrinello-Rahman'
-            else: # nvt ensemble do not use any pressure
+            else:  # nvt ensemble do not use any pressure
                 pcoupl = 'no'
                 # This is not used
                 opt['pressure'] = 0.0
@@ -123,6 +137,9 @@ class GromacsSimulations(MDSimulations):
                 timestep=self.stepLen.in_units_of(unit.picoseconds) / unit.picoseconds,
                 reporter_steps=reporter_steps,
                 trajectory_steps=trajectory_steps,
+                constraints=md_keys_converter[MDEngines.Gromacs]['constraints'][opt['constraints']],
+                nslist=nslist,
+                cutoff=cutoff.in_units_of(unit.nanometer) / unit.nanometer,
                 temperature=opt['temperature'],
                 pcoupl=pcoupl,
                 pressure=opt['pressure'],
@@ -130,16 +147,27 @@ class GromacsSimulations(MDSimulations):
                 pbc=pbc
             )
 
+        # Create temp directory
+        opt['output_directory'] = tempfile.mkdtemp()
+
+        opt['Logger'].info("Output Directory {}".format(opt['output_directory']))
+
         # Gromacs file names
-        opt['grm_top_fn'] = opt['outfname']+".top"
-        opt['grm_gro_fn'] = opt['outfname']+".gro"
-        opt['grm_tpr_fn'] = opt['outfname']+".tpr"
-        opt['mdp_fn'] = opt['outfname']+".mdp"
-        opt['grm_def_fn'] = opt['outfname']+"_run"
+        opt['grm_top_fn'] = os.path.join(opt['output_directory'], opt['outfname']+".top")
+        opt['grm_gro_fn'] = os.path.join(opt['output_directory'], opt['outfname']+".gro")
+        opt['grm_pdb_fn'] = os.path.join(opt['output_directory'], opt['outfname'] + ".pdb")
+        opt['grm_tpr_fn'] = os.path.join(opt['output_directory'], opt['outfname']+".tpr")
+        opt['mdp_fn'] = os.path.join(opt['output_directory'], opt['outfname']+".mdp")
+        opt['grm_def_fn'] = os.path.join(opt['output_directory'], opt['outfname']+"_run")
+        opt['grm_log_fn'] = os.path.join(opt['output_directory'], opt['outfname']+'.log')
+        opt['grm_trj_fn'] = os.path.join(opt['output_directory'], opt['outfname'] + ".trr")
+        opt['grm_trj_comp_fn'] = os.path.join(opt['output_directory'], opt['outfname'] + ".xtc")
+
         opt['mdp_template'] = mdp_template
 
         # Generate coordinate file
         parmed_structure.save(opt['grm_gro_fn'], overwrite=True)
+        parmed_structure.save(opt['grm_pdb_fn'], overwrite=True)
 
         # Generate Gromacs .mdp configuration files
         with open(opt['mdp_fn'], 'w') as of:
@@ -164,13 +192,14 @@ class GromacsSimulations(MDSimulations):
                                                                            len(res_atom_list)))
 
             # Restrained atom index file to be appended to the index file
-            opt['grm_res_idx_fn'] = opt['outfname'] + '_res.idx'
+            opt['grm_res_idx_fn'] = os.path.join(opt['output_directory'], opt['outfname'] + '_res.idx')
 
             digits = len(str(abs(res_atom_list[-1])))
 
+            # Gromacs number of column in the restraint file
             chunk = 15
-            count = 0
 
+            count = 0
             with open(opt['grm_res_idx_fn'], 'w') as f:
                 f.write("[ Restraints_idx ]\n")
                 for i in range(0, len(res_atom_list)):
@@ -183,7 +212,7 @@ class GromacsSimulations(MDSimulations):
                         count += 1
 
             # Restrained System index file
-            opt['grm_system_fn'] = opt['outfname']+'_sys'
+            opt['grm_system_fn'] = os.path.join(opt['output_directory'], opt['outfname']+'_sys')
 
             p = subprocess.Popen(['gmx',
                                   'make_ndx',
@@ -197,7 +226,7 @@ class GromacsSimulations(MDSimulations):
             append_fns = [opt['grm_system_fn']+'.ndx', opt['grm_res_idx_fn']]
 
             # Index file name
-            opt['grm_ndx_fn'] = opt['outfname']+'.ndx'
+            opt['grm_ndx_fn'] = os.path.join(opt['output_directory'], opt['outfname']+'.ndx')
 
             with open(opt['grm_ndx_fn'], 'w') as outfile:
                 for fn in append_fns:
@@ -213,7 +242,7 @@ class GromacsSimulations(MDSimulations):
                     count_systems += 1
 
             # Restrains position file name
-            opt['grm_itp_fn'] = opt['outfname']+'.itp'
+            opt['grm_itp_fn'] = os.path.join(opt['output_directory'], opt['outfname']+'.itp')
 
             indx_selection = str(count_systems-1).encode()
 
@@ -286,21 +315,46 @@ class GromacsSimulations(MDSimulations):
                                '-v',
                                '-s', self.opt['grm_tpr_fn'],
                                '-deffnm', self.opt['grm_def_fn'],
+                               '-o', self.opt['grm_trj_fn']
                                ])
 
         if self.opt['SimType'] in ['nvt', 'npt']:
+
             if self.opt['reporter_interval']:
+
                 with(open(self.opt['grm_def_fn']+'.log', 'r')) as fr:
                     log_string = fr.read()
 
-                with(open(self.opt['outfname']+'.log', 'w')) as fw:
-                    fw.write(log_string)
+                self.opt['str_logger'] += '\n'+log_string
 
+            # Save trajectory files
+            if self.opt['trajectory_interval']:
+
+                # Generate whole system trajectory
+                p = subprocess.Popen(['gmx',
+                                      'trjconv',
+                                      '-f', self.opt['grm_trj_fn'],
+                                      '-s', self.opt['grm_tpr_fn'],
+                                      '-o', self.opt['grm_trj_comp_fn'],
+                                      '-pbc', b'whole'],
+                                     stdin=subprocess.PIPE)
+
+                # Select the entire System
+                p.communicate(b'0')
+
+                # Tar the files dir with its content:
+                tar_fn = self.opt['outfname'] + '.tar.gz'
+
+                with tarfile.open(tar_fn, mode='w:gz') as archive:
+                    archive.add(self.opt['grm_gro_fn'], arcname=os.path.basename(self.opt['grm_gro_fn']))
+                    archive.add(self.opt['grm_pdb_fn'], arcname=os.path.basename(self.opt['grm_pdb_fn']))
+                    archive.add(self.opt['grm_top_fn'], arcname=os.path.basename(self.opt['grm_top_fn']))
+                    archive.add(self.opt['grm_trj_comp_fn'], arcname=os.path.basename(self.opt['grm_trj_comp_fn']))
         return
 
     def update_state(self):
 
-        gro_structure = parmed.load_file(self.opt['grm_def_fn']+'.gro')
+        gro_structure = parmed.load_file(os.path.join(self.opt['output_directory'], self.opt['grm_def_fn']+'.gro'))
 
         new_mdstate = copy.deepcopy(self.mdstate)
 
@@ -316,6 +370,6 @@ class GromacsSimulations(MDSimulations):
 
     def clean_up(self):
 
-        pass
+        shutil.rmtree(self.opt['output_directory'], ignore_errors=True)
 
         return

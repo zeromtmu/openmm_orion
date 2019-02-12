@@ -37,8 +37,16 @@ class MDStageTypes:
     NPT = 'NPT'
     FEC = 'FEC'
 
-# ---------------- Field Standards -------------- #
 
+# ------------ MD Engines ------------- #
+
+class MDEngines:
+    OpenMM = 'OpenMM'
+    Gromacs = 'Gromacs'
+    all = [OpenMM, Gromacs]
+
+
+# ---------------- Field Standards -------------- #
 
 class Fields:
     # The Title field is used to set the system name
@@ -143,8 +151,13 @@ class MDRecords:
             if log is not None:
                 self.set_value(Fields.log_data, log)
             if trajectory is not None:
-                # if trajectory_engine is None:
-                #     raise ValueError("The Trajectory engine cannot be None")
-                # trj_field = OEField(Fields.trajectory.get_name(), Fields.trajectory.get_type(),
-                #                     meta=OEFieldMeta().set_option(Meta.Annotation.Description))
-                self.set_value(Fields.trajectory, trajectory)
+                if trajectory_engine not in MDEngines.all:
+                    raise ValueError("The selected MD engine is not supported")
+
+                trj_meta = OEFieldMeta()
+                trj_meta.set_attribute(Meta.Annotation.Description, trajectory_engine)
+
+                trj_field = OEField(Fields.trajectory.get_name(), Fields.trajectory.get_type(),
+                                    meta=trj_meta)
+                self.set_value(trj_field, trajectory)
+

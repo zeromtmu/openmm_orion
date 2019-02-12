@@ -29,7 +29,8 @@ from openeye import oechem
 
 from Standards import (Fields,
                        MDRecords,
-                       MDStageTypes)
+                       MDStageTypes,
+                       MDEngines)
 
 from MDCubes.utils import md_simulation
 
@@ -37,7 +38,6 @@ import copy
 
 import textwrap
 
-import os
 
 from oeommtools import utils as oeommutils
 
@@ -96,19 +96,12 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
         help_text="""Mask selection to freeze atoms along the MD
         simulation. Possible keywords are: ligand, protein, water,
         ions, ca_protein, cofactors. The selection can be refined by
-        using logical tokens: not, noh, and, or, diff, around""")
+        using logical tokens: not, noh, and, or, diff, around. Not currently implemented in Gromacs""")
 
     temperature = parameter.DecimalParameter(
         'temperature',
         default=300,
         help_text="Temperature (Kelvin)")
-
-    nonbondedMethod = parameter.StringParameter(
-        'nonbondedMethod',
-        default='PME',
-        choices=['NoCutoff', 'CutoffNonPeriodic',
-                 'CutoffPeriodic', 'PME', 'Ewald'],
-        help_text="NoCutoff, CutoffNonPeriodic, CutoffPeriodic, PME, or Ewald")
 
     nonbondedCutoff = parameter.DecimalParameter(
         'nonbondedCutoff',
@@ -118,18 +111,18 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
 
     constraints = parameter.StringParameter(
         'constraints',
-        default='HBonds',
-        choices=['None', 'HBonds', 'HAngles', 'AllBonds'],
-        help_text="""None, HBonds, HAngles, or AllBonds
-        Which type of constraints to add to the system (e.g., SHAKE).
+        default='H-Bonds',
+        choices=['None', 'H-Bonds', 'H-Angles', 'All-Bonds'],
+        help_text="""None, H-Bonds, H-Angles, or All-Bonds
+        Which type of constraints to add to the system.
         None means no bonds are constrained.
-        HBonds means bonds with hydrogen are constrained""")
+        HBonds means bonds with hydrogen are constrained, etc.""")
 
     implicit_solvent = parameter.StringParameter(
         'implicit_solvent',
         default='None',
         choices=['None', 'HCT', 'OBC1', 'OBC2', 'GBn', 'GBn2'],
-        help_text="Implicit Solvent Model")
+        help_text="Implicit Solvent Model. Not currently implemented in Gromacs")
 
     center = parameter.BooleanParameter(
         'center',
@@ -146,22 +139,10 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
         default='min',
         help_text='Filename suffix for output simulation files')
 
-    platform = parameter.StringParameter(
-        'platform',
-        default='Auto',
-        choices=['Auto', 'Reference', 'CPU', 'CUDA', 'OpenCL'],
-        help_text='Select which platform to use to run the simulation')
-
-    cuda_opencl_precision = parameter.StringParameter(
-        'cuda_opencl_precision',
-        default='single',
-        choices=['single', 'mixed', 'double'],
-        help_text='Select the CUDA or OpenCL precision')
-
     hmr = parameter.BooleanParameter(
         'hmr',
         default=False,
-        description='On enables Hydrogen Mass Repartitioning')
+        description='On enables Hydrogen Mass Repartitioning. Not currently implemented in Gromacs')
 
     save_md_stage = parameter.BooleanParameter(
         'save_md_stage',
@@ -374,14 +355,7 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
         help_text="""Mask selection to freeze atoms along the MD
         simulation. Possible keywords are: ligand, protein, water,
         ions, ca_protein, cofactors. The selection can be refined by
-        using logical tokens: not, noh, and, or, diff, around""")
-
-    nonbondedMethod = parameter.StringParameter(
-        'nonbondedMethod',
-        default='PME',
-        choices=['NoCutoff', 'CutoffNonPeriodic',
-                 'CutoffPeriodic', 'PME', 'Ewald'],
-        help_text="NoCutoff, CutoffNonPeriodic, CutoffPeriodic, PME, or Ewald")
+        using logical tokens: not, noh, and, or, diff, around. Not currently implemented in Gromacs""")
 
     nonbondedCutoff = parameter.DecimalParameter(
         'nonbondedCutoff',
@@ -391,18 +365,18 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
 
     constraints = parameter.StringParameter(
         'constraints',
-        default='HBonds',
-        choices=['None', 'HBonds', 'HAngles', 'AllBonds'],
-        help_text="""None, HBonds, HAngles, or AllBonds
-        Which type of constraints to add to the system (e.g., SHAKE).
+        default='H-Bonds',
+        choices=['None', 'H-Bonds', 'H-Angles', 'All-Bonds'],
+        help_text="""None, H-Bonds, H-Angles, or All-Bonds
+        Which type of constraints to add to the system.
         None means no bonds are constrained.
-        HBonds means bonds with hydrogen are constrained""")
+        HBonds means bonds with hydrogen are constrained, etc.""")
 
     implicit_solvent = parameter.StringParameter(
         'implicit_solvent',
         default='None',
         choices=['None', 'HCT', 'OBC1', 'OBC2', 'GBn', 'GBn2'],
-        help_text="Implicit Solvent Model")
+        help_text="Implicit Solvent Model. Not currently implemented in Gromacs")
 
     trajectory_interval = parameter.DecimalParameter(
         'trajectory_interval',
@@ -431,22 +405,10 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
         default=True,
         help_text='Increase log file verbosity')
 
-    platform = parameter.StringParameter(
-        'platform',
-        default='Auto',
-        choices=['Auto', 'Reference', 'CPU', 'CUDA', 'OpenCL'],
-        help_text='Select which platform to use to run the simulation')
-
-    cuda_opencl_precision = parameter.StringParameter(
-        'cuda_opencl_precision',
-        default='single',
-        choices=['single', 'mixed', 'double'],
-        help_text='Select the CUDA or OpenCL precision')
-
     hmr = parameter.BooleanParameter(
         'hmr',
         default=False,
-        help_text='On enables Hydrogen Mass Repartitioning')
+        help_text='On enables Hydrogen Mass Repartitioning. Not currently implemented in Gromacs')
 
     save_md_stage = parameter.BooleanParameter(
         'save_md_stage',
@@ -579,23 +541,21 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
 
             # Trajectory
             if opt['trajectory_interval']:
-                full_path = os.getcwd()
-                filename = os.path.join(full_path, opt['outfname']+'.h5')
-                lf = utils.upload_file(filename, opt['outfname']+'.h5')
+                filename = opt['outfname'] + '.tar.gz'
+                if opt['md_engine'] == MDEngines.OpenMM:
+                    trajectory_engine = MDEngines.OpenMM
+                else:
+                    trajectory_engine = MDEngines.Gromacs
+                lf = utils.upload_file(filename, orion_name=filename)
             else:  # Empty Trajectory
                 lf = None
-
-            # Read in logging file if any
-            if opt['reporter_interval']:
-
-                with open(opt['outfname']+'.log', 'r') as flog:
-                    str_logger = flog.read()
-
-                opt['str_logger'] += '\n'+str_logger
+                trajectory_engine = None
 
             md_stage_record = MDRecords.MDStageRecord(self.title, MDStageTypes.NVT,
                                                       MDRecords.MDSystemRecord(system, new_mdstate),
-                                                      log=opt['str_logger'], trajectory=lf)
+                                                      log=opt['str_logger'],
+                                                      trajectory=lf,
+                                                      trajectory_engine=trajectory_engine)
 
             if opt['save_md_stage']:
                 opt['Logger'].info("[{}] Saving MD stage: {}".format(opt['CubeTitle'], opt['SimType']))
@@ -679,14 +639,7 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
         help_text="""Mask selection to freeze atoms along the MD simulation.
         Possible keywords are: ligand, protein, water, ions, ca_protein,
         cofactors. The selection can be refined by using logical tokens:
-        not, noh, and, or, diff, around""")
-
-    nonbondedMethod = parameter.StringParameter(
-        'nonbondedMethod',
-        default='PME',
-        choices=['NoCutoff', 'CutoffNonPeriodic',
-                 'CutoffPeriodic', 'PME', 'Ewald'],
-        help_text="NoCutoff, CutoffNonPeriodic, CutoffPeriodic, PME, or Ewald.")
+        not, noh, and, or, diff, around. Not currently implemented in Gromacs""")
 
     nonbondedCutoff = parameter.DecimalParameter(
         'nonbondedCutoff',
@@ -696,18 +649,18 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
 
     constraints = parameter.StringParameter(
         'constraints',
-        default='HBonds',
-        choices=['None', 'HBonds', 'HAngles', 'AllBonds'],
-        help_text="""None, HBonds, HAngles, or AllBonds
-        Which type of constraints to add to the system (e.g., SHAKE).
+        default='H-Bonds',
+        choices=['None', 'H-Bonds', 'H-Angles', 'All-Bonds'],
+        help_text="""None, H-Bonds, H-Angles, or All-Bonds
+        Which type of constraints to add to the system.
         None means no bonds are constrained.
-        HBonds means bonds with hydrogen are constrained""")
+        HBonds means bonds with hydrogen are constrained, etc.""")
 
     implicit_solvent = parameter.StringParameter(
         'implicit_solvent',
         default='None',
         choices=['None', 'HCT', 'OBC1', 'OBC2', 'GBn', 'GBn2'],
-        help_text="Implicit Solvent Model")
+        help_text="Implicit Solvent Model. Not Currently implemented in Gromacs")
 
     trajectory_interval = parameter.DecimalParameter(
         'trajectory_interval',
@@ -734,24 +687,12 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
     verbose = parameter.BooleanParameter(
         'verbose',
         default=True,
-        help_text='Increase log file verbosity.')
-
-    platform = parameter.StringParameter(
-        'platform',
-        default='Auto',
-        choices=['Auto', 'Reference', 'CPU', 'CUDA', 'OpenCL'],
-        help_text='Select which platform to use to run the simulation')
-
-    cuda_opencl_precision = parameter.StringParameter(
-        'cuda_opencl_precision',
-        default='single',
-        choices=['single', 'mixed', 'double'],
-        help_text='Select the CUDA or OpenCL precision')
+        help_text='Increase log file verbosity')
 
     hmr = parameter.BooleanParameter(
         'hmr',
         default=False,
-        help_text='On enables Hydrogen Mass Repartitioning')
+        help_text='On enables Hydrogen Mass Repartitioning. Not currently implemented in Gromacs')
 
     save_md_stage = parameter.BooleanParameter(
         'save_md_stage',
@@ -885,22 +826,21 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
 
             # Trajectory
             if opt['trajectory_interval']:
-                full_path = os.getcwd()
-                filename = os.path.join(full_path, opt['outfname']+'.h5')
-                lf = utils.upload_file(filename, opt['outfname']+'.h5')
+                filename = opt['outfname'] + '.tar.gz'
+                if opt['md_engine'] == MDEngines.OpenMM:
+                    trajectory_engine = MDEngines.OpenMM
+                else:
+                    trajectory_engine = MDEngines.Gromacs
+                lf = utils.upload_file(filename, orion_name=filename)
             else:  # Empty Trajectory
                 lf = None
-
-            # Read in logging file if any
-            if opt['reporter_interval']:
-                with open(opt['outfname'] + '.log', 'r') as flog:
-                    str_logger = flog.read()
-
-                opt['str_logger'] += '\n' + str_logger
+                trajectory_engine = None
 
             md_stage_record = MDRecords.MDStageRecord(self.title, MDStageTypes.NPT,
                                                       MDRecords.MDSystemRecord(system, new_mdstate),
-                                                      log=opt['str_logger'], trajectory=lf)
+                                                      log=opt['str_logger'],
+                                                      trajectory=lf,
+                                                      trajectory_engine=trajectory_engine)
 
             if opt['save_md_stage']:
                 opt['Logger'].info("[{}] Saving MD stage: {}".format(opt['CubeTitle'], opt['SimType']))

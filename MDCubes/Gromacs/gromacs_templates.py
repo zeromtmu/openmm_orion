@@ -7,18 +7,17 @@ emstep      = 0.01          ; Minimization step size
 nsteps      = {nsteps:d}         ; Maximum number of (minimization) steps to perform
 
 ; Parameters describing how to find the neighbors of each atom and how to calculate the interactions
-nstlist         = 1         ; Frequency to update the neighbor list and long range forces
 cutoff-scheme   = Verlet    ; Buffered neighbor searching
+nstlist		    = {nslist:d} ;  Frequency to update the neighbor list and long range forces
 ns_type         = grid      ; Method to determine neighbor list (simple, grid)
 coulombtype     = PME       ; Treatment of long range electrostatic interactions
-rcoulomb        = 1.0       ; Short-range electrostatic cut-off
-rvdw            = 1.0       ; Short-range Van der Waals cut-off
-pbc             = {pbc}     ; Periodic Boundary Conditions in all 3 dimensions
+rcoulomb        = {cutoff:f}       ; Short-range electrostatic cut-off
+rvdw            = {cutoff:f}       ; Short-range Van der Waals cut-off
+pbc             = {pbc}     ; Periodic Boundary Conditions 
 """
 
 
 gromacs_nvt_npt = """
-title		= NVT-NPT
 define		= -DPOSRES	; position restrain
 ; Run parameters
 integrator	= md		; leap-frog integrator
@@ -33,24 +32,24 @@ nstlog		= {reporter_steps:d}		; update log file
 ; Bond parameters
 continuation	        = no		; Restarting after NVT 
 constraint_algorithm    = lincs	    ; holonomic constraints 
-constraints	            = all-bonds	; all bonds (even heavy atom-H bonds) constrained
+constraints	            = {constraints}	; constraint type
 lincs_iter	            = 1		    ; accuracy of LINCS
 lincs_order	            = 4		    ; also related to accuracy
 ; Neighborsearching
 cutoff-scheme   = Verlet
 ns_type		    = grid		; search neighboring grid cells
-nstlist		    = 10	    ; 20 fs, largely irrelevant with Verlet scheme
-rcoulomb	    = 1.0		; short-range electrostatic cutoff (in nm)
-rvdw		    = 1.0		; short-range van der Waals cutoff (in nm)
+nstlist		    = {nslist:d}	    ; largely irrelevant with Verlet scheme
+rcoulomb	    = {cutoff:f}		; short-range electrostatic cutoff (in nm)
+rvdw		    = {cutoff:f}		; short-range van der Waals cutoff (in nm)
 ; Electrostatics
 coulombtype	    = PME		; Particle Mesh Ewald for long-range electrostatics
 pme_order	    = 4		    ; cubic interpolation
 fourierspacing	= 0.16		; grid spacing for FFT
 ; Temperature coupling is on
 tcoupl		= V-rescale	            ; modified Berendsen thermostat
-tc-grps		= Protein Non-Protein	; two coupling groups - more accurate
-tau_t		= 0.1	  0.1	        ; time constant, in ps
-ref_t		= {temperature:f} 	  {temperature}	        ; reference temperature, one for each group, in K
+tc-grps		= System	; 
+tau_t		= 0.1	    ; time constant, in ps
+ref_t		= {temperature:f} ; reference temperature in K
 ; Pressure coupling is on
 pcoupl		        = {pcoupl}	    ; Pressure coupling on in NPT
 pcoupltype	        = isotropic	            ; uniform scaling of box vectors
@@ -59,7 +58,7 @@ ref_p		        = {pressure:f}		            ; reference pressure, in bar
 compressibility     = 4.5e-5	            ; isothermal compressibility of water, bar^-1
 refcoord_scaling    = com
 ; Periodic boundary conditions
-pbc		= {pbc}		; 3-D PBC
+pbc		= {pbc}		; Periodic Boundary Conditions 
 ; Dispersion correction
 DispCorr	= EnerPres	; account for cut-off vdW scheme
 ; Velocity generation

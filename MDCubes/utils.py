@@ -15,6 +15,7 @@
 # liable for any damages or liability in connection with the Sample Code
 # or its use.
 
+
 from orionclient.session import in_orion, OrionSession
 
 from orionclient.types import File
@@ -32,6 +33,18 @@ import time
 import fcntl
 
 import os
+
+md_keys_converter = {'OpenMM':
+
+                         {'constraints':
+                              {'None': 'None', 'H-Bonds': 'HBonds', 'H-Angles': 'HAngles', 'All-Bonds': 'AllBonds'}
+                          },
+
+                     'Gromacs':
+                         {'constraints':
+                              {'None': 'none', 'H-Bonds': 'h-bonds', 'H-Angles': 'h-angles', 'All-Bonds': 'all-bonds'}
+                          }
+                     }
 
 
 class MDState(object):
@@ -216,7 +229,7 @@ def md_simulation(mdstate, ff_parameters, opt):
         raise ValueError("The selected MD engine is not currently supported: {}".format(opt['md_engine']))
 
 
-def upload_file(filename, orion_name):
+def upload_file(filename, orion_name='OrionFile'):
 
     if in_orion():
 
