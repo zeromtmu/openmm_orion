@@ -111,7 +111,11 @@ class GromacsSimulations(MDSimulations):
                 gen_vel = 'no'
 
             if opt['SimType'] == "npt":
-                pcoupl = 'Parrinello-Rahman'
+                # If restraints
+                if opt['restraints']:
+                    pcoupl = 'berendsen'
+                else:
+                    pcoupl = 'Parrinello-Rahman'
             else:  # nvt ensemble do not use any pressure
                 pcoupl = 'no'
                 # This is not used
@@ -137,7 +141,7 @@ class GromacsSimulations(MDSimulations):
                 timestep=self.stepLen.in_units_of(unit.picoseconds) / unit.picoseconds,
                 reporter_steps=reporter_steps,
                 trajectory_steps=trajectory_steps,
-                constraints=md_keys_converter[MDEngines.Gromacs]['constraints'][opt['constraints']],
+                constraints='all-bonds',
                 nslist=nslist,
                 cutoff=cutoff.in_units_of(unit.nanometer) / unit.nanometer,
                 temperature=opt['temperature'],
@@ -173,8 +177,17 @@ class GromacsSimulations(MDSimulations):
         with open(opt['mdp_fn'], 'w') as of:
             of.write(mdp_template)
 
-        # Apply restraints
+        apply_restraints = False
+
+        # Select atom to restraint
         if opt['restraints']:
+            res_atom_list = sorted(oeommutils.select_oemol_atom_idx_by_language(opt['molecule'], mask=opt['restraints']))
+
+            if res_atom_list:
+                apply_restraints = True
+
+        # Apply restraints
+        if apply_restraints:
 
             # Generate topology files
             parmed_structure.save(opt['grm_top_fn'], overwrite=True, combine='all')
@@ -186,10 +199,7 @@ class GromacsSimulations(MDSimulations):
                                                                    'restraintWt'] * unit.kilocalories_per_mole / unit.angstroms ** 2))
 
             # Select atom to restraint
-            res_atom_list = sorted(
-                oeommutils.select_oemol_atom_idx_by_language(opt['molecule'], mask=opt['restraints']))
-            opt['Logger'].info("[{}] Number of restraint atoms: {}".format(opt['CubeTitle'],
-                                                                           len(res_atom_list)))
+            opt['Logger'].info("[{}] Number of restraint atoms: {}".format(opt['CubeTitle'], len(res_atom_list)))
 
             # Restrained atom index file to be appended to the index file
             opt['grm_res_idx_fn'] = os.path.join(opt['output_directory'], opt['outfname'] + '_res.idx')
@@ -278,7 +288,7 @@ class GromacsSimulations(MDSimulations):
                 f.write(new_lines_top)
 
         # Generate Gromacs .tpr file
-        if opt['restraints']:
+        if apply_restraints:
             subprocess.check_call(['gmx',
                                    'grompp',
                                    '-f', opt['mdp_fn'],

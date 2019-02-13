@@ -24,11 +24,14 @@ from floe.api import WorkFloe
 from cuberecord import (DatasetWriterCube,
                         DatasetReaderCube)
 
-from ComplexPrepCubes.cubes import SolvationCube
+from SystemCubes.cubes import SolvationCube
+
 from ForceFieldCubes.cubes import ForceFieldCube
 
 from LigPrepCubes.cubes import (LigandChargeCube,
                                 LigandSetting)
+
+from SystemCubes.cubes import IDSettingCube
 
 from YankCubes.cubes import (YankSolvationFECube,
                              YankProxyCube)
@@ -82,6 +85,8 @@ ligset = LigandSetting("LigandSetting")
 ligset.set_parameters(lig_res_name='LIG')
 job.add_cube(ligset)
 
+ligid = IDSettingCube("Ligand Ids")
+job.add_cube(ligid)
 
 solvate = SolvationCube("Solvation", title="System Solvation")
 solvate.promote_parameter("density", promoted_name="density", title="Solution density in g/ml", default=1.0,
@@ -170,7 +175,8 @@ job.add_cube(fail)
 
 iligs.success.connect(chargelig.intake)
 chargelig.success.connect(ligset.intake)
-ligset.success.connect(solvate.intake)
+ligset.success.connect(ligid.intake)
+ligid.success.connect(solvate.intake)
 solvate.success.connect(ff.intake)
 ff.success.connect(minimize.intake)
 minimize.success.connect(warmup.intake)

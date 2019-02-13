@@ -17,7 +17,6 @@
 # liable for any damages or liability in connection with the Sample Code
 # or its use.
 
-
 release = True
 
 from floe.api import WorkFloe
@@ -26,8 +25,9 @@ from MDCubes.cubes import (OpenMMminimizeCube,
                            OpenMMNvtCube,
                            OpenMMNptCube)
 
-from ComplexPrepCubes.cubes import (SolvationCube,
-                                    ComplexPrepCube)
+from ComplexPrepCubes.cubes import ComplexPrepCube
+
+from SystemCubes.cubes import SolvationCube
 
 from ProtPrepCubes.cubes import ProteinSetting
 
@@ -35,6 +35,8 @@ from ForceFieldCubes.cubes import ForceFieldCube
 
 from LigPrepCubes.cubes import (LigandChargeCube,
                                 LigandSetting)
+
+from SystemCubes.cubes import IDSettingCube
 
 from YankCubes.cubes import (SyncBindingFECube,
                              YankBindingFECube,
@@ -95,6 +97,9 @@ job.add_cube(chargelig)
 ligset = LigandSetting("LigandSetting", title="Ligand Setting")
 ligset.set_parameters(lig_res_name='LIG')
 job.add_cube(ligset)
+
+ligid = IDSettingCube("Ligand Ids")
+job.add_cube(ligid)
 
 # Protein Reading cube. The protein prefix parameter is used to select a name for the
 # output system files
@@ -304,8 +309,9 @@ equil3Complex.success.connect(sync.intake)
 # Ligand Connections
 iligs.success.connect(chargelig.intake)
 chargelig.success.connect(ligset.intake)
-ligset.success.connect(complx.intake)
-ligset.success.connect(solvateLigand.intake)
+ligset.success.connect(ligid.intake)
+ligid.success.connect(complx.intake)
+ligid.success.connect(solvateLigand.intake)
 solvateLigand.success.connect(ffLigand.intake)
 ffLigand.success.connect(minimizeLigand.intake)
 minimizeLigand.success.connect(warmupLigand.intake)

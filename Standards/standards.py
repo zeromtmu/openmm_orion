@@ -55,10 +55,10 @@ class Fields:
     # The ID field should be used as identification number for ligands, proteins or complexes
     id = OEField("ID_OPLMD", Types.Int, meta=OEFieldMeta().set_option(Meta.Source.ID))
 
-    # The LigID field is used to keep track of the ligand order
-    ligid = OEField("LigID_OPLMD", Types.Int, meta=OEFieldMeta().set_option(Meta.Source.ID))
+    # The SysID field is used to keep track of the system order
+    sysid = OEField("SysID_OPLMD", Types.Int, meta=OEFieldMeta().set_option(Meta.Source.ID))
 
-    # The ConfID field is used to identify a particular conformer of a ligand
+    # The ConfID field is used to identify a particular conformer
     confid = OEField("ConfID_OPLMD", Types.Int, meta=OEFieldMeta().set_option(Meta.Source.ID))
 
     # The Ligand field should be used to save in a record a ligand as an OEMolecule

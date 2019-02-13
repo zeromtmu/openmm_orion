@@ -27,8 +27,9 @@ from MDCubes.cubes import (OpenMMminimizeCube,
                            OpenMMNvtCube,
                            OpenMMNptCube)
 
-from ComplexPrepCubes.cubes import (ComplexPrepCube,
-                                    SolvationCube)
+from ComplexPrepCubes.cubes import ComplexPrepCube
+
+from SystemCubes.cubes import SolvationCube
 
 from ForceFieldCubes.cubes import ForceFieldCube
 
@@ -36,6 +37,8 @@ from ProtPrepCubes.cubes import ProteinSetting
 
 from LigPrepCubes.cubes import (LigandChargeCube,
                                 LigandSetting)
+
+from SystemCubes.cubes import IDSettingCube
 
 job = WorkFloe('Short Trajectory MD',
                title='Short Trajectory MD')
@@ -69,7 +72,7 @@ protein (file): dataset of the prepared protein structure.
 
 Outputs:
 --------
-out: Collection of OERecords (one per ligand) of MD and Analysis results.
+out:  OERecords (one per ligand) of MD and Analysis results.
 floe report: html page of the Analysis of each ligand.
 """
 # Locally the floe can be invoked by running the terminal command:
@@ -88,6 +91,9 @@ chargelig.promote_parameter('charge_ligands', promoted_name='charge_ligands',
 
 ligset = LigandSetting("LigandSetting", title="Ligand Setting")
 ligset.set_parameters(lig_res_name='LIG')
+
+ligid = IDSettingCube("Ligand Ids")
+job.add_cube(ligid)
 
 # Protein Reading cube. The protein prefix parameter is used to select a name for the
 # output system files
@@ -208,7 +214,8 @@ job.add_cubes(iligs, ligset, iprot, protset, chargelig, complx, solvate, ff,
 
 iligs.success.connect(chargelig.intake)
 chargelig.success.connect(ligset.intake)
-ligset.success.connect(complx.intake)
+ligset.success.connect(ligid.intake)
+ligid.success.connect(complx.intake)
 iprot.success.connect(protset.intake)
 protset.success.connect(complx.protein_port)
 complx.success.connect(solvate.intake)
