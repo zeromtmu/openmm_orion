@@ -14,6 +14,14 @@ coulombtype     = PME       ; Treatment of long range electrostatic interactions
 rcoulomb        = {cutoff:f}       ; Short-range electrostatic cut-off
 rvdw            = {cutoff:f}       ; Short-range Van der Waals cut-off
 pbc             = {pbc}     ; Periodic Boundary Conditions 
+
+; Bond parameters
+continuation	        = no		; Restarting
+constraint_algorithm    = lincs	    ; holonomic constraints 
+constraints	            = {constraints}	; constraint type
+lincs_iter	            = 1		    ; accuracy of LINCS
+lincs_order	            = 4		    ; also related to accuracy
+refcoord_scaling    = all
 """
 
 

@@ -41,6 +41,8 @@ import tarfile
 
 import os
 
+import io
+
 import shutil
 
 from Standards import MDEngines
@@ -88,6 +90,8 @@ class GromacsSimulations(MDSimulations):
             cutoff = 0.0
             nslist = 0
 
+        constraints = md_keys_converter[MDEngines.Gromacs]['constraints'][opt['constraints']]
+
         if opt['SimType'] == 'min':
 
             if opt['steps'] == 0:
@@ -99,7 +103,8 @@ class GromacsSimulations(MDSimulations):
                 nsteps=max_minimization_steps,
                 nslist=1,
                 cutoff=cutoff.in_units_of(unit.nanometer) / unit.nanometer,
-                pbc=pbc
+                pbc=pbc,
+                constraints=constraints
             )
 
         if opt['SimType'] in ['nvt', 'npt']:
@@ -141,7 +146,7 @@ class GromacsSimulations(MDSimulations):
                 timestep=self.stepLen.in_units_of(unit.picoseconds) / unit.picoseconds,
                 reporter_steps=reporter_steps,
                 trajectory_steps=trajectory_steps,
-                constraints='all-bonds',
+                constraints=constraints,
                 nslist=nslist,
                 cutoff=cutoff.in_units_of(unit.nanometer) / unit.nanometer,
                 temperature=opt['temperature'],
@@ -163,7 +168,7 @@ class GromacsSimulations(MDSimulations):
         opt['grm_tpr_fn'] = os.path.join(opt['output_directory'], opt['outfname']+".tpr")
         opt['mdp_fn'] = os.path.join(opt['output_directory'], opt['outfname']+".mdp")
         opt['grm_def_fn'] = os.path.join(opt['output_directory'], opt['outfname']+"_run")
-        opt['grm_log_fn'] = os.path.join(opt['output_directory'], opt['outfname']+'.log')
+        opt['grm_log_fn'] = opt['grm_def_fn'] + '.log'
         opt['grm_trj_fn'] = os.path.join(opt['output_directory'], opt['outfname'] + ".trr")
         opt['grm_trj_comp_fn'] = os.path.join(opt['output_directory'], opt['outfname'] + ".xtc")
 
@@ -332,7 +337,7 @@ class GromacsSimulations(MDSimulations):
 
             if self.opt['reporter_interval']:
 
-                with(open(self.opt['grm_def_fn']+'.log', 'r')) as fr:
+                with(io.open(self.opt['grm_log_fn'], 'r', encoding='utf8', errors='ignore')) as fr:
                     log_string = fr.read()
 
                 self.opt['str_logger'] += '\n'+log_string
@@ -360,6 +365,8 @@ class GromacsSimulations(MDSimulations):
                     archive.add(self.opt['grm_pdb_fn'], arcname=os.path.basename(self.opt['grm_pdb_fn']))
                     archive.add(self.opt['grm_top_fn'], arcname=os.path.basename(self.opt['grm_top_fn']))
                     archive.add(self.opt['grm_trj_comp_fn'], arcname=os.path.basename(self.opt['grm_trj_comp_fn']))
+                    archive.add(self.opt['grm_log_fn'], arcname=os.path.basename(self.opt['grm_log_fn']))
+
         return
 
     def update_state(self):

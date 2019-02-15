@@ -119,6 +119,18 @@ def release(ctx):
 
     # clean(ctx)
 
+    # Remove Artemis test package dependence
+    with open(os.path.join(PACKAGE_DIR, "requirements_dev.txt"), "r") as f:
+        requirements_lines = f.readlines()
+
+    original_requirements = copy.deepcopy(requirements_lines)
+
+    requirements_lines = ["# " + line if 'OpenEye-Artemis' in line else line for line in requirements_lines]
+
+    with open("requirements_dev.txt", "w") as f:
+        f.writelines(requirements_lines)
+
+    # Select just the floes marked with the flag release=True
     floes = os.path.basename(FLOES_DIR)
 
     fns = [f for f in iglob(floes + '/**/*.py', recursive=True) if os.path.isfile(f)]
@@ -142,20 +154,23 @@ def release(ctx):
         inc += "include floes/" + fn + '\n'
 
     with open(os.path.join(PACKAGE_DIR, "MANIFEST.in"), "r") as f:
-        lines = f.readlines()
+        manifest_lines = f.readlines()
 
-    original = copy.deepcopy(lines)
+    original_manifest = copy.deepcopy(manifest_lines)
 
-    lines = ["{}".format(inc) if 'graft floes' in line else line for line in lines]
+    manifest_lines = ["{}".format(inc) if 'graft floes' in line else line for line in manifest_lines]
 
     with open("MANIFEST.in", "w") as f:
-        f.writelines(lines)
+        f.writelines(manifest_lines)
 
     run("python setup.py sdist")
 
+    # Rewrite original files
     with open("MANIFEST.in", "w") as f:
-        f.writelines(original)
+        f.writelines(original_manifest)
 
+    with open("requirements_dev.txt", "w") as f:
+        f.writelines(original_requirements)
 
 @task
 def clean(ctx):
