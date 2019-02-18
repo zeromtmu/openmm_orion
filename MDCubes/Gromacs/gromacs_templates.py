@@ -24,7 +24,8 @@ define		= -DPOSRES	; position restrain
 integrator	= md		; leap-frog integrator
 nsteps		= {nsteps:d}		; number od md steps
 dt		    = {timestep:f}		; md timestep
-comm-mode   = none ;  mode for center of mass motion removal
+comm-mode   = Linear ;  mode for center of mass motion removal
+nstcomm     = 100 ;number of steps for center of mass motion removal
 
 ; Output control
 nstxout		= {trajectory_steps:d}		; save coordinates
