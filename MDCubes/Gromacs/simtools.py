@@ -53,8 +53,6 @@ class GromacsSimulations(MDSimulations):
     def __init__(self, mdstate, parmed_structure, opt):
         super().__init__(mdstate, parmed_structure, opt)
 
-        topology = parmed_structure.topology
-        positions = mdstate.get_positions()
         velocities = mdstate.get_velocities()
         box = mdstate.get_box_vectors()
 
@@ -90,8 +88,6 @@ class GromacsSimulations(MDSimulations):
             cutoff = 0.0
             nslist = 0
 
-        constraints = md_keys_converter[MDEngines.Gromacs]['constraints'][opt['constraints']]
-
         if opt['SimType'] == 'min':
 
             if opt['steps'] == 0:
@@ -104,7 +100,6 @@ class GromacsSimulations(MDSimulations):
                 nslist=1,
                 cutoff=cutoff.in_units_of(unit.nanometer) / unit.nanometer,
                 pbc=pbc,
-                constraints=constraints
             )
 
         if opt['SimType'] in ['nvt', 'npt']:
@@ -140,6 +135,9 @@ class GromacsSimulations(MDSimulations):
 
             # Convert simulation time in steps
             opt['steps'] = int(round(opt['time'] / (self.stepLen.in_units_of(unit.nanoseconds) / unit.nanoseconds)))
+
+            # Constraints
+            constraints = md_keys_converter[MDEngines.Gromacs]['constraints'][opt['constraints']]
 
             mdp_template = gromacs_nvt_npt.format(
                 nsteps=opt['steps'],
@@ -306,7 +304,7 @@ class GromacsSimulations(MDSimulations):
 
         else:
             # Generate topology files
-            parmed_structure.save(opt['grm_top_fn'], overwrite=True)
+            parmed_structure.save(opt['grm_top_fn'], overwrite=True, combine='all')
 
             subprocess.check_call(['gmx',
                                    'grompp',

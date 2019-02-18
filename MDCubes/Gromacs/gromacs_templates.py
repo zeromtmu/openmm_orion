@@ -14,14 +14,6 @@ coulombtype     = PME       ; Treatment of long range electrostatic interactions
 rcoulomb        = {cutoff:f}       ; Short-range electrostatic cut-off
 rvdw            = {cutoff:f}       ; Short-range Van der Waals cut-off
 pbc             = {pbc}     ; Periodic Boundary Conditions 
-
-; Bond parameters
-continuation	        = no		; Restarting
-constraint_algorithm    = lincs	    ; holonomic constraints 
-constraints	            = {constraints}	; constraint type
-lincs_iter	            = 1		    ; accuracy of LINCS
-lincs_order	            = 4		    ; also related to accuracy
-refcoord_scaling    = all
 """
 
 
@@ -32,6 +24,7 @@ define		= -DPOSRES	; position restrain
 integrator	= md		; leap-frog integrator
 nsteps		= {nsteps:d}		; number od md steps
 dt		    = {timestep:f}		; md timestep
+comm-mode   = none ;  mode for center of mass motion removal
 
 ; Output control
 nstxout		= {trajectory_steps:d}		; save coordinates
@@ -46,7 +39,6 @@ constraint_algorithm    = lincs	    ; holonomic constraints
 constraints	            = {constraints}	; constraint type
 lincs_iter	            = 1		    ; accuracy of LINCS
 lincs_order	            = 4		    ; also related to accuracy
-refcoord_scaling    = all
 
 ; Neighborsearching
 cutoff-scheme   = Verlet

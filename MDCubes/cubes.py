@@ -25,8 +25,6 @@ from cuberecord import OERecordComputeCube
 
 import MDCubes.utils as utils
 
-from openeye import oechem
-
 from Standards import (Fields,
                        MDRecords,
                        MDStageTypes,
@@ -234,34 +232,24 @@ class OpenMMminimizeCube(ParallelMixin, OERecordComputeCube):
             system = md_system_record.get_value(Fields.topology)
             mdstate = md_system_record.get_value(Fields.md_state)
 
-            # Update cube simulation parameters with the eventually molecule SD tags
-            new_args = {dp.GetTag(): dp.GetValue() for dp in oechem.OEGetSDDataPairs(system) if dp.GetTag() in
-                        ["temperature"]}
-            if new_args:
-                for k in new_args:
-                    try:
-                        new_args[k] = float(new_args[k])
-                    except:
-                        pass
-                opt['Logger'].info("Updating parameters for molecule: {}\n{}".format(system.GetTitle(), new_args))
-                opt.update(new_args)
-
             opt['outfname'] = '{}-{}'.format(system_title + '_' + str(opt['system_id']), opt['suffix'])
             opt['molecule'] = system
             opt['str_logger'] = str_logger
             opt['Logger'].info('[{}] MINIMIZING System: {}'.format(opt['CubeTitle'], system_title))
 
+            # Update the Parmed structure with the MD State data:
+            parmed_structure.positions = mdstate.get_positions()
+            parmed_structure.velocities = mdstate.get_velocities()
+            parmed_structure.box_vectors = mdstate.get_box_vectors()
+
+            # Run the MD simulation
             new_mdstate = md_simulation(mdstate, parmed_structure, opt)
 
-            # Update the Parmed objects and the primary molecule
+            # Update the Parmed objects and the primary molecule after the MD run
             parmed_structure.positions = new_mdstate.get_positions()
-
-            if new_mdstate.get_box_vectors() is not None:
-                parmed_structure.box_vectors = new_mdstate.get_box_vectors()
-
-            if opt['SimType'] in ['nvt', 'npt']:
-                # numpy array in units of angstrom/picoseconds
-                parmed_structure.velocities = new_mdstate.get_velocities()
+            parmed_structure.box_vectors = new_mdstate.get_box_vectors()
+            # numpy array in units of angstrom/picoseconds
+            parmed_structure.velocities = new_mdstate.get_velocities()
 
             # Update the OEMol complex positions to match the new
             # Parmed structure after the simulation
@@ -501,34 +489,24 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
             system = md_system_record.get_value(Fields.topology)
             mdstate = md_system_record.get_value(Fields.md_state)
 
-            # Update cube simulation parameters with the eventually molecule SD tags
-            new_args = {dp.GetTag(): dp.GetValue() for dp in oechem.OEGetSDDataPairs(system) if dp.GetTag() in
-                        ["temperature"]}
-            if new_args:
-                for k in new_args:
-                    try:
-                        new_args[k] = float(new_args[k])
-                    except:
-                        pass
-                opt['Logger'].info("Updating parameters for molecule: {}\n{}".format(system.GetTitle(), new_args))
-                opt.update(new_args)
-
             opt['outfname'] = '{}-{}'.format(system_title + '_'+str(opt['system_id']), opt['suffix'])
             opt['molecule'] = system
             opt['str_logger'] = str_logger
-
             opt['Logger'].info('[{}] START NVT SIMULATION: {}'.format(opt['CubeTitle'], system_title))
+
+            # Update the Parmed structure with the MD State data:
+            parmed_structure.positions = mdstate.get_positions()
+            parmed_structure.velocities = mdstate.get_velocities()
+            parmed_structure.box_vectors = mdstate.get_box_vectors()
+
+            # Run the MD simulation
             new_mdstate = md_simulation(mdstate, parmed_structure, opt)
 
             # Update the Parmed objects and the primary molecule
             parmed_structure.positions = new_mdstate.get_positions()
-
-            if new_mdstate.get_box_vectors() is not None:
-                parmed_structure.box_vectors = new_mdstate.get_box_vectors()
-
-            if opt['SimType'] in ['nvt', 'npt']:
-                # numpy array in units of angstrom/picoseconds
-                parmed_structure.velocities = new_mdstate.get_velocities()
+            parmed_structure.box_vectors = new_mdstate.get_box_vectors()
+            # numpy array in units of angstrom/picoseconds
+            parmed_structure.velocities = new_mdstate.get_velocities()
 
             # Update the OEMol complex positions to match the new
             # Parmed structure after the simulation
@@ -550,6 +528,8 @@ class OpenMMNvtCube(ParallelMixin, OERecordComputeCube):
             else:  # Empty Trajectory
                 lf = None
                 trajectory_engine = None
+
+            record.set_value(Fields.pmd_structure, parmed_structure)
 
             md_stage_record = MDRecords.MDStageRecord(self.title, MDStageTypes.NVT,
                                                       MDRecords.MDSystemRecord(system, new_mdstate),
@@ -784,36 +764,24 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
             system = md_system_record.get_value(Fields.topology)
             mdstate = md_system_record.get_value(Fields.md_state)
 
-            # Update cube simulation parameters with the eventually molecule SD tags
-            new_args = {dp.GetTag(): dp.GetValue() for dp in oechem.OEGetSDDataPairs(system) if dp.GetTag() in
-                        ["temperature", "pressure"]}
-
-            if new_args:
-                for k in new_args:
-                    try:
-                        new_args[k] = float(new_args[k])
-                    except:
-                        pass
-                opt['Logger'].info("Updating parameters for molecule: {}\n{}".format(system.GetTitle(), new_args))
-
-                opt.update(new_args)
-
             opt['outfname'] = '{}-{}'.format(system_title + '_' + str(opt['system_id']), opt['suffix'])
             opt['molecule'] = system
             opt['str_logger'] = str_logger
             opt['Logger'].info('[{}] START NPT SIMULATION: {}'.format(opt['CubeTitle'], system_title))
 
+            # Update the Parmed structure with the MD State data:
+            parmed_structure.positions = mdstate.get_positions()
+            parmed_structure.velocities = mdstate.get_velocities()
+            parmed_structure.box_vectors = mdstate.get_box_vectors()
+
+            # Run the MD simulation
             new_mdstate = md_simulation(mdstate, parmed_structure, opt)
 
             # Update the Parmed objects and the primary molecule
             parmed_structure.positions = new_mdstate.get_positions()
-
-            if new_mdstate.get_box_vectors() is not None:
-                parmed_structure.box_vectors = new_mdstate.get_box_vectors()
-
-            if opt['SimType'] in ['nvt', 'npt']:
-                # numpy array in units of angstrom/picoseconds
-                parmed_structure.velocities = new_mdstate.get_velocities()
+            parmed_structure.box_vectors = new_mdstate.get_box_vectors()
+            # numpy array in units of angstrom/picoseconds
+            parmed_structure.velocities = new_mdstate.get_velocities()
 
             # Update the OEMol complex positions to match the new
             # Parmed structure after the simulation
@@ -835,6 +803,8 @@ class OpenMMNptCube(ParallelMixin, OERecordComputeCube):
             else:  # Empty Trajectory
                 lf = None
                 trajectory_engine = None
+
+            record.set_value(Fields.pmd_structure, parmed_structure)
 
             md_stage_record = MDRecords.MDStageRecord(self.title, MDStageTypes.NPT,
                                                       MDRecords.MDSystemRecord(system, new_mdstate),
