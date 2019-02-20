@@ -84,7 +84,8 @@ def setversion(ctx, new_version):
     Set the package version
     """
 
-    clean(ctx)
+    # the following "clean" command removes all contents of the dist directory
+    #clean(ctx)
 
     fn = os.path.join("./MDOrion", "__init__.py")
 
