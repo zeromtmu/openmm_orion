@@ -20,7 +20,7 @@
 from floe.api import WorkFloe
 from cuberecord import DatasetWriterCube, DatasetReaderCube
 from TrjAnalysisCubes.sstmap_cubes import SSTMapHsa
-
+from SystemCubes.cubes import IDSettingCube
 
 job = WorkFloe("SSTMap HSA",
                title="SSTMap HSA")
@@ -49,6 +49,9 @@ ifs.promote_parameter("data_in", promoted_name="system")
 ligand_ifs = DatasetReaderCube("ligand_ifs", title="Ligand Reader")
 ligand_ifs.promote_parameter("data_in", promoted_name="ligand")
 
+ligid = IDSettingCube("Ligand Ids")
+job.add_cube(ligid)
+
 sstmap_hsa = SSTMapHsa("sstmap_hsa")
 
 ofs = DatasetWriterCube("ofs", title="Out")
@@ -60,7 +63,8 @@ fail.promote_parameter("data_out", promoted_name="fail")
 job.add_cubes(ifs, ligand_ifs, ofs, fail, sstmap_hsa)
 
 ifs.success.connect(sstmap_hsa.intake)
-ligand_ifs.success.connect(sstmap_hsa.ligand_port)
+ligand_ifs.success.connect(ligid.intake)
+ligid.success.connect(sstmap_hsa.ligand_port)
 sstmap_hsa.success.connect(ofs.intake)
 sstmap_hsa.failure.connect(fail.intake)
 

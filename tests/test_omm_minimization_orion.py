@@ -85,8 +85,8 @@ class TestMDOrionFloes(FloeTestCase):
     def test_omm_minimization_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "MDminimize.py"),
-            run_timeout=1500,
-            queue_timeout=600
+            run_timeout=43200,
+            queue_timeout=2000
         )
 
         system = DatasetWrapper.get_dataset(

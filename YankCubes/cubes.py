@@ -24,10 +24,8 @@ from cuberecord import OERecordComputeCube
 from cuberecord.ports import RecordInputPort, RecordOutputPort
 
 from datarecord import (Types,
-                        Meta,
                         OEField,
-                        OERecord,
-                        OEFieldMeta)
+                        OERecord)
 
 import MDCubes.utils as omm_utils
 
@@ -50,7 +48,8 @@ from YankCubes import utils as yankutils
 
 from Standards import (MDStageTypes,
                        Fields,
-                       MDRecords)
+                       MDRecords,
+                       MDEngines)
 
 import copy
 
@@ -65,6 +64,10 @@ from MDCubes.utils import MDState
 from orionclient.session import in_orion, OrionSession
 
 from orionclient.types import File
+
+from floereport import FloeReport, LocalFloeReport
+
+from os import environ
 
 
 class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
@@ -203,6 +206,11 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
 
             # Current number of iterations
             current_iterations = record.get_value(current_iteration_field)
+
+            if not record.has_value(Fields.ligand_name):
+                raise ValueError("The ligand name has not been defined")
+
+            lig_name = record.get_value(Fields.ligand_name)
 
             if current_iterations == 0:
                 opt['minimize'] = True
@@ -388,27 +396,13 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                     self.log.info("{} iterations per cube saved on the record: {}".format(self.title,
                                                                                           iterations_per_cube_opt))
 
-                # Run Yank analysis
-                if opt['new_iterations'] == opt['iterations']:
-
-                    DeltaG_solvation, dDeltaG_solvation = yankutils.run_yank_analysis(opt)
-
-                    # Create OE Field to save the Solvation Free Energy in kcal/mol
-                    DG_Field = OEField('Solvation FE', Types.Float,
-                                       meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal_per_mol))
-                    dG_Field = OEField('Solvation FE Error', Types.Float,
-                                       meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal_per_mol))
-
-                    record.set_value(DG_Field, DeltaG_solvation)
-                    record.set_value(dG_Field, dDeltaG_solvation)
-
                 # Tar the Yank temp dir with its content:
                 tar_fn = os.path.basename(output_directory+"_" + opt['system_title']) + '.tar.gz'
                 with tarfile.open(tar_fn, mode='w:gz') as archive:
                     archive.add(output_directory, arcname='.', recursive=True)
 
                 # Create Large file object if required
-                lf = omm_utils.upload_file(tar_fn, opt['system_title']+'.tar.gz')
+                lf = omm_utils.upload_file(tar_fn, orion_name=opt['system_title']+'.tar.gz')
 
                 str_logger += '\n' + '-' * 32 + ' SIMULATION ' + '-' * 32
 
@@ -418,13 +412,30 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                 md_stage_record = MDRecords.MDStageRecord(self.title, MDStageTypes.FEC,
                                                           MDRecords.MDSystemRecord(system, mdstate),
                                                           log=str_logger,
-                                                          trajectory=lf)
+                                                          trajectory=lf, trajectory_engine=MDEngines.OpenMM)
                 if current_iterations == 0:
                     record.set_value(Fields.trj_garbage_field, [lf])
                 else:
                     trj_garbage_list = record.get_value(Fields.trj_garbage_field)
                     trj_garbage_list.append(lf)
                     record.set_value(Fields.trj_garbage_field, trj_garbage_list)
+
+                # Run Yank analysis
+                if opt['new_iterations'] == opt['iterations']:
+                    DeltaG_solvation, dDeltaG_solvation, report_str = yankutils.run_yank_analysis(opt)
+
+                    record.set_value(Fields.free_energy, DeltaG_solvation)
+                    record.set_value(Fields.free_energy_err, dDeltaG_solvation)
+
+                    if report_str is not None:
+                        record.set_value(Fields.floe_report, report_str)
+
+                    svg_lig = yankutils.ligand_to_svg(lig_split, lig_name)
+
+                    record.set_value(Fields.floe_report_svg_lig_depiction, svg_lig)
+
+                    record.set_value(Fields.floe_report_label, "&Delta;Gs = {:.1f} &plusmn; {:.1f} kcal/mol".
+                                     format(DeltaG_solvation, dDeltaG_solvation))
 
                 # md_stages.append(md_stage_record)
                 md_stages[-1] = md_stage_record
@@ -460,7 +471,7 @@ class SyncBindingFECube(OERecordComputeCube):
     # Override defaults for some parameters
     parameter_overrides = {
         "memory_mb": {"default": 6000},
-        "spot_policy": {"default": "Allowed"},
+        "spot_policy": {"default": "Prohibited"},
         "prefetch_count": {"default": 1},  # 1 molecule at a time
         "item_count": {"default": 1}  # 1 molecule at a time
     }
@@ -709,6 +720,11 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
             opt['system_id'] = record.get_value(Fields.id)
 
+            if not record.has_value(Fields.ligand_name):
+                raise ValueError("The ligand name has not been defined")
+
+            lig_name = record.get_value(Fields.ligand_name)
+
             if opt['iterations'] <= 0:
                 raise ValueError("The number of iterations cannot be a non-negative number: {}".format(opt['iterations']))
 
@@ -907,21 +923,9 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     iterations_per_cube_opt = int(iterations_per_cube / opt['checkpoint_interval']) * opt['checkpoint_interval']
 
                     if iterations_per_cube_opt < opt['checkpoint_interval']:
-                        raise ValueError("Total running time per cube < checkpoint interval")
-
-                # Run the analysis
-                if opt['new_iterations'] == opt['iterations']:
-
-                    DeltaG_binding, dDeltaG_binding = yankutils.run_yank_analysis(opt)
-
-                    # Create OE Field to save the solvation Free Energy in kcal/mol
-                    DG_Field = OEField('Binding FE', Types.Float,
-                                       meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal_per_mol))
-                    dG_Field = OEField('Binding FE Error', Types.Float,
-                                       meta=OEFieldMeta().set_option(Meta.Units.Energy.kCal_per_mol))
-
-                    record.set_value(DG_Field, DeltaG_binding)
-                    record.set_value(dG_Field, dDeltaG_binding)
+                        raise ValueError("Total running time per cube  "
+                                         "< checkpoint interval: {} < {}".format(iterations_per_cube_opt,
+                                                                                 opt['checkpoint_interval']))
 
                 # Tar the Yank temp dir with its content:
                 tar_fn = os.path.basename(output_directory+"_"+opt['system_title']) + '.tar.gz'
@@ -929,7 +933,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     archive.add(output_directory, arcname='.', recursive=True)
 
                 # Create Large file object if required
-                lf = omm_utils.upload_file(tar_fn, opt['system_title']+'.tar.gz')
+                lf = omm_utils.upload_file(tar_fn, orion_name=opt['system_title']+'.tar.gz')
 
                 str_logger += '\n' + '-' * 32 + ' SIMULATION ' + '-' * 32
 
@@ -940,7 +944,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                                                           MDRecords.MDSystemRecord(complex,
                                                                                    mdstate),
                                                           log=str_logger,
-                                                          trajectory=lf)
+                                                          trajectory=lf, trajectory_engine=MDEngines.OpenMM)
                 if current_iterations != 0:
                     # md_stages.append(md_stage_record)
                     md_stages[-1] = md_stage_record
@@ -951,7 +955,18 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     record.set_value(Fields.trj_garbage_field, trj_garbage_list)
 
                 else:
+                    old_record_copy = OERecord(record)
+
+                    # new record
                     record = OERecord()
+
+                    # Copy all the ligand fields into the new record
+                    for field in old_record_copy.get_fields():
+                        # Skipping
+                        if field.get_name() == "ligand_pmd_solvated" or field.get_name() == "complex_pmd_solvated":
+                            continue
+                        record.set_value(field, old_record_copy.get_value(field))
+
                     record.set_value(Fields.md_stages, [md_stage_record])
                     record.set_value(Fields.id, opt['system_id'])
                     record.set_value(Fields.title, opt['system_title'])
@@ -963,9 +978,22 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                                                                                             iterations_per_cube_opt))
                     record.set_value(Fields.trj_garbage_field, [lf])
 
-                    if opt['new_iterations'] == opt['iterations']:
-                        record.set_value(DG_Field, DeltaG_binding)
-                        record.set_value(dG_Field, dDeltaG_binding)
+                # Run the analysis
+                if opt['new_iterations'] == opt['iterations']:
+                    DeltaG_binding, dDeltaG_binding, report_str = yankutils.run_yank_analysis(opt)
+
+                    record.set_value(Fields.free_energy, DeltaG_binding)
+                    record.set_value(Fields.free_energy_err, dDeltaG_binding)
+
+                    if report_str is not None:
+                        record.set_value(Fields.floe_report, report_str)
+
+                    svg_lig = yankutils.ligand_to_svg(ligand_split, lig_name)
+
+                    record.set_value(Fields.floe_report_svg_lig_depiction, svg_lig)
+
+                    record.set_value(Fields.floe_report_label, "&Delta;Gs = {:.1f} &plusmn; {:.1f} kcal/mol".
+                                     format(DeltaG_binding, dDeltaG_binding))
 
             record.set_value(current_iteration_field, opt['new_iterations'])
             record.set_value(Fields.primary_molecule, complex)
@@ -994,7 +1022,7 @@ class YankProxyCube(OERecordComputeCube):
     # Override defaults for some parameters
     parameter_overrides = {
         "memory_mb": {"default": 6000},
-        "spot_policy": {"default": "Allowed"},
+        "spot_policy": {"default": "Prohibited"},
         "prefetch_count": {"default": 1},  # 1 molecule at a time
         "item_count": {"default": 1}  # 1 molecule at a time
     }
@@ -1010,12 +1038,20 @@ class YankProxyCube(OERecordComputeCube):
     def begin(self):
         self.opt = vars(self.args)
         self.opt['Logger'] = self.log
+        self.floe_report_dic = dict()
+
+        if in_orion():
+            job_id = environ.get('ORION_JOB_ID')
+            self.floe_report = FloeReport.start_report("floe_report", job_id=job_id)
+        else:
+            self.floe_report = LocalFloeReport.start_report("floe_report")
 
     def process(self, record, port):
 
         current_iteration_field = OEField("current_iterations", Types.Int)
 
         try:
+
             if not record.has_value(Fields.title):
                 self.opt['Logger'].warn("Missing record Title field")
 

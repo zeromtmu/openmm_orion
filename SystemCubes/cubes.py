@@ -1,0 +1,325 @@
+# (C) 2018 OpenEye Scientific Software Inc. All rights reserved.
+#
+# TERMS FOR USE OF SAMPLE CODE The software below ("Sample Code") is
+# provided to current licensees or subscribers of OpenEye products or
+# SaaS offerings (each a "Customer").
+# Customer is hereby permitted to use, copy, and modify the Sample Code,
+# subject to these terms. OpenEye claims no rights to Customer's
+# modifications. Modification of Sample Code is at Customer's sole and
+# exclusive risk. Sample Code may require Customer to have a then
+# current license or subscription to the applicable OpenEye offering.
+# THE SAMPLE CODE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED.  OPENEYE DISCLAIMS ALL WARRANTIES, INCLUDING, BUT
+# NOT LIMITED TO, WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+# PARTICULAR PURPOSE AND NONINFRINGEMENT. In no event shall OpenEye be
+# liable for any damages or liability in connection with the Sample Code
+# or its use.
+
+import traceback
+
+from cuberecord import OERecordComputeCube
+
+from Standards import Fields
+
+from openeye import oechem
+
+from floe.api import (ParallelMixin,
+                      parameter)
+
+from oeommtools import packmol
+
+from ComplexPrepCubes import utils
+
+
+class IDSettingCube(OERecordComputeCube):
+    title = "ID Setting"
+    version = "0.0.0"
+    classification = [["System Preparation", "OEChem"]]
+    tags = ['OEChem']
+    description = """
+    This cube set and ID for each record as an integer. If the primary molecule has 
+    multiple conformers these are spit in single molecules 
+
+    Input:
+    -------
+    Data record Stream - Streamed-in of record with primary molecules
+
+    Output:
+    -------
+    Data Record Stream - Emits each single conformer with an associated ID
+    """
+
+    # Override defaults for some parameters
+    parameter_overrides = {
+        "memory_mb": {"default": 2000},
+        "spot_policy": {"default": "Prohibited"},
+        "prefetch_count": {"default": 1},  # 1 molecule at a time
+        "item_count": {"default": 1}  # 1 molecule at a time
+    }
+
+    def begin(self):
+        self.opt = vars(self.args)
+        self.opt['Logger'] = self.log
+        self.total_count = 0
+        self.system_count = 0
+
+    def process(self, record, port):
+        try:
+            if not record.has_value(Fields.primary_molecule):
+                self.log.error("Missing '{}' field".format(Fields.primary_molecule.get_name()))
+                raise ValueError("Missing Primary Molecule")
+
+            system = record.get_value(Fields.primary_molecule)
+
+            if system.NumConfs() > 1:
+                self.opt['Logger'].info("[{}] The system {} has multiple conformers. Each single conformer "
+                                        "will be treated as a new molecule".format(self.title,
+                                                                                   system.GetTitle()))
+
+            num_conf_counter = 0
+
+            for conf in system.GetConfs():
+
+                conf_mol = oechem.OEMol(conf)
+
+                name = system.GetTitle()[0:12]
+
+                if not name:
+                    name = 'SYS'
+
+                system_title = name
+
+                if system.GetMaxConfIdx() > 1:
+                    system_title += '_c' + str(num_conf_counter)
+
+                # conf_mol.SetTitle(ligand_title)
+
+                record.set_value(Fields.id, self.total_count)
+                record.set_value(Fields.sysid, self.system_count)
+                record.set_value(Fields.confid, num_conf_counter)
+                record.set_value(Fields.title, system_title)
+                record.set_value(Fields.primary_molecule, conf_mol)
+
+                num_conf_counter += 1
+
+                self.total_count += 1
+                self.success.emit(record)
+
+            self.system_count += 1
+
+        except:
+            self.log.error(traceback.format_exc())
+            # Return failed record
+            self.failure.emit(record)
+
+
+class HydrationCube(ParallelMixin, OERecordComputeCube):
+    title = "Hydration Cube"
+    version = "0.0.0"
+    classification = [["Complex Preparation", "OEChem", "Complex preparation"]]
+    tags = ['OEChem', 'OpenMM', 'PDBFixer']
+    description = """
+    This cube solvate the molecular system in water
+
+    Input:
+    -------
+    oechem.OEDataRecord - Streamed-in of the molecular system
+
+    Output:
+    -------
+    oechem.OEDataRecord - Emits the solvated system
+    """
+
+    # Override defaults for some parameters
+    parameter_overrides = {
+        "memory_mb": {"default": 6000},
+        "spot_policy": {"default": "Allowed"},
+        "prefetch_count": {"default": 1},  # 1 molecule at a time
+        "item_count": {"default": 1}  # 1 molecule at a time
+    }
+
+    solvent_padding = parameter.DecimalParameter(
+        'solvent_padding',
+        default=10.0,
+        help_text="Padding around protein for solvent box (angstroms)")
+
+    salt_concentration = parameter.DecimalParameter(
+        'salt_concentration',
+        default=50.0,
+        help_text="Salt concentration (millimolar)")
+
+    def begin(self):
+        self.opt = vars(self.args)
+        self.opt['Logger'] = self.log
+
+    def process(self, record, port):
+        try:
+            opt = self.opt
+
+            if not record.has_value(Fields.primary_molecule):
+                raise ValueError("Missing the Primary Molecule field")
+
+            system = record.get_value(Fields.primary_molecule)
+
+            if not record.has_value(Fields.title):
+                self.log.warn("Missing record Title field")
+                system_title = system.GetTitle()[0:12]
+            else:
+                system_title = record.get_value(Fields.title)
+
+            # Solvate the system. Note that the solvated system is translated to the
+            # OpenMM cube cell
+            sol_system = utils.hydrate(system, opt)
+            sol_system.SetTitle(system_title)
+
+            record.set_value(Fields.primary_molecule, sol_system)
+            record.set_value(Fields.title, system_title)
+
+            self.success.emit(record)
+
+        except:
+            self.log.error(traceback.format_exc())
+            # Return failed record
+            self.failure.emit(record)
+
+        return
+
+
+class SolvationCube(ParallelMixin, OERecordComputeCube):
+    title = "Solvation Cube Packmol"
+    version = "0.0.0"
+    classification = [["Preparation", "OEChem"]]
+    tags = ['OEChem', 'PackMol']
+    description = """
+    This cube solvate a molecular system
+
+    Input:
+    -------
+    oechem.OEDataRecord - Streamed-in of the molecular system
+
+    Output:
+    -------
+    oechem.OEDataRecord - Emits the solvated system
+    """
+
+    # Override defaults for some parameters
+    parameter_overrides = {
+        "memory_mb": {"default": 6000},
+        "spot_policy": {"default": "Allowed"},
+        "prefetch_count": {"default": 1},  # 1 molecule at a time
+        "item_count": {"default": 1}  # 1 molecule at a time
+    }
+
+    density = parameter.DecimalParameter(
+        'density',
+        default=1.0,
+        help_text="Solution density in g/ml")
+
+    padding_distance = parameter.DecimalParameter(
+        'padding_distance',
+        default=8.0,
+        help_text="The padding distance between the solute and the box edge in A")
+
+    distance_between_atoms = parameter.DecimalParameter(
+        'distance_between_atoms',
+        default=2.0,
+        help_text="The minimum distance between atoms in A")
+
+    solvents = parameter.StringParameter(
+        'solvents',
+        default='[H]O[H]',
+        help_text='Select solvents. The solvents are specified as comma separated smiles strings'
+                  'e.g. [H]O[H], C(Cl)(Cl)Cl, CS(=O)C')
+
+    molar_fractions = parameter.StringParameter(
+        'molar_fractions',
+        default='1.0',
+        help_text="Molar fractions of each solvent components. The molar fractions are specified"
+                  "as comma separated molar fractions strings e.g. 0.5,0.2,0.3")
+
+    verbose = parameter.BooleanParameter(
+        'verbose',
+        default=False,
+        help_text='Output Packmol log')
+
+    geometry = parameter.StringParameter(
+        'geometry',
+        default='box',
+        choices=['box', 'sphere'],
+        help_text="Geometry selection: box or sphere. Sphere cannot be used as periodic system "
+                  "along with MD simulation")
+
+    close_solvent = parameter.BooleanParameter(
+        'close_solvent',
+        default=False,
+        help_text="If Checked/True solvent molecules will be placed very close to the solute")
+
+    salt = parameter.StringParameter(
+        'salt',
+        default='[Na+], [Cl-]',
+        help_text='Salt type. The salt is specified as list of smiles strings. '
+                  'Each smiles string is the salt component dissociated in the '
+                  'solution e.g. Na+, Cl-')
+
+    salt_concentration = parameter.DecimalParameter(
+        'salt_concentration',
+        default=0.0,
+        help_text="Salt concentration in millimolar")
+
+    neutralize_solute = parameter.BooleanParameter(
+        'neutralize_solute',
+        default=True,
+        help_text='Neutralize the solute by adding Na+ and Cl- counter-ions based on'
+                  'the solute formal charge')
+
+    def begin(self):
+        self.opt = vars(self.args)
+        self.opt['Logger'] = self.log
+
+    def process(self, record, port):
+
+        try:
+            opt = self.opt
+
+            if not record.has_value(Fields.primary_molecule):
+                raise ValueError("Missing the Primary Molecule Field")
+
+            solute = record.get_value(Fields.primary_molecule)
+
+            if not record.has_value(Fields.title):
+                self.log.warn("Missing Title field")
+                solute_title = solute.GetTitle()[0:12]
+            else:
+                solute_title = record.get_value(Fields.title)
+
+            # Update cube simulation parameters with the eventually molecule SD tags
+            new_args = {dp.GetTag(): dp.GetValue() for dp in oechem.OEGetSDDataPairs(solute) if dp.GetTag() in
+                            ["solvents", "molar_fractions", "density"]}
+            if new_args:
+                for k in new_args:
+                    if k == 'molar_fractions':
+                        continue
+                    try:
+                        new_args[k] = float(new_args[k])
+                    except:
+                        pass
+                self.log.info("Updating parameters for molecule: {}\n{}".format(solute_title, new_args))
+                opt.update(new_args)
+
+            # Solvate the system
+            sol_system = packmol.oesolvate(solute, **opt)
+            self.log.info("[{}] Solvated System atom number: {}".format(self.title,
+                                                                        sol_system.NumAtoms()))
+            sol_system.SetTitle(solute.GetTitle())
+
+            record.set_value(Fields.primary_molecule, sol_system)
+            record.set_value(Fields.title, solute_title)
+
+            self.success.emit(record)
+
+        except:
+            self.log.error(traceback.format_exc())
+            # Return failed record
+            self.failure.emit(record)
+
+        return

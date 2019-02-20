@@ -18,7 +18,7 @@
 # or its use.
 
 from floe.api import WorkFloe
-from MDCubes.cubes import OpenMMNptCube
+from MDCubes.cubes import MDNptCube
 from cuberecord import DatasetReaderCube, DatasetWriterCube
 
 job = WorkFloe("NPT Production",
@@ -51,7 +51,7 @@ ifs = DatasetReaderCube("SystemReader", title="System Reader")
 ifs.promote_parameter("data_in", promoted_name="system", title='System Input File',
                       description="System input file")
 
-npt = OpenMMNptCube('npt', title="Production")
+npt = MDNptCube('npt', title="Production")
 npt.promote_parameter('time', promoted_name='nanoseconds', default=2.0,
                       description='Length of MD run in nanoseconds')
 npt.promote_parameter('temperature', promoted_name='temperature', default=300.0,

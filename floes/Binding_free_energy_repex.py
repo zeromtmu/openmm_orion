@@ -17,16 +17,15 @@
 # liable for any damages or liability in connection with the Sample Code
 # or its use.
 
-release = True
-
 from floe.api import WorkFloe
 
-from MDCubes.cubes import (OpenMMminimizeCube,
-                           OpenMMNvtCube,
-                           OpenMMNptCube)
+from MDCubes.cubes import (MDMinimizeCube,
+                           MDNvtCube,
+                           MDNptCube)
 
-from ComplexPrepCubes.cubes import (SolvationCube,
-                                    ComplexPrepCube)
+from ComplexPrepCubes.cubes import ComplexPrepCube
+
+from SystemCubes.cubes import SolvationCube
 
 from ProtPrepCubes.cubes import ProteinSetting
 
@@ -35,12 +34,16 @@ from ForceFieldCubes.cubes import ForceFieldCube
 from LigPrepCubes.cubes import (LigandChargeCube,
                                 LigandSetting)
 
+from SystemCubes.cubes import IDSettingCube
+
 from YankCubes.cubes import (SyncBindingFECube,
                              YankBindingFECube,
                              YankProxyCube)
 
 from cuberecord import (DatasetWriterCube,
                         DatasetReaderCube)
+
+from TrjAnalysisCubes.traj_cubes import MDFloeReportCube
 
 job = WorkFloe('Binding Affinity Replica Exchange',
                title='Binding Affinity Replica Exchange')
@@ -93,6 +96,9 @@ ligset = LigandSetting("LigandSetting", title="Ligand Setting")
 ligset.set_parameters(lig_res_name='LIG')
 job.add_cube(ligset)
 
+ligid = IDSettingCube("Ligand Ids")
+job.add_cube(ligid)
+
 # Protein Reading cube. The protein prefix parameter is used to select a name for the
 # output system files
 iprot = DatasetReaderCube("ProteinReader", title="Protein Reader")
@@ -124,6 +130,7 @@ job.add_cube(solvateComplex)
 
 # Complex Force Field Application
 ffComplex = ForceFieldCube("ForceFieldComplex", title="Complex Parametrization")
+ffComplex.promote_parameter('protein_forcefield', promoted_name='protein_ff', default='amber99sbildn.xml')
 ffComplex.promote_parameter('ligand_forcefield', promoted_name='ligand_forcefield', default='GAFF2')
 ffComplex.promote_parameter('other_forcefield', promoted_name='other_forcefield', default='GAFF2')
 ffComplex.set_parameters(lig_res_name='LIG')
@@ -160,7 +167,7 @@ abfe.promote_parameter('protocol_repex', promoted_name='protocol_repex', default
 job.add_cube(abfe)
 
 # Minimization
-minComplex = OpenMMminimizeCube('minComplex', title='Complex Minimization')
+minComplex = MDMinimizeCube('minComplex', title='Complex Minimization')
 minComplex.promote_parameter('hmr', promoted_name='hmr')
 minComplex.set_parameters(restraints="noh (ligand or protein)")
 minComplex.set_parameters(restraintWt=5.0)
@@ -169,7 +176,7 @@ minComplex.set_parameters(center=True)
 job.add_cube(minComplex)
 
 # NVT simulation. Here the assembled system is warmed up to the final selected temperature
-warmupComplex = OpenMMNvtCube('warmupComplex', title='Complex Warm Up')
+warmupComplex = MDNvtCube('warmupComplex', title='Complex Warm Up')
 warmupComplex.set_parameters(time=0.02)
 warmupComplex.promote_parameter('temperature', promoted_name='temperature')
 warmupComplex.promote_parameter('hmr', promoted_name='hmr')
@@ -186,7 +193,7 @@ job.add_cube(warmupComplex)
 # is applied in the first stage while a relatively small one is applied in the latter
 
 # NPT Equilibration stage 1
-equil1Complex = OpenMMNptCube('equil1Complex', title='Complex Equilibration I')
+equil1Complex = MDNptCube('equil1Complex', title='Complex Equilibration I')
 equil1Complex.set_parameters(time=0.02)
 equil1Complex.promote_parameter('temperature', promoted_name='temperature')
 equil1Complex.promote_parameter('pressure', promoted_name='pressure')
@@ -199,7 +206,7 @@ equil1Complex.set_parameters(suffix='equil1')
 job.add_cube(equil1Complex)
 
 # NPT Equilibration stage 2
-equil2Complex = OpenMMNptCube('equil2Complex', title='Complex Equilibration II')
+equil2Complex = MDNptCube('equil2Complex', title='Complex Equilibration II')
 equil2Complex.set_parameters(time=0.02)
 equil2Complex.promote_parameter('temperature', promoted_name='temperature')
 equil2Complex.promote_parameter('pressure', promoted_name='pressure')
@@ -212,7 +219,7 @@ equil2Complex.set_parameters(suffix='equil2')
 job.add_cube(equil2Complex)
 
 # NPT Equilibration stage 3
-equil3Complex = OpenMMNptCube('equil3Complex', title='Complex Equilibration III')
+equil3Complex = MDNptCube('equil3Complex', title='Complex Equilibration III')
 equil3Complex.set_parameters(time=0.02)
 equil3Complex.promote_parameter('temperature', promoted_name='temperature')
 equil3Complex.promote_parameter('pressure', promoted_name='pressure')
@@ -240,7 +247,7 @@ ffLigand.promote_parameter('other_forcefield', promoted_name='other_forcefield')
 job.add_cube(ffLigand)
 
 # Ligand Minimization
-minimizeLigand = OpenMMminimizeCube("MinimizeLigand", title="Unbound Ligand Minimization")
+minimizeLigand = MDMinimizeCube("MinimizeLigand", title="Unbound Ligand Minimization")
 minimizeLigand.set_parameters(restraints='noh ligand')
 minimizeLigand.promote_parameter('hmr', promoted_name='hmr')
 minimizeLigand.set_parameters(restraintWt=5.0)
@@ -248,7 +255,7 @@ minimizeLigand.set_parameters(center=True)
 job.add_cube(minimizeLigand)
 
 # Ligand NVT Warm-up
-warmupLigand = OpenMMNvtCube('warmupLigand', title='Unbound Ligand Warm Up')
+warmupLigand = MDNvtCube('warmupLigand', title='Unbound Ligand Warm Up')
 warmupLigand.set_parameters(time=0.02)
 warmupLigand.promote_parameter('temperature', promoted_name='temperature')
 warmupLigand.promote_parameter('hmr', promoted_name='hmr')
@@ -260,7 +267,7 @@ warmupLigand.set_parameters(suffix='warmup_ligand')
 job.add_cube(warmupLigand)
 
 # Ligand NPT Equilibration stage
-equilLigand = OpenMMNptCube('equilLigand', title='Unbound Ligand Equilibration')
+equilLigand = MDNptCube('equilLigand', title='Unbound Ligand Equilibration')
 equilLigand.set_parameters(time=0.02)
 equilLigand.promote_parameter('temperature', promoted_name='temperature')
 equilLigand.promote_parameter('pressure', promoted_name='pressure')
@@ -275,6 +282,9 @@ job.add_cube(equilLigand)
 sync = SyncBindingFECube("SyncCube", title="Unbound and Bound States Synchronization")
 job.add_cube(sync)
 
+report = MDFloeReportCube("report", title="Floe Report")
+job.add_cube(report)
+
 ofs = DatasetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")
 job.add_cube(ofs)
@@ -282,7 +292,6 @@ job.add_cube(ofs)
 fail = DatasetWriterCube('fail', title='Failures')
 fail.promote_parameter("data_out", promoted_name="fail")
 job.add_cube(fail)
-
 
 # Complex Connections
 iprot.success.connect(protset.intake)
@@ -299,8 +308,9 @@ equil3Complex.success.connect(sync.intake)
 # Ligand Connections
 iligs.success.connect(chargelig.intake)
 chargelig.success.connect(ligset.intake)
-ligset.success.connect(complx.intake)
-ligset.success.connect(solvateLigand.intake)
+ligset.success.connect(ligid.intake)
+ligid.success.connect(complx.intake)
+ligid.success.connect(solvateLigand.intake)
 solvateLigand.success.connect(ffLigand.intake)
 ffLigand.success.connect(minimizeLigand.intake)
 minimizeLigand.success.connect(warmupLigand.intake)
@@ -309,9 +319,11 @@ equilLigand.success.connect(sync.solvated_ligand_in_port)
 
 # ABFE Connections
 sync.success.connect(yank_proxy.intake)
-yank_proxy.success.connect(ofs.intake)
+yank_proxy.success.connect(report.intake)
 yank_proxy.failure.connect(fail.intake)
 yank_proxy.cycle_out_port.connect(abfe.intake)
+report.success.connect(ofs.intake)
+report.failure.connect(fail.intake)
 abfe.success.connect(yank_proxy.cycle_in_port)
 abfe.failure.connect(fail.intake)
 

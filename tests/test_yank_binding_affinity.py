@@ -36,6 +36,10 @@ from openeye import oechem
 
 from datarecord import read_mol_record
 
+from artemis.wrappers import using_orion
+
+num_proc = 5
+
 PACKAGE_DIR = os.path.dirname(os.path.dirname(MDOrion.__file__))
 
 FILE_DIR = os.path.join(PACKAGE_DIR, "tests", "data")
@@ -52,8 +56,8 @@ class TestYankBindingFloes(FloeTestCase):
     def test_yank_binding_repex_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "Binding_free_energy_repex.py"),
-            run_timeout=12000,
-            queue_timeout=1200
+            run_timeout=43200,
+            queue_timeout=2000
         )
 
         ligand_file = DatasetWrapper.get_dataset(
@@ -73,24 +77,47 @@ class TestYankBindingFloes(FloeTestCase):
         output_file = OutputDatasetWrapper(extension=".oedb")
         fail_output_file = OutputDatasetWrapper(extension=".oedb")
 
-        workfloe.start(
-            {
-                "promoted": {
-                    "ligands": ligand_file.identifier,
-                    "protein": protein_file.identifier,
-                    "iterations": 13,
-                    "out": output_file.identifier,
-                    "fail": fail_output_file.identifier
-                },
 
-                "cube": {
-                    "YankABFE": {
-                        "checkpoint_interval": 10
+        if using_orion:
+            workfloe.start(
+                {
+                    "promoted": {
+                        "ligands": ligand_file.identifier,
+                        "protein": protein_file.identifier,
+                        "iterations": 13,
+                        "out": output_file.identifier,
+                        "fail": fail_output_file.identifier
+                    },
+
+                    "cube": {
+                        "YankABFE": {
+                            "checkpoint_interval": 10
+                        }
                     }
-                }
 
-            }
-        )
+                }
+            )
+        else:
+            workfloe.start(
+                {
+                    "promoted": {
+                        "ligands": ligand_file.identifier,
+                        "protein": protein_file.identifier,
+                        "iterations": 13,
+                        "out": output_file.identifier,
+                        "fail": fail_output_file.identifier
+                    },
+
+                    "mp": num_proc,
+
+                    "cube": {
+                        "YankABFE": {
+                            "checkpoint_interval": 10
+                        }
+                    }
+
+                }
+            )
 
         self.assertWorkFloeComplete(workfloe)
 
@@ -128,8 +155,8 @@ class TestYankBindingFloes(FloeTestCase):
     def test_yank_binding_repex_multi_ligs_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "Binding_free_energy_repex.py"),
-            run_timeout=12000,
-            queue_timeout=1200
+            run_timeout=43200,
+            queue_timeout=2000
         )
 
         ligand_file = DatasetWrapper.get_dataset(
@@ -149,23 +176,44 @@ class TestYankBindingFloes(FloeTestCase):
         output_file = OutputDatasetWrapper(extension=".oedb")
         fail_output_file = OutputDatasetWrapper(extension=".oedb")
 
-        workfloe.start(
-            {
-                "promoted": {
-                    "ligands": ligand_file.identifier,
-                    "protein": protein_file.identifier,
-                    "iterations": 13,
-                    "out": output_file.identifier,
-                    "fail": fail_output_file.identifier
-                },
+        if using_orion:
+            workfloe.start(
+                {
+                    "promoted": {
+                        "ligands": ligand_file.identifier,
+                        "protein": protein_file.identifier,
+                        "iterations": 13,
+                        "out": output_file.identifier,
+                        "fail": fail_output_file.identifier
+                    },
 
-                "cube": {
-                    "YankABFE": {
-                        "checkpoint_interval": 10
+                    "cube": {
+                        "YankABFE": {
+                            "checkpoint_interval": 10
+                        }
                     }
                 }
-            }
-        )
+            )
+        else:
+            workfloe.start(
+                {
+                    "promoted": {
+                        "ligands": ligand_file.identifier,
+                        "protein": protein_file.identifier,
+                        "iterations": 13,
+                        "out": output_file.identifier,
+                        "fail": fail_output_file.identifier
+                    },
+
+                    "mp": num_proc,
+
+                    "cube": {
+                        "YankABFE": {
+                            "checkpoint_interval": 10
+                        }
+                    }
+                }
+            )
 
         self.assertWorkFloeComplete(workfloe)
 
@@ -203,8 +251,8 @@ class TestYankBindingFloes(FloeTestCase):
     def test_yank_binding_sams_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "Binding_free_energy_sams.py"),
-            run_timeout=12000,
-            queue_timeout=1200
+            run_timeout=43200,
+            queue_timeout=2000
         )
 
         ligand_file = DatasetWrapper.get_dataset(
@@ -224,23 +272,44 @@ class TestYankBindingFloes(FloeTestCase):
         output_file = OutputDatasetWrapper(extension=".oedb")
         fail_output_file = OutputDatasetWrapper(extension=".oedb")
 
-        workfloe.start(
-            {
-                "promoted": {
-                    "ligands": ligand_file.identifier,
-                    "protein": protein_file.identifier,
-                    "iterations": 13,
-                    "out": output_file.identifier,
-                    "fail": fail_output_file.identifier
-                },
+        if using_orion:
+            workfloe.start(
+                {
+                    "promoted": {
+                        "ligands": ligand_file.identifier,
+                        "protein": protein_file.identifier,
+                        "iterations": 13,
+                        "out": output_file.identifier,
+                        "fail": fail_output_file.identifier
+                    },
 
-                "cube": {
-                    "YankABFE": {
-                        "checkpoint_interval": 10
+                    "cube": {
+                        "YankABFE": {
+                            "checkpoint_interval": 10
+                        }
                     }
                 }
-            }
-        )
+            )
+        else:
+            workfloe.start(
+                {
+                    "promoted": {
+                        "ligands": ligand_file.identifier,
+                        "protein": protein_file.identifier,
+                        "iterations": 13,
+                        "out": output_file.identifier,
+                        "fail": fail_output_file.identifier
+                    },
+
+                    "mp": num_proc,
+
+                    "cube": {
+                        "YankABFE": {
+                            "checkpoint_interval": 10
+                        }
+                    }
+                }
+            )
 
         self.assertWorkFloeComplete(workfloe)
 
@@ -278,8 +347,8 @@ class TestYankBindingFloes(FloeTestCase):
     def test_yank_binding_sams_multi_ligs_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "Binding_free_energy_sams.py"),
-            run_timeout=12000,
-            queue_timeout=1200
+            run_timeout=43200,
+            queue_timeout=2000
         )
 
         ligand_file = DatasetWrapper.get_dataset(
@@ -299,23 +368,44 @@ class TestYankBindingFloes(FloeTestCase):
         output_file = OutputDatasetWrapper(extension=".oedb")
         fail_output_file = OutputDatasetWrapper(extension=".oedb")
 
-        workfloe.start(
-            {
-                "promoted": {
-                    "ligands": ligand_file.identifier,
-                    "protein": protein_file.identifier,
-                    "iterations": 13,
-                    "out": output_file.identifier,
-                    "fail": fail_output_file.identifier
-                },
+        if using_orion:
+            workfloe.start(
+                {
+                    "promoted": {
+                        "ligands": ligand_file.identifier,
+                        "protein": protein_file.identifier,
+                        "iterations": 13,
+                        "out": output_file.identifier,
+                        "fail": fail_output_file.identifier
+                    },
 
-                "cube": {
-                    "YankABFE": {
-                        "checkpoint_interval": 10
+                    "cube": {
+                        "YankABFE": {
+                            "checkpoint_interval": 10
+                        }
                     }
                 }
-            }
-        )
+            )
+        else:
+            workfloe.start(
+                {
+                    "promoted": {
+                        "ligands": ligand_file.identifier,
+                        "protein": protein_file.identifier,
+                        "iterations": 13,
+                        "out": output_file.identifier,
+                        "fail": fail_output_file.identifier
+                    },
+
+                    "mp": num_proc,
+
+                    "cube": {
+                        "YankABFE": {
+                            "checkpoint_interval": 10
+                        }
+                    }
+                }
+            )
 
         self.assertWorkFloeComplete(workfloe)
 
@@ -353,8 +443,8 @@ class TestYankBindingFloes(FloeTestCase):
     def test_yank_binding_yaml_user_file(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "Binding_free_energy_detailed.py"),
-            run_timeout=12000,
-            queue_timeout=1200
+            run_timeout=43200,
+            queue_timeout=2000
         )
 
         ligand_file = DatasetWrapper.get_dataset(
@@ -381,25 +471,47 @@ class TestYankBindingFloes(FloeTestCase):
         output_file = OutputDatasetWrapper(extension=".oedb")
         fail_output_file = OutputDatasetWrapper(extension=".oedb")
 
-        workfloe.start(
-            {
-                "promoted": {
-                    "ligands": ligand_file.identifier,
-                    "protein": protein_file.identifier,
-                    "yaml": user_yaml_file.identifier,
-                    "iterations": 13,
-                    "out": output_file.identifier,
-                    "fail": fail_output_file.identifier
-                },
-
-                "cube": {
-                    "YankABFE": {
-                        "checkpoint_interval": 10
+        if using_orion:
+            workfloe.start(
+                {
+                    "promoted": {
+                        "ligands": ligand_file.identifier,
+                        "protein": protein_file.identifier,
+                        "yaml": user_yaml_file.identifier,
+                        "iterations": 13,
+                        "out": output_file.identifier,
+                        "fail": fail_output_file.identifier
+                    },
+                    "cube": {
+                        "YankABFE": {
+                            "checkpoint_interval": 10
+                        }
                     }
-                }
 
-            }
-        )
+                }
+            )
+        else:
+            workfloe.start(
+                {
+                    "promoted": {
+                        "ligands": ligand_file.identifier,
+                        "protein": protein_file.identifier,
+                        "yaml": user_yaml_file.identifier,
+                        "iterations": 13,
+                        "out": output_file.identifier,
+                        "fail": fail_output_file.identifier
+                    },
+
+                    "mp": num_proc,
+
+                    "cube": {
+                        "YankABFE": {
+                            "checkpoint_interval": 10
+                        }
+                    }
+
+                }
+            )
 
         self.assertWorkFloeComplete(workfloe)
 

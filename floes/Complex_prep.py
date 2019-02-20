@@ -25,11 +25,13 @@ from cuberecord import (DatasetWriterCube,
 from LigPrepCubes.cubes import LigandSetting
 from LigPrepCubes.cubes import LigandChargeCube
 
+from SystemCubes.cubes import IDSettingCube
+
 from ProtPrepCubes.cubes import ProteinSetting
 
-from ComplexPrepCubes.cubes import (ComplexPrepCube,
-                                    SolvationCube,
-                                    HydrationCube)
+from ComplexPrepCubes.cubes import ComplexPrepCube
+
+from SystemCubes.cubes import SolvationCube
 
 from ForceFieldCubes.cubes import ForceFieldCube
 
@@ -65,9 +67,11 @@ chargelig = LigandChargeCube("LigCharge", title='Ligand Charge')
 chargelig.promote_parameter('charge_ligands', promoted_name='charge_ligands',
                             description="Charge the ligand or not", default=True)
 
-
 ligset = LigandSetting("LigandSetting")
 ligset.set_parameters(lig_res_name='LIG')
+
+ligid = IDSettingCube("Ligand Ids")
+job.add_cube(ligid)
 
 iprot = DatasetReaderCube("Protein Reader", title="Protein Reader")
 iprot.promote_parameter("data_in", promoted_name="protein", title="Protein Input File", description="Protein file name")
@@ -86,6 +90,7 @@ solvate.set_parameters(close_solvent=True)
 
 
 ff = ForceFieldCube("ForceField", title="System Parametrization")
+ff.promote_parameter('protein_forcefield', promoted_name='protein_ff', default='amber99sbildn.xml')
 ff.promote_parameter('ligand_forcefield', promoted_name='ligand_ff', default='GAFF2')
 ff.promote_parameter('other_forcefield', promoted_name='other_ff', default='GAFF2')
 ff.set_parameters(lig_res_name='LIG')
@@ -100,7 +105,8 @@ job.add_cubes(iligs, chargelig, ligset, iprot, protset, complx, solvate, ff, ofs
 
 iligs.success.connect(chargelig.intake)
 chargelig.success.connect(ligset.intake)
-ligset.success.connect(complx.intake)
+ligset.success.connect(ligid.intake)
+ligid.success.connect(complx.intake)
 iprot.success.connect(protset.intake)
 protset.success.connect(complx.protein_port)
 complx.success.connect(solvate.intake)

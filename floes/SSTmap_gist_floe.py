@@ -22,6 +22,7 @@ from floe.api import WorkFloe
 from cuberecord import DatasetWriterCube, DatasetReaderCube
 from TrjAnalysisCubes.sstmap_cubes import SSTMapGist
 from LigPrepCubes.cubes import LigandSetting
+from SystemCubes.cubes import IDSettingCube
 
 job = WorkFloe("SSTMap GIST",
                title="SSTMap GIST")
@@ -52,6 +53,9 @@ ligand_ifs.promote_parameter("data_in", promoted_name="ligand")
 
 lig_setting = LigandSetting("LigandSetting", title="Ligand Setting")
 
+ligid = IDSettingCube("Ligand Ids")
+job.add_cube(ligid)
+
 sstmap_gist = SSTMapGist("sstmap_gist", title="SSTMap GIST")
 
 ofs = DatasetWriterCube("ofs", title="Out")
@@ -64,7 +68,8 @@ job.add_cubes(ifs, ligand_ifs, lig_setting, ofs, fail, sstmap_gist)
 
 ifs.success.connect(sstmap_gist.intake)
 ligand_ifs.success.connect(lig_setting.intake)
-lig_setting.success.connect(sstmap_gist.ligand_port)
+lig_setting.success.connect(ligid.intake)
+ligid.success.connect(sstmap_gist.ligand_port)
 sstmap_gist.success.connect(ofs.intake)
 sstmap_gist.failure.connect(fail.intake)
 

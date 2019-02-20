@@ -29,6 +29,10 @@ from openeye import oechem
 
 from datarecord import read_mol_record
 
+from artemis.wrappers import using_orion
+
+num_proc = 5
+
 PACKAGE_DIR = os.path.dirname(os.path.dirname(MDOrion.__file__))
 
 FILE_DIR = os.path.join(PACKAGE_DIR, "tests", "data")
@@ -41,12 +45,12 @@ session = OrionSession()
 class TestYankSolvationOrionFloes(FloeTestCase):
 
     @pytest.mark.floetest
-    @pytest.mark.slow
+    @pytest.mark.fast
     def test_yank_solvation_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "Solvation_free_energy.py"),
-            run_timeout=8000,
-            queue_timeout=1200
+            run_timeout=43200,
+            queue_timeout=2000
         )
 
         ligand_file = DatasetWrapper.get_dataset(
@@ -59,16 +63,31 @@ class TestYankSolvationOrionFloes(FloeTestCase):
         output_file = OutputDatasetWrapper(extension=".oedb")
         fail_output_file = OutputDatasetWrapper(extension=".oedb")
 
-        workfloe.start(
-            {
-                "promoted": {
-                    "ligands": ligand_file.identifier,
-                    "iterations": 10,
-                    "out": output_file.identifier,
-                    "fail": fail_output_file.identifier
+        if using_orion:
+            workfloe.start(
+                {
+                    "promoted": {
+                        "ligands": ligand_file.identifier,
+                        "iterations": 10,
+                        "out": output_file.identifier,
+                        "fail": fail_output_file.identifier
+                    }
                 }
-            }
-        )
+            )
+        else:
+            workfloe.start(
+                {
+                    "promoted": {
+                        "ligands": ligand_file.identifier,
+                        "iterations": 10,
+                        "out": output_file.identifier,
+                        "fail": fail_output_file.identifier
+                    },
+
+                    "mp": num_proc
+
+                }
+            )
 
         self.assertWorkFloeComplete(workfloe)
 
@@ -102,12 +121,12 @@ class TestYankSolvationOrionFloes(FloeTestCase):
         self.assertEqual(count, 1)
 
     @pytest.mark.floetest
-    @pytest.mark.slow
+    @pytest.mark.fast
     def test_yank_solvation_multi_ligs_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "Solvation_free_energy.py"),
-            run_timeout=8000,
-            queue_timeout=1200
+            run_timeout=43200,
+            queue_timeout=2000
         )
 
         ligand_file = DatasetWrapper.get_dataset(
@@ -120,16 +139,30 @@ class TestYankSolvationOrionFloes(FloeTestCase):
         output_file = OutputDatasetWrapper(extension=".oedb")
         fail_output_file = OutputDatasetWrapper(extension=".oedb")
 
-        workfloe.start(
-            {
-                "promoted": {
-                    "ligands": ligand_file.identifier,
-                    "iterations": 10,
-                    "out": output_file.identifier,
-                    "fail": fail_output_file.identifier
+        if using_orion:
+            workfloe.start(
+                {
+                    "promoted": {
+                        "ligands": ligand_file.identifier,
+                        "iterations": 10,
+                        "out": output_file.identifier,
+                        "fail": fail_output_file.identifier
+                    }
                 }
-            }
-        )
+            )
+        else:
+            workfloe.start(
+                {
+                    "promoted": {
+                        "ligands": ligand_file.identifier,
+                        "iterations": 10,
+                        "out": output_file.identifier,
+                        "fail": fail_output_file.identifier
+                    },
+
+                    "mp": num_proc
+                }
+            )
 
         self.assertWorkFloeComplete(workfloe)
 

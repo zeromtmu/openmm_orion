@@ -26,9 +26,9 @@ from yank.analyze import ExperimentAnalyzer
 
 from simtk.openmm import unit
 
-from datetime import timedelta
+from simtk import openmm
 
-import os
+from datetime import timedelta
 
 import subprocess
 
@@ -36,9 +36,17 @@ from orionclient.session import in_orion, OrionSession
 
 from orionclient.types import File
 
-from os import environ
-
 import yaml
+
+import time
+
+import fcntl
+
+import os
+
+from openeye import oedepict
+
+from tempfile import TemporaryDirectory
 
 
 def yank_solvation_initialize(sim):
@@ -71,7 +79,58 @@ def yank_solvation_initialize(sim):
         # Print Yank Template
         opt['Logger'].info(opt['yank_template'])
 
-        sim(*args)
+        if 'OE_VISIBLE_DEVICES' in os.environ and not in_orion():
+
+            gpus_available_indexes = os.environ["OE_VISIBLE_DEVICES"].split(',')
+
+            opt['Logger'].info("OE LOCAL FLOE CLUSTER OPTION IN USE")
+
+            if 'OE_MAX' in os.environ:
+                opt['OE_MAX'] = int(os.environ["OE_MAX"])
+            else:
+                opt['OE_MAX'] = 1
+
+            opt['Logger'].info("OE MAX = {}".format(opt['OE_MAX']))
+
+            while True:
+
+                for gpu_id in gpus_available_indexes:
+
+                    for p in range(0, opt['OE_MAX']):
+
+                        fn = str(gpu_id) + '_' + str(p) + '.txt'
+
+                        try:
+                            with open(fn, 'a') as file:
+                                fcntl.flock(file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                                file.write(
+                                    "YANK - name = {} MOL_ID = {} GPU_IDS = {} GPU_ID = {}\n".format(opt['system_title'],
+                                                                                                     opt['system_id'],
+                                                                                                     gpus_available_indexes,
+                                                                                                     str(gpu_id)))
+                                opt['gpu_id'] = str(gpu_id)
+
+                                openmm.Platform.getPlatformByName('CUDA').setPropertyDefaultValue('DeviceIndex',
+                                                                                                  str(gpu_id))
+
+                                sim(opt)
+
+                                time.sleep(5.0)
+                                fcntl.flock(file, fcntl.LOCK_UN)
+                                return
+
+                        except BlockingIOError:
+                            time.sleep(0.1)
+
+                        except Exception as e:  # If the simulation fails for other reasons
+                            try:
+                                time.sleep(5.0)
+                                fcntl.flock(file, fcntl.LOCK_UN)
+                            except Exception as e:
+                                pass
+                            raise ValueError("{} Simulation Failed".format(str(e)))
+        else:
+            sim(*args)
 
     return wrapper
 
@@ -189,7 +248,57 @@ def yank_binding_initialize(sim):
         else:
             opt['Logger'].info(opt['yank_template'])
 
-        sim(*args)
+        if 'OE_VISIBLE_DEVICES' in os.environ and not in_orion():
+
+            gpus_available_indexes = os.environ["OE_VISIBLE_DEVICES"].split(',')
+
+            opt['Logger'].info("OE LOCAL FLOE CLUSTER OPTION IN USE")
+
+            if 'OE_MAX' in os.environ:
+                opt['OE_MAX'] = int(os.environ["OE_MAX"])
+            else:
+                opt['OE_MAX'] = 1
+
+            opt['Logger'].info("OE MAX = {}".format(opt['OE_MAX']))
+
+            while True:
+
+                for gpu_id in gpus_available_indexes:
+
+                    for p in range(0, opt['OE_MAX']):
+
+                        fn = str(gpu_id) + '_' + str(p) + '.txt'
+
+                        try:
+                            with open(fn, 'a') as file:
+                                fcntl.flock(file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                                file.write(
+                                    "YANK - name = {} MOL_ID = {} GPU_IDS = {} GPU_ID = {}\n".format(opt['system_title'],
+                                                                                                     opt['system_id'],
+                                                                                                     gpus_available_indexes,
+                                                                                                     str(gpu_id)))
+                                opt['gpu_id'] = str(gpu_id)
+
+                                openmm.Platform.getPlatformByName('CUDA').setPropertyDefaultValue('DeviceIndex',
+                                                                                                  str(gpu_id))
+
+                                sim(opt)
+
+                                time.sleep(5.0)
+                                fcntl.flock(file, fcntl.LOCK_UN)
+                                return
+                        except BlockingIOError:
+                            time.sleep(0.1)
+
+                        except Exception as e:  # If the simulation fails for other reasons
+                            try:
+                                time.sleep(5.0)
+                                fcntl.flock(file, fcntl.LOCK_UN)
+                            except Exception as e:
+                                pass
+                            raise ValueError("{} Simulation Failed".format(str(e)))
+        else:
+            sim(*args)
 
     return wrapper
 
@@ -238,30 +347,38 @@ def run_yank_analysis(opt):
 
     opt_3 = '--format=html'
 
+    report_html_str = None
+
     try:
         os.environ["HDF5_USE_FILE_LOCKING"] = "FALSE"
 
         subprocess.check_call(['yank', 'analyze', 'report', opt_1, opt_2, opt_3])
 
+        result_fn = os.path.join(opt['output_directory'], "results.html")
+
+        with open(result_fn, 'r') as f:
+            report_html_str = f.read()
+
+
         # Upload Floe Report
-        if in_orion():
-            session = OrionSession()
-
-            file_upload = File.upload(session,
-                                      "{}.html".format(opt['system_title']),
-                                      result_fn)
-
-            session.tag_resource(file_upload, "floe_report")
-
-            job_id = environ.get('ORION_JOB_ID')
-
-            if job_id:
-                session.tag_resource(file_upload, "Job {}".format(job_id))
+        # if in_orion():
+        #     session = OrionSession()
+        #
+        #     file_upload = File.upload(session,
+        #                               "{}.html".format(opt['system_title']),
+        #                               result_fn)
+        #
+        #     session.tag_resource(file_upload, "floe_report")
+        #
+        #     job_id = environ.get('ORION_JOB_ID')
+        #
+        #     if job_id:
+        #         session.tag_resource(file_upload, "Job {}".format(job_id))
 
     except subprocess.SubprocessError:
-        opt['Logger'].warn("The result file have not been generated")
+        opt['Logger'].warn("The result html file has not been generated")
 
-    return DeltaG, dDeltaG
+    return DeltaG, dDeltaG, report_html_str
 
 
 def calculate_iteration_time(output_directory, num_iterations):
@@ -303,3 +420,40 @@ def calculate_iteration_time(output_directory, num_iterations):
     iterations_per_cube = int(max_cube_running_time / avg_time_per_iteration)
 
     return iterations_per_cube
+
+
+def ligand_to_svg(ligand, ligand_name):
+
+    with TemporaryDirectory() as output_directory:
+
+        img_fn = os.path.join(output_directory, "img.svg")
+
+        oedepict.OEPrepareDepiction(ligand)
+
+        width, height = 150, 150
+        opts = oedepict.OE2DMolDisplayOptions(width, height, oedepict.OEScale_AutoScale)
+        disp = oedepict.OE2DMolDisplay(ligand, opts)
+
+        oedepict.OERenderMolecule(img_fn, disp)
+
+        if len(ligand_name) < 15:
+            ligand.SetTitle(ligand_name)
+        else:
+            ligand.SetTitle(ligand_name[0:13] + '...')
+
+        svg_lines = ""
+        marker = False
+        with open(img_fn, 'r') as file:
+            for line in file:
+                if marker:
+                    svg_lines += line
+
+                if line.startswith("<svg"):
+                    marker = True
+                    svg_lines += line
+                    svg_lines += """<title>{}</title>\n""".format(ligand_name)
+
+                if line.startswith("</svg>"):
+                    marker = False
+
+    return svg_lines

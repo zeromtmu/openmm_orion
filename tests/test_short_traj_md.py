@@ -28,6 +28,9 @@ from openeye import oechem
 
 from datarecord import read_mol_record
 
+from artemis.wrappers import using_orion
+
+num_proc = 5
 
 PACKAGE_DIR = os.path.dirname(os.path.dirname(MDOrion.__file__))
 
@@ -45,8 +48,8 @@ class TestMDOrionFloes(FloeTestCase):
     def test_STMD_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "ShortTrajMD.py"),
-            run_timeout=12000,
-            queue_timeout=1200
+            run_timeout=43200,
+            queue_timeout=2000
         )
 
         ligand_file = DatasetWrapper.get_dataset(
@@ -66,16 +69,30 @@ class TestMDOrionFloes(FloeTestCase):
         output_file = OutputDatasetWrapper(extension=".oedb")
         fail_output_file = OutputDatasetWrapper(extension=".oedb")
 
-        workfloe.start(
-            {
-                "promoted": {
-                    "ligands": ligand_file.identifier,
-                    "protein": protein_file.identifier,
-                    "out": output_file.identifier,
-                    "fail": fail_output_file.identifier
+        if using_orion():
+            workfloe.start(
+                {
+                    "promoted": {
+                        "ligands": ligand_file.identifier,
+                        "protein": protein_file.identifier,
+                        "out": output_file.identifier,
+                        "fail": fail_output_file.identifier
+                    }
                 }
-            }
-        )
+            )
+        else:
+            workfloe.start(
+                {
+                    "promoted": {
+                        "ligands": ligand_file.identifier,
+                        "protein": protein_file.identifier,
+                        "out": output_file.identifier,
+                        "fail": fail_output_file.identifier
+                    },
+
+                    "mp": num_proc
+                }
+            )
 
         self.assertWorkFloeComplete(workfloe)
 
@@ -113,8 +130,8 @@ class TestMDOrionFloes(FloeTestCase):
     def test_STMD_Analysis_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "ShortTrajMDWithAnalysis.py"),
-            run_timeout=12000,
-            queue_timeout=1200
+            run_timeout=43200,
+            queue_timeout=2000
         )
 
         ligand_file = DatasetWrapper.get_dataset(
@@ -134,16 +151,30 @@ class TestMDOrionFloes(FloeTestCase):
         output_file = OutputDatasetWrapper(extension=".oedb")
         fail_output_file = OutputDatasetWrapper(extension=".oedb")
 
-        workfloe.start(
-            {
-                "promoted": {
-                    "ligands": ligand_file.identifier,
-                    "protein": protein_file.identifier,
-                    "out": output_file.identifier,
-                    "fail": fail_output_file.identifier
+        if using_orion:
+            workfloe.start(
+                {
+                    "promoted": {
+                        "ligands": ligand_file.identifier,
+                        "protein": protein_file.identifier,
+                        "out": output_file.identifier,
+                        "fail": fail_output_file.identifier
+                    }
                 }
-            }
-        )
+            )
+        else:
+            workfloe.start(
+                {
+                    "promoted": {
+                        "ligands": ligand_file.identifier,
+                        "protein": protein_file.identifier,
+                        "out": output_file.identifier,
+                        "fail": fail_output_file.identifier
+                    },
+
+                    "mp": num_proc
+                }
+            )
 
         self.assertWorkFloeComplete(workfloe)
 
@@ -181,8 +212,8 @@ class TestMDOrionFloes(FloeTestCase):
     def test_STMD_large_sys_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "ShortTrajMD.py"),
-            run_timeout=12000,
-            queue_timeout=1200
+            run_timeout=43200,
+            queue_timeout=2000
         )
 
         ligand_file = DatasetWrapper.get_dataset(
@@ -202,16 +233,30 @@ class TestMDOrionFloes(FloeTestCase):
         output_file = OutputDatasetWrapper(extension=".oedb")
         fail_output_file = OutputDatasetWrapper(extension=".oedb")
 
-        workfloe.start(
-            {
-                "promoted": {
-                    "ligands": ligand_file.identifier,
-                    "protein": protein_file.identifier,
-                    "out": output_file.identifier,
-                    "fail": fail_output_file.identifier
+        if using_orion:
+            workfloe.start(
+                {
+                    "promoted": {
+                        "ligands": ligand_file.identifier,
+                        "protein": protein_file.identifier,
+                        "out": output_file.identifier,
+                        "fail": fail_output_file.identifier
+                    }
                 }
-            }
-        )
+            )
+        else:
+            workfloe.start(
+                {
+                    "promoted": {
+                        "ligands": ligand_file.identifier,
+                        "protein": protein_file.identifier,
+                        "out": output_file.identifier,
+                        "fail": fail_output_file.identifier
+                    },
+
+                    "mp": num_proc
+                }
+            )
 
         self.assertWorkFloeComplete(workfloe)
 
@@ -250,8 +295,8 @@ class TestMDOrionFloes(FloeTestCase):
     def test_STMD_multi_ligs_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
             os.path.join(FLOES_DIR, "ShortTrajMD.py"),
-            run_timeout=12000,
-            queue_timeout=1200
+            run_timeout=43200,
+            queue_timeout=2000
         )
 
         ligand_file = DatasetWrapper.get_dataset(
@@ -271,17 +316,32 @@ class TestMDOrionFloes(FloeTestCase):
         output_file = OutputDatasetWrapper(extension=".oedb")
         fail_output_file = OutputDatasetWrapper(extension=".oedb")
 
-        workfloe.start(
-            {
-                "promoted": {
-                    "ligands": ligand_file.identifier,
-                    "protein": protein_file.identifier,
-                    "out": output_file.identifier,
-                    "fail": fail_output_file.identifier
+        if using_orion:
+            workfloe.start(
+                {
+                    "promoted": {
+                        "ligands": ligand_file.identifier,
+                        "protein": protein_file.identifier,
+                        "out": output_file.identifier,
+                        "fail": fail_output_file.identifier
 
+                    }
                 }
-            }
-        )
+            )
+        else:
+            workfloe.start(
+                {
+                    "promoted": {
+                        "ligands": ligand_file.identifier,
+                        "protein": protein_file.identifier,
+                        "out": output_file.identifier,
+                        "fail": fail_output_file.identifier
+
+                    },
+
+                    "mp": num_proc
+                }
+            )
 
         self.assertWorkFloeComplete(workfloe)
 

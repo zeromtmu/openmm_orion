@@ -24,6 +24,7 @@ import ensemble2img
 
 from tempfile import TemporaryDirectory
 
+import tarfile
 
 class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
     title = 'Traj to OEMol Cube'
@@ -105,20 +106,29 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
                     opt['Logger'].info('{} local Trajectory file {} exists'.format( system_title, trajID))
                 elif md_stageLast_record.has_value(Fields.trajectory):
                     trajID = md_stageLast_record.get_value(Fields.trajectory)
+                    trj_field = md_stageLast_record.get_field(Fields.trajectory.get_name())
+                    trj_meta = trj_field.get_meta()
+                    md_engine = trj_meta.get_attribute(Meta.Annotation.Description)
 
                 elif md_stageLast_record.has_value(Fields.orion_local_trj_field):
                     opt['Logger'].info('{} Orion S3 Trajectory Field Detected'.format( system_title))
                     trajID = md_stageLast_record.get_value(Fields.orion_local_trj_field)
-
+                    trj_field = md_stageLast_record.get_field(Fields.trajectory.get_name())
+                    trj_meta = trj_field.get_meta()
+                    md_engine = trj_meta.get_attribute(Meta.Annotation.Description)
                 else:
                     raise ValueError("No trajectory have been found in the selected stage record {}".format(
                         md_stageLast_record.get_value(Fields.stage_name)))
 
-                trj_selected_filename = os.path.join(output_directory, "trajectory.h5")
+                trj_selected_filename = os.path.join(output_directory, "trajectory.tar.gz")
 
-                trajName = omm_utils.download_file(trajID, trj_selected_filename, delete=False)
+                trj_local = omm_utils.download_file(trajID, trj_selected_filename, delete=False)
 
-                opt['Logger'].info('{} Trajectory filename: {}'.format(system_title, trajName))
+                # Un-tar the Trajectory files
+                with tarfile.open(trj_local) as tar:
+                    tar.extractall(path=output_directory)
+
+                opt['Logger'].info('{} Trajectory filename: {}'.format(system_title, trj_local))
 
                 # Extract the Setup Topology
                 md_stage0_record = md_stages[0]
@@ -137,7 +147,7 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
                 # Generate multiconformer protein and ligand OEMols from the trajectory
                 opt['Logger'].info('{} Generating protein and ligand trajectory OEMols'.format(system_title))
 
-                ptraj, ltraj = utl.ExtractAlignedProtLigTraj_hdf5(setupOEMol, trajName)
+                ptraj, ltraj = utl.ExtractAlignedProtLigTraj(setupOEMol, output_directory, md_engine)
 
                 opt['Logger'].info('{} #atoms, #confs in protein traj OEMol: {}, {}'.format(
                     system_title, ptraj.NumAtoms(), ptraj.NumConfs()))
