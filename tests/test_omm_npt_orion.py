@@ -141,9 +141,8 @@ class TestMDOrionFloes(FloeTestCase):
                 "cube": {
                     "npt": {
                         "save_md_stage": True,
-                        "constraints": "HBonds",
+                        "constraints": "H-Bonds",
                         "restraints": "",
-                        "nonbondedMethod": "PME",
                         "nonbondedCutoff": 10.0
                     }
                 }

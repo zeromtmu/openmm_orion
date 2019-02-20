@@ -53,7 +53,16 @@ import math
 
 import time
 
-from MDCubes.utils import MDSimulations
+from MDCubes.utils import (MDSimulations,
+                           md_keys_converter)
+
+import tempfile
+
+import tarfile
+
+import shutil
+
+from Standards import MDEngines
 
 
 class OpenMMSimulations(MDSimulations):
@@ -61,10 +70,19 @@ class OpenMMSimulations(MDSimulations):
     def __init__(self, mdstate, parmed_structure, opt):
         super().__init__(mdstate, parmed_structure, opt)
 
+        opt['platform'] = 'Auto'
+        opt['cuda_opencl_precision'] = 'mixed'
+
         topology = parmed_structure.topology
         positions = mdstate.get_positions()
         velocities = mdstate.get_velocities()
         box = mdstate.get_box_vectors()
+
+        # Create temp directory
+        opt['output_directory'] = tempfile.mkdtemp()
+
+        opt['omm_log_fn'] = os.path.join(opt['output_directory'], opt['outfname']+'.log')
+        opt['omm_trj_fn'] = os.path.join(opt['output_directory'], opt['outfname'] + '.h5')
 
         # Time step in ps
         if opt['hmr']:
@@ -93,16 +111,19 @@ class OpenMMSimulations(MDSimulations):
             positions = parmed_structure.positions
             mdstate.set_positions(positions)
 
+        # Constraint type
+        constraints = md_keys_converter[MDEngines.OpenMM]['constraints'][opt['constraints']]
+
         # OpenMM system
         if box is not None:
-            self.system = parmed_structure.createSystem(nonbondedMethod=eval("app.%s" % opt['nonbondedMethod']),
+            self.system = parmed_structure.createSystem(nonbondedMethod=app.PME,
                                                         nonbondedCutoff=opt['nonbondedCutoff'] * unit.angstroms,
-                                                        constraints=eval("app.%s" % opt['constraints']),
+                                                        constraints=eval("app.%s" % constraints),
                                                         removeCMMotion=False,
                                                         hydrogenMass=4.0 * unit.amu if opt['hmr'] else None)
         else:  # Vacuum
             self.system = parmed_structure.createSystem(nonbondedMethod=app.NoCutoff,
-                                                        constraints=eval("app.%s" % opt['constraints']),
+                                                        constraints=eval("app.%s" % constraints),
                                                         removeCMMotion=False,
                                                         hydrogenMass=4.0 * unit.amu if opt['hmr'] else None)
         # Add Implicit Solvent Force
@@ -111,7 +132,7 @@ class OpenMMSimulations(MDSimulations):
 
             implicit_force = parmed_structure.omm_gbsa_force(eval("app.%s" % opt['implicit_solvent']),
                                                              temperature=opt['temperature'] * unit.kelvin,
-                                                             nonbondedMethod=eval("app.%s" % opt['nonbondedMethod']),
+                                                             nonbondedMethod=app.PME,
                                                              nonbondedCutoff=opt['nonbondedCutoff'] * unit.angstroms)
             self.system.addForce(implicit_force)
 
@@ -369,6 +390,22 @@ class OpenMMSimulations(MDSimulations):
                                                              getEnergy=True,
                                                              enforcePeriodicBox=False)
 
+            if self.opt['SimType'] in ['nvt', 'npt']:
+
+                if self.opt['reporter_interval']:
+                    with(open(self.opt['omm_log_fn'], 'r')) as fr:
+                        log_string = fr.read()
+
+                    self.opt['str_logger'] += '\n' + log_string
+
+                # Save trajectory files
+                if self.opt['trajectory_interval']:
+
+                    tar_fn = self.opt['outfname'] + '.tar.gz'
+
+                    with tarfile.open(tar_fn, mode='w:gz') as archive:
+                        archive.add(self.opt['omm_trj_fn'], arcname=os.path.basename(self.opt['omm_trj_fn']))
+
         self.omm_state = state
 
         return
@@ -399,6 +436,8 @@ class OpenMMSimulations(MDSimulations):
         del self.omm_simulation.integrator
         del self.omm_simulation
 
+        shutil.rmtree(self.opt['output_directory'], ignore_errors=True)
+
         return
 
 
@@ -421,11 +460,9 @@ def getReporters(totalSteps=None, outfname=None, **opt):
         (0) state_reporter: writes energies to '.log' file.
         (1) progress_reporter: prints simulation progress to 'sys.stdout'
         (2) traj_reporter: writes trajectory to file. Supported format .nc, .dcd, .hdf5
-    """
-    if totalSteps is None:
-        totalSteps = opt['steps']
-    if outfname is None:
-        outfname = opt['outfname']
+    # """
+
+    totalSteps = opt['steps']
 
     reporters = []
 
@@ -434,7 +471,7 @@ def getReporters(totalSteps=None, outfname=None, **opt):
         reporter_steps = int(round(opt['reporter_interval']/(
                 opt['timestep'].in_units_of(unit.nanoseconds)/unit.nanoseconds)))
 
-        state_reporter = app.StateDataReporter(outfname+'.log', separator="\t",
+        state_reporter = app.StateDataReporter(opt['omm_log_fn'], separator="\t",
                                                reportInterval=reporter_steps,
                                                step=True,
                                                potentialEnergy=True, kineticEnergy=True, totalEnergy=True,
@@ -456,7 +493,7 @@ def getReporters(totalSteps=None, outfname=None, **opt):
         trajectory_steps = int(round(opt['trajectory_interval'] / (
                 opt['timestep'].in_units_of(unit.nanoseconds) / unit.nanoseconds)))
 
-        traj_reporter = mdtraj.reporters.HDF5Reporter(outfname+'.h5', trajectory_steps)
+        traj_reporter = mdtraj.reporters.HDF5Reporter(opt['omm_trj_fn'], trajectory_steps)
 
         reporters.append(traj_reporter)
 

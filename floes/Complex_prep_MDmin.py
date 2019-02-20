@@ -26,14 +26,18 @@ from cuberecord import (DatasetWriterCube,
 from LigPrepCubes.cubes import (LigandChargeCube,
                                 LigandSetting)
 
+from SystemCubes.cubes import IDSettingCube
+
 from ProtPrepCubes.cubes import ProteinSetting
 
-from ComplexPrepCubes.cubes import (ComplexPrepCube,
-                                    SolvationCube)
+from ComplexPrepCubes.cubes import ComplexPrepCube
+
+
+from SystemCubes.cubes import SolvationCube
 
 from ForceFieldCubes.cubes import ForceFieldCube
 
-from MDCubes.cubes import OpenMMminimizeCube
+from MDCubes.cubes import MDMinimizeCube
 
 job = WorkFloe("Complex Preparation with Minimization",
                title="Complex Preparation with Minimization")
@@ -70,6 +74,9 @@ chargelig.promote_parameter('charge_ligands', promoted_name='charge_ligands',
 ligset = LigandSetting("LigandSetting")
 ligset.set_parameters(lig_res_name='LIG')
 
+ligid = IDSettingCube("Ligand Ids")
+job.add_cube(ligid)
+
 iprot = DatasetReaderCube("Protein Reader", title="Protein Reader")
 iprot.promote_parameter("data_in", promoted_name="protein", title="Protein Input File", description="Protein file name")
 
@@ -89,7 +96,7 @@ ff = ForceFieldCube("ForceField", title="System Parametrization")
 ff.set_parameters(lig_res_name='LIG')
 
 # Minimization
-minimize = OpenMMminimizeCube('minComplex', title="System Minimization")
+minimize = MDMinimizeCube('minComplex', title="System Minimization")
 minimize.promote_parameter('steps', promoted_name='steps', default=0)
 
 ofs = DatasetWriterCube('ofs', title='Out')
@@ -102,7 +109,8 @@ job.add_cubes(iligs, chargelig, ligset, iprot, protset, complx, solvate, ff, min
 
 iligs.success.connect(chargelig.intake)
 chargelig.success.connect(ligset.intake)
-ligset.success.connect(complx.intake)
+ligset.success.connect(ligid.intake)
+ligid.success.connect(complx.intake)
 iprot.success.connect(protset.intake)
 protset.success.connect(complx.protein_port)
 complx.success.connect(solvate.intake)

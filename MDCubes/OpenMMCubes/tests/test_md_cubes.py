@@ -23,9 +23,9 @@ from floe.test import CubeTestRunner
 
 import pytest
 
-from MDCubes.cubes import (OpenMMminimizeCube,
-                           OpenMMNvtCube,
-                           OpenMMNptCube)
+from MDCubes.cubes import (MDMinimizeCube,
+                           MDNvtCube,
+                           MDNptCube)
 
 from simtk import unit, openmm
 
@@ -130,7 +130,7 @@ class MinimizationCubeTester(unittest.TestCase):
     """
 
     def setUp(self):
-        self.cube = OpenMMminimizeCube('minComplex')
+        self.cube = MDMinimizeCube('minComplex')
         self.runner = CubeTestRunner(self.cube)
         self.runner.start()
 #
@@ -207,7 +207,7 @@ class NVTCubeTester(unittest.TestCase):
     Test the OpenMM NVT cube
     """
     def setUp(self):
-        self.cube = OpenMMNvtCube('NVT')
+        self.cube = MDNvtCube('NVT')
         self.runner = CubeTestRunner(self.cube)
         self.runner.start()
 
@@ -270,12 +270,11 @@ class NVTCubeTester(unittest.TestCase):
     @pytest.mark.slow
     def test_success(self):
         self.cube.args.time = 0.01  # in nanoseconds
-        self.cube.args.nonbondedMethod = "PME"
         self.cube.args.nonbondedCutoff = 10.0  # in A
         self.cube.args.temperature = 300.0  # in K
         self.cube.args.restraints = ""
         self.cube.args.save_md_stage = True
-        self.cube.args.constraints = "HBonds"
+        self.cube.args.constraints = "H-Bonds"
         self.cube.args.trajectory_interval = 0.0
         self.cube.args.reporter_interval = 0.0
         self._test_success()
@@ -293,7 +292,7 @@ class NPTCubeTester(unittest.TestCase):
     """
 
     def setUp(self):
-        self.cube = OpenMMNptCube('NPT')
+        self.cube = MDNptCube('NPT')
         self.runner = CubeTestRunner(self.cube)
         self.runner.start()
 
@@ -357,13 +356,12 @@ class NPTCubeTester(unittest.TestCase):
     @pytest.mark.slow
     def test_success(self):
         self.cube.args.time = 0.01  # in nanoseconds
-        self.cube.args.nonbondedMethod = "PME"
         self.cube.args.nonbondedCutoff = 10.0  # in A
         self.cube.args.temperature = 300.0  # in K
         self.cube.args.pressure = 1.0  # in atm
         self.cube.args.restraints = ""
         self.cube.args.save_md_stage = True
-        self.cube.args.constraints = "HBonds"
+        self.cube.args.constraints = "H-Bonds"
         self.cube.args.trajectory_interval = 0.0
         self.cube.args.reporter_interval = 0.0
 

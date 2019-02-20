@@ -18,7 +18,7 @@
 # or its use.
 
 from floe.api import WorkFloe
-from MDCubes.cubes import OpenMMminimizeCube
+from MDCubes.cubes import MDMinimizeCube
 from cuberecord import DatasetReaderCube, DatasetWriterCube
 
 job = WorkFloe("Minimize",
@@ -49,7 +49,7 @@ ifs = DatasetReaderCube("SystemReader", title="System Reader")
 ifs.promote_parameter("data_in", promoted_name="system", title='System Input File',
                       description="System input file")
 
-min = OpenMMminimizeCube('Minimize', title="System Minimization")
+min = MDMinimizeCube('Minimize', title="System Minimization")
 min.promote_parameter('steps', promoted_name='steps', default=0)
 min.set_parameters(save_md_stage=True)
 

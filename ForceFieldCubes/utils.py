@@ -87,7 +87,7 @@ def applyffProtein(protein, opt):
             raise ValueError("Error. The following protein residues are not recognized "
                              "by the extended force field {}".format(unmatched_residues))
 
-    omm_system = forcefield.createSystem(topology, rigidWater=False)
+    omm_system = forcefield.createSystem(topology, rigidWater=False, constraints=None)
     protein_structure = parmed.openmm.load_topology(topology, omm_system, xyz=positions)
 
     return protein_structure
@@ -127,7 +127,7 @@ def applyffWater(water, opt):
         raise ValueError("The following water molecules are not recognized "
                          "by the selected force field {}: {}".format(opt['solvent_forcefield'], unmatched_residues))
 
-    omm_system = forcefield.createSystem(topology, rigidWater=False)
+    omm_system = forcefield.createSystem(topology, rigidWater=False, constraints=None)
     water_structure = parmed.openmm.load_topology(topology, omm_system, xyz=positions)
 
     return water_structure
@@ -248,7 +248,7 @@ def applyffExcipients(excipients, opt):
             top_known, pos_known = oeommutils.oemol_to_openmmTop(rec_excp)
             ff_rec = app.ForceField(opt['protein_forcefield'])
             try:
-                omm_system = ff_rec.createSystem(top_known, rigidWater=False)
+                omm_system = ff_rec.createSystem(top_known, rigidWater=False, constraints=None)
                 rec_struc = parmed.openmm.load_topology(top_known, omm_system, xyz=pos_known)
             except:
                 raise ValueError("Error in the recognised excipient parametrization")
@@ -291,7 +291,7 @@ def applyffExcipients(excipients, opt):
 
         # return excipients_structure
     else:  # All the excipients are recognized by the selected FF
-        omm_system = forcefield.createSystem(topology, rigidWater=False)
+        omm_system = forcefield.createSystem(topology, rigidWater=False, constraints=None)
         excipients_structure = parmed.openmm.load_topology(topology, omm_system, xyz=positions)
 
         # return excipients_structure

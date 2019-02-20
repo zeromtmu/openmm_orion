@@ -24,12 +24,13 @@ from floe.api import WorkFloe
 from cuberecord import (DatasetWriterCube,
                         DatasetReaderCube)
 
-from MDCubes.cubes import (OpenMMminimizeCube,
-                           OpenMMNvtCube,
-                           OpenMMNptCube)
+from MDCubes.cubes import (MDMinimizeCube,
+                           MDNvtCube,
+                           MDNptCube)
 
-from ComplexPrepCubes.cubes import (ComplexPrepCube,
-                                    SolvationCube)
+from ComplexPrepCubes.cubes import ComplexPrepCube
+
+from SystemCubes.cubes import SolvationCube
 
 from ForceFieldCubes.cubes import ForceFieldCube
 
@@ -37,6 +38,8 @@ from ProtPrepCubes.cubes import ProteinSetting
 
 from LigPrepCubes.cubes import (LigandChargeCube,
                                 LigandSetting)
+
+from SystemCubes.cubes import IDSettingCube
 
 from TrjAnalysisCubes.TrajToOEMol import TrajToOEMolCube
 from TrjAnalysisCubes.LigBasedTrajClustering import ClusterOETrajCube
@@ -98,6 +101,9 @@ chargelig.promote_parameter('charge_ligands', promoted_name='charge_ligands',
 ligset = LigandSetting("LigandSetting", title="Ligand Setting")
 ligset.set_parameters(lig_res_name='LIG')
 
+ligid = IDSettingCube("Ligand Ids")
+job.add_cube(ligid)
+
 # Protein Reading cube. The protein prefix parameter is used to select a name for the
 # output system files
 iprot = DatasetReaderCube("ProteinReader", title="Protein Reader")
@@ -122,11 +128,12 @@ solvate.set_parameters(close_solvent=True)
 
 # Force Field Application
 ff = ForceFieldCube("ForceField", title="System Parametrization")
+ff.promote_parameter('protein_forcefield', promoted_name='protein_ff', default='amber99sbildn.xml')
 ff.promote_parameter('ligand_forcefield', promoted_name='ligand_ff', default='GAFF2')
 ff.promote_parameter('other_forcefield', promoted_name='other_ff', default='GAFF2')
 ff.set_parameters(lig_res_name='LIG')
 
-prod = OpenMMNptCube("Production", title="Production")
+prod = MDNptCube("Production", title="Production")
 prod.promote_parameter('time', promoted_name='prod_ns', default=2.0,
                        description='Length of MD run in nanoseconds')
 prod.promote_parameter('temperature', promoted_name='temperature', default=300.0,
@@ -136,22 +143,25 @@ prod.promote_parameter('trajectory_interval', promoted_name='prod_trajectory_int
                        description='Trajectory saving interval in ns')
 prod.promote_parameter('hmr', title='Use Hydrogen Mass Repartitioning', default=False,
                        description='Give hydrogens more mass to speed up the MD')
+prod.promote_parameter('md_engine', promoted_name='md_engine', default='OpenMM',
+                       description='Select the MD Engine')
 prod.set_parameters(reporter_interval=0.002)
 prod.set_parameters(suffix='prod')
 
 
 # Minimization
-minComplex = OpenMMminimizeCube('minComplex', title='System Minimization')
+minComplex = MDMinimizeCube('minComplex', title='System Minimization')
 minComplex.set_parameters(restraints="noh (ligand or protein)")
 minComplex.set_parameters(restraintWt=5.0)
-minComplex.set_parameters(steps=1000)
+minComplex.set_parameters(steps=0)
 minComplex.set_parameters(center=True)
 minComplex.set_parameters(save_md_stage=True)
 minComplex.promote_parameter("hmr", promoted_name="hmr")
+minComplex.promote_parameter("md_engine", promoted_name="md_engine")
 
 
 # NVT simulation. Here the assembled system is warmed up to the final selected temperature
-warmup = OpenMMNvtCube('warmup', title='System Warm Up')
+warmup = MDNvtCube('warmup', title='System Warm Up')
 warmup.set_parameters(time=0.01)
 warmup.promote_parameter("temperature", promoted_name="temperature")
 warmup.set_parameters(restraints="noh (ligand or protein)")
@@ -161,6 +171,7 @@ warmup.set_parameters(reporter_interval=0.001)
 warmup.set_parameters(suffix='warmup')
 warmup.promote_parameter("hmr", promoted_name="hmr")
 warmup.set_parameters(save_md_stage=True)
+warmup.promote_parameter("md_engine", promoted_name="md_engine")
 
 
 # The system is equilibrated at the right pressure and temperature in 3 stages
@@ -169,7 +180,7 @@ warmup.set_parameters(save_md_stage=True)
 # is applied in the first stage while a relatively small one is applied in the latter
 
 # NPT Equilibration stage 1
-equil1 = OpenMMNptCube('equil1', title='System Equilibration I')
+equil1 = MDNptCube('equil1', title='System Equilibration I')
 equil1.set_parameters(time=0.01)
 equil1.promote_parameter("temperature", promoted_name="temperature")
 equil1.promote_parameter("pressure", promoted_name="pressure")
@@ -179,10 +190,11 @@ equil1.set_parameters(restraintWt=2.0)
 equil1.set_parameters(trajectory_interval=0.0)
 equil1.set_parameters(reporter_interval=0.001)
 equil1.set_parameters(suffix='equil1')
+equil1.promote_parameter("md_engine", promoted_name="md_engine")
 
 
 # NPT Equilibration stage 2
-equil2 = OpenMMNptCube('equil2', title='System Equilibration II')
+equil2 = MDNptCube('equil2', title='System Equilibration II')
 equil2.set_parameters(time=0.02)
 equil2.promote_parameter("temperature", promoted_name="temperature")
 equil2.promote_parameter("pressure", promoted_name="pressure")
@@ -192,9 +204,10 @@ equil2.set_parameters(restraintWt=0.5)
 equil2.set_parameters(trajectory_interval=0.0)
 equil2.set_parameters(reporter_interval=0.001)
 equil2.set_parameters(suffix='equil2')
+equil2.promote_parameter("md_engine", promoted_name="md_engine")
 
 # NPT Equilibration stage 3
-equil3 = OpenMMNptCube('equil3', title='System Equilibration III')
+equil3 = MDNptCube('equil3', title='System Equilibration III')
 equil3.set_parameters(time=0.03)
 equil3.promote_parameter("temperature", promoted_name="temperature")
 equil3.promote_parameter("pressure", promoted_name="pressure")
@@ -204,6 +217,7 @@ equil3.set_parameters(restraintWt=0.1)
 equil3.set_parameters(trajectory_interval=0.0)
 equil3.set_parameters(reporter_interval=0.001)
 equil3.set_parameters(suffix='equil3')
+equil3.promote_parameter("md_engine", promoted_name="md_engine")
 
 ofs = DatasetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")
@@ -225,7 +239,8 @@ job.add_cubes(iligs, ligset, iprot, protset, chargelig, complx, solvate, ff,
 
 iligs.success.connect(chargelig.intake)
 chargelig.success.connect(ligset.intake)
-ligset.success.connect(complx.intake)
+ligset.success.connect(ligid.intake)
+ligid.success.connect(complx.intake)
 iprot.success.connect(protset.intake)
 protset.success.connect(complx.protein_port)
 complx.success.connect(solvate.intake)

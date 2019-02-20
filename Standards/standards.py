@@ -37,8 +37,16 @@ class MDStageTypes:
     NPT = 'NPT'
     FEC = 'FEC'
 
-# ---------------- Field Standards -------------- #
 
+# ------------ MD Engines ------------- #
+
+class MDEngines:
+    OpenMM = 'OpenMM'
+    Gromacs = 'Gromacs'
+    all = [OpenMM, Gromacs]
+
+
+# ---------------- Field Standards -------------- #
 
 class Fields:
     # The Title field is used to set the system name
@@ -47,10 +55,10 @@ class Fields:
     # The ID field should be used as identification number for ligands, proteins or complexes
     id = OEField("ID_OPLMD", Types.Int, meta=OEFieldMeta().set_option(Meta.Source.ID))
 
-    # The LigID field is used to keep track of the ligand order
-    ligid = OEField("LigID_OPLMD", Types.Int, meta=OEFieldMeta().set_option(Meta.Source.ID))
+    # The SysID field is used to keep track of the system order
+    sysid = OEField("SysID_OPLMD", Types.Int, meta=OEFieldMeta().set_option(Meta.Source.ID))
 
-    # The ConfID field is used to identify a particular conformer of a ligand
+    # The ConfID field is used to identify a particular conformer
     confid = OEField("ConfID_OPLMD", Types.Int, meta=OEFieldMeta().set_option(Meta.Source.ID))
 
     # The Ligand field should be used to save in a record a ligand as an OEMolecule
@@ -135,7 +143,7 @@ class MDRecords:
 
     class MDStageRecord(OERecord):
 
-        def __init__(self, stage_name, stage_type, system_record, log=None, trajectory=None):
+        def __init__(self, stage_name, stage_type, system_record, log=None, trajectory=None, trajectory_engine=None):
             super().__init__()
             self.set_value(Fields.stage_name, stage_name)
             self.set_value(Fields.stage_type, stage_type)
@@ -143,4 +151,13 @@ class MDRecords:
             if log is not None:
                 self.set_value(Fields.log_data, log)
             if trajectory is not None:
-                self.set_value(Fields.trajectory, trajectory)
+                if trajectory_engine not in MDEngines.all:
+                    raise ValueError("The selected MD engine is not supported")
+
+                trj_meta = OEFieldMeta()
+                trj_meta.set_attribute(Meta.Annotation.Description, trajectory_engine)
+
+                trj_field = OEField(Fields.trajectory.get_name(), Fields.trajectory.get_type(),
+                                    meta=trj_meta)
+                self.set_value(trj_field, trajectory)
+

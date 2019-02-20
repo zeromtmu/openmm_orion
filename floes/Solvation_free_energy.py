@@ -24,18 +24,21 @@ from floe.api import WorkFloe
 from cuberecord import (DatasetWriterCube,
                         DatasetReaderCube)
 
-from ComplexPrepCubes.cubes import SolvationCube
+from SystemCubes.cubes import SolvationCube
+
 from ForceFieldCubes.cubes import ForceFieldCube
 
 from LigPrepCubes.cubes import (LigandChargeCube,
                                 LigandSetting)
 
+from SystemCubes.cubes import IDSettingCube
+
 from YankCubes.cubes import (YankSolvationFECube,
                              YankProxyCube)
 
-from MDCubes.cubes import (OpenMMminimizeCube,
-                           OpenMMNvtCube,
-                           OpenMMNptCube)
+from MDCubes.cubes import (MDMinimizeCube,
+                           MDNvtCube,
+                           MDNptCube)
 
 from TrjAnalysisCubes.traj_cubes import MDFloeReportCube
 
@@ -82,6 +85,8 @@ ligset = LigandSetting("LigandSetting")
 ligset.set_parameters(lig_res_name='LIG')
 job.add_cube(ligset)
 
+ligid = IDSettingCube("Ligand Ids")
+job.add_cube(ligid)
 
 solvate = SolvationCube("Solvation", title="System Solvation")
 solvate.promote_parameter("density", promoted_name="density", title="Solution density in g/ml", default=1.0,
@@ -123,7 +128,7 @@ solvationfe.set_parameters(lig_res_name='LIG')
 job.add_cube(solvationfe)
 
 # Minimization
-minimize = OpenMMminimizeCube("Minimize", title="System Minimization")
+minimize = MDMinimizeCube("Minimize", title="System Minimization")
 minimize.set_parameters(restraints='noh ligand')
 minimize.set_parameters(restraintWt=5.0)
 minimize.set_parameters(center=True)
@@ -132,7 +137,7 @@ job.add_cube(minimize)
 
 
 # NVT Warm-up
-warmup = OpenMMNvtCube('warmup', title='System Warm Up')
+warmup = MDNvtCube('warmup', title='System Warm Up')
 warmup.set_parameters(time=0.02)
 warmup.promote_parameter("temperature", promoted_name="temperature")
 warmup.set_parameters(restraints="noh ligand")
@@ -145,7 +150,7 @@ job.add_cube(warmup)
 
 
 # NPT Equilibration stage
-equil = OpenMMNptCube('equil', title='System Equilibration')
+equil = MDNptCube('equil', title='System Equilibration')
 equil.set_parameters(time=0.02)
 equil.promote_parameter("temperature", promoted_name="temperature")
 equil.promote_parameter("pressure", promoted_name="pressure")
@@ -170,7 +175,8 @@ job.add_cube(fail)
 
 iligs.success.connect(chargelig.intake)
 chargelig.success.connect(ligset.intake)
-ligset.success.connect(solvate.intake)
+ligset.success.connect(ligid.intake)
+ligid.success.connect(solvate.intake)
 solvate.success.connect(ff.intake)
 ff.success.connect(minimize.intake)
 minimize.success.connect(warmup.intake)

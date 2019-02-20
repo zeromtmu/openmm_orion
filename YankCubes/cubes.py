@@ -48,7 +48,8 @@ from YankCubes import utils as yankutils
 
 from Standards import (MDStageTypes,
                        Fields,
-                       MDRecords)
+                       MDRecords,
+                       MDEngines)
 
 import copy
 
@@ -401,7 +402,7 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                     archive.add(output_directory, arcname='.', recursive=True)
 
                 # Create Large file object if required
-                lf = omm_utils.upload_file(tar_fn, opt['system_title']+'.tar.gz')
+                lf = omm_utils.upload_file(tar_fn, orion_name=opt['system_title']+'.tar.gz')
 
                 str_logger += '\n' + '-' * 32 + ' SIMULATION ' + '-' * 32
 
@@ -411,7 +412,7 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                 md_stage_record = MDRecords.MDStageRecord(self.title, MDStageTypes.FEC,
                                                           MDRecords.MDSystemRecord(system, mdstate),
                                                           log=str_logger,
-                                                          trajectory=lf)
+                                                          trajectory=lf, trajectory_engine=MDEngines.OpenMM)
                 if current_iterations == 0:
                     record.set_value(Fields.trj_garbage_field, [lf])
                 else:
@@ -932,7 +933,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                     archive.add(output_directory, arcname='.', recursive=True)
 
                 # Create Large file object if required
-                lf = omm_utils.upload_file(tar_fn, opt['system_title']+'.tar.gz')
+                lf = omm_utils.upload_file(tar_fn, orion_name=opt['system_title']+'.tar.gz')
 
                 str_logger += '\n' + '-' * 32 + ' SIMULATION ' + '-' * 32
 
@@ -943,7 +944,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                                                           MDRecords.MDSystemRecord(complex,
                                                                                    mdstate),
                                                           log=str_logger,
-                                                          trajectory=lf)
+                                                          trajectory=lf, trajectory_engine=MDEngines.OpenMM)
                 if current_iterations != 0:
                     # md_stages.append(md_stage_record)
                     md_stages[-1] = md_stage_record

@@ -172,7 +172,6 @@ def release(ctx):
     with open("requirements_dev.txt", "w") as f:
         f.writelines(original_requirements)
 
-
 @task
 def clean(ctx):
     """
