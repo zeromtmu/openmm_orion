@@ -1,16 +1,10 @@
 import traceback
 
 from cuberecord import OERecordComputeCube
+
 from Standards import Fields
 
-from openeye import oedepict
-
-
 from floereport import FloeReport, LocalFloeReport
-
-import os
-
-from tempfile import TemporaryDirectory
 
 from floe.api import parameter
 
