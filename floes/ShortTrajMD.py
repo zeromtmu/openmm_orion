@@ -20,8 +20,8 @@
 
 from floe.api import WorkFloe
 
-from cuberecord import (DatasetWriterCube,
-                        DatasetReaderCube)
+from cuberecord import ( DatasetWriterCube,
+                         DatasetReaderCube)
 
 from MDCubes.cubes import (MDMinimizeCube,
                            MDNvtCube,

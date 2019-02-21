@@ -30,6 +30,7 @@
         "packmol==18.169",
         "parmed==3.0.1",
         "pdbfixer==1.4",
+        "pip==18.0",
         "pymbar==3.0.3",
         "pyparsing==2.3.0",
         "python==3.6.6",
@@ -41,5 +42,5 @@
     "name": "MD Orion Package",
     "python_version": "3.6",
     "requirements": "requirements_dev.txt",
-    "version": "0.8.0a0"
+    "version": "0.8.0a1"
 }

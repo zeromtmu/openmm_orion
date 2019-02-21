@@ -6,7 +6,7 @@ import re
 
 from floe.api import ParallelMixin
 
-from datarecord import Types
+from datarecord import Types, OEField
 
 from cuberecord import OERecordComputeCube
 
