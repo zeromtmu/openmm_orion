@@ -223,7 +223,7 @@ equil3.set_parameters(suffix='equil3')
 equil3.promote_parameter("md_engine", promoted_name="md_engine")
 
 ofs = DatasetWriterCube('ofs', title='MD Out')
-ofs.promote_parameter("data_out", promoted_name="md_out")
+ofs.promote_parameter("data_out", promoted_name="out")
 
 fail = DatasetWriterCube('fail', title='Failures')
 fail.promote_parameter("data_out", promoted_name="fail")

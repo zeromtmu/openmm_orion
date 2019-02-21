@@ -281,9 +281,16 @@ def ligand_to_svg_stmd(ligand, ligand_name):
 
     with TemporaryDirectory() as output_directory:
 
+        lig_copy = oechem.OEMol(ligand)
+
+        if len(ligand_name) < 15:
+            lig_copy.SetTitle(ligand_name)
+        else:
+            lig_copy.SetTitle(ligand_name[0:13] + '...')
+
         img_fn = os.path.join(output_directory, "img.svg")
 
-        oegrapheme.OEPrepareDepictionFrom3D(ligand)
+        oegrapheme.OEPrepareDepictionFrom3D(lig_copy)
 
         colorg = oechem.OELinearColorGradient()
         colorg.AddStop(oechem.OEColorStop(0.0, oechem.OEDarkBlue))
@@ -296,16 +303,12 @@ def ligand_to_svg_stmd(ligand, ligand_name):
 
         width, height = 150, 150
         opts = oedepict.OE2DMolDisplayOptions(width, height, oedepict.OEScale_AutoScale)
-        disp = oedepict.OE2DMolDisplay(ligand, opts)
+        opts.SetTitleLocation(oedepict.OETitleLocation_Bottom)
+        disp = oedepict.OE2DMolDisplay(lig_copy, opts)
 
         oegrapheme.OEAddGlyph(disp, color_bfactor, oechem.OEIsTrueAtom())
 
         oedepict.OERenderMolecule(img_fn, disp)
-
-        if len(ligand_name) < 15:
-            ligand.SetTitle(ligand_name)
-        else:
-            ligand.SetTitle(ligand_name[0:13] + '...')
 
         svg_lines = ""
         marker = False
