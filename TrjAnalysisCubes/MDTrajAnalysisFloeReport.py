@@ -183,11 +183,6 @@ _clus_floe_report_midHtml0 = """
 </head>
 <body>
 <div class="cb-floe-report-wrapper">
-  <h3 class="cb-floe-report__dev-alert">
-    NOTE: this is an Alpha Test version.
-    <br>
-    <small>We are actively working on improving the MD sampling.</small>
-  </h3>
   <div class="cb-floe-report__row">
   <div class="cb-floe-report__column cb-floe-report__sidebar">
     {query_depiction}
@@ -236,7 +231,7 @@ def MakeClusterInfoText(dataDict, rgbVec):
     text = []
     nFrames = dataDict['nFrames']
     text.append("""
-      <br/><br/>
+      <br/>
       <div class="cb-floe-report-element--analysis">""")
     text.append('Clustering by ligand RMSD after alignment by active site C_alphas:\n' )
     text.append('        <br>- Cluster method {}\n'.format( dataDict['ClusterMethod']) )
@@ -361,6 +356,9 @@ class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
 
             trajSVG = utl.RequestOEField(oetrajRecord, 'TrajSVG', Types.String)
 
+            # Extract the label for the MMPBSA score for the whole trajectory
+            mmpbsaLabelStr = utl.RequestOEField(record, 'Floe_report_label_OPLMD', Types.String)
+
             # Extract Ligand average Bfactor
             ligand_bfactor = utl.RequestOEField(oetrajRecord, 'LigAverage', Types.Chem.Mol)
 
@@ -424,6 +422,10 @@ class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
                 report_file.write(_clus_floe_report_midHtml0.format(
                     query_depiction=oedepict.OEWriteImageToString("svg", img).decode("utf8")))
 
+                report_file.write("""      <h3>
+                        {mmpbsaLabel}
+                      </h3>""".format(mmpbsaLabel=mmpbsaLabelStr ))
+
                 analysis_txt = MakeClusterInfoText(clusData, clusRGB)
                 report_file.write("".join(analysis_txt))
 
@@ -444,7 +446,7 @@ class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
 
                 report_file.write("""      <input type="radio" name="tab" id="cb-floe-report__tab-{tabID}-header">
                       <label class="cb-floe-report__tab-label" for="cb-floe-report__tab-{tabID}-header">Initial Pose</label>
-                      """.format(tabID=CurrentTabId+1, clusNum=i, r=rgb[0], g=rgb[1], b=rgb[2]))
+                      """.format(tabID=CurrentTabId+1, clusNum=i ))
 
                 report_file.write("""      <div class="cb-floe-report__tab-content">
                         {traj}
