@@ -37,7 +37,7 @@ class IDSettingCube(OERecordComputeCube):
     classification = [["System Preparation", "OEChem"]]
     tags = ['OEChem']
     description = """
-    This cube set and ID for each record as an integer. If the primary molecule has 
+    This cube set an ID for each record as an integer. If the primary molecule has 
     multiple conformers these are spit in single molecules 
 
     Input:
@@ -227,9 +227,9 @@ class SolvationCube(ParallelMixin, OERecordComputeCube):
 
     solvents = parameter.StringParameter(
         'solvents',
-        default='[H]O[H]',
+        default='tip3p',
         help_text='Select solvents. The solvents are specified as comma separated smiles strings'
-                  'e.g. [H]O[H], C(Cl)(Cl)Cl, CS(=O)C')
+                  'e.g. [H]O[H], C(Cl)(Cl)Cl, CS(=O)C or special keywords like tip3p')
 
     molar_fractions = parameter.StringParameter(
         'molar_fractions',

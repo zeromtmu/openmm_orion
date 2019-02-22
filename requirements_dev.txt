@@ -10,5 +10,5 @@ OpenEye-Artemis==0.3.2
 OpenEye-ensemble2img==0.1.1
 OpenEye-floereport==0.1.2
 OpenEye_oetrajanalysis==0.1.4.3
-OpenEye-orionplatform==0.1.13
+OpenEye-orionplatform==0.1.12
 Openeye-toolkits==2018.2.1
