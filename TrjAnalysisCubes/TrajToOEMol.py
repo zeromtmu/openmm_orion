@@ -26,6 +26,7 @@ from tempfile import TemporaryDirectory
 
 import tarfile
 
+
 class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
     title = 'Traj to OEMol Cube'
 
@@ -101,24 +102,29 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
                 opt['Logger'].info('{} Temp Directory: {}'.format(system_title, output_directory))
 
                 # kludge for local floe with traj already in current directory
-                trajID = system_title+'_'+str(idx)+'-prod.h5'
-                if os.path.exists( trajID):
-                    opt['Logger'].info('{} local Trajectory file {} exists'.format( system_title, trajID))
+                trajID = system_title + '_' + str(idx) + '-prod.tar.gz'
+
+                if os.path.exists(trajID):
+                    opt['Logger'].info('{} local Trajectory file {} exists'.format(system_title, trajID))
+                    if md_stageLast_record.has_value(Fields.trajectory):
+                        trj_field = md_stageLast_record.get_field(Fields.trajectory.get_name())
+                    if md_stageLast_record.has_value(Fields.orion_local_trj_field):
+                        trj_field = md_stageLast_record.get_field(Fields.trajectory.get_name())
+
                 elif md_stageLast_record.has_value(Fields.trajectory):
                     trajID = md_stageLast_record.get_value(Fields.trajectory)
                     trj_field = md_stageLast_record.get_field(Fields.trajectory.get_name())
-                    trj_meta = trj_field.get_meta()
-                    md_engine = trj_meta.get_attribute(Meta.Annotation.Description)
 
                 elif md_stageLast_record.has_value(Fields.orion_local_trj_field):
-                    opt['Logger'].info('{} Orion S3 Trajectory Field Detected'.format( system_title))
+                    opt['Logger'].info('{} Orion S3 Trajectory Field Detected'.format(system_title))
                     trajID = md_stageLast_record.get_value(Fields.orion_local_trj_field)
                     trj_field = md_stageLast_record.get_field(Fields.trajectory.get_name())
-                    trj_meta = trj_field.get_meta()
-                    md_engine = trj_meta.get_attribute(Meta.Annotation.Description)
                 else:
                     raise ValueError("No trajectory have been found in the selected stage record {}".format(
                         md_stageLast_record.get_value(Fields.stage_name)))
+
+                trj_meta = trj_field.get_meta()
+                md_engine = trj_meta.get_attribute(Meta.Annotation.Description)
 
                 trj_selected_filename = os.path.join(output_directory, "trajectory.tar.gz")
 
@@ -144,7 +150,7 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
 
                 opt['Logger'].info('{} Setup topology has {} atoms'.format(system_title, setupOEMol.NumAtoms()))
 
-                # Generate multiconformer protein and ligand OEMols from the trajectory
+                # Generate multi-conformer protein and ligand OEMols from the trajectory
                 opt['Logger'].info('{} Generating protein and ligand trajectory OEMols'.format(system_title))
 
                 ptraj, ltraj = utl.ExtractAlignedProtLigTraj(setupOEMol, output_directory, md_engine)

@@ -254,13 +254,13 @@ def MakeClusterInfoText(dataDict, rgbVec):
             <span>Status</span>
           </div>\n
 """)
-    #
-    for i, (count,rgb) in enumerate(zip(dataDict['ClusterCounts'],rgbVec)):
+
+    for i, (count, rgb) in enumerate(zip(dataDict['ClusterCounts'], rgbVec)):
         percent = int(100*count/nFrames)
-        if percent<2:
+        if percent < 2:
             continue
         status = 'major'
-        if percent<10:
+        if percent < 10:
             status = 'minor (no analysis)'
         text.append("""
           <div class="cb-floe-report__analysis-table-row" style="
@@ -269,14 +269,14 @@ def MakeClusterInfoText(dataDict, rgbVec):
             <span>{clusID}</span>
             <span>{percent}%</span>
             <span>{status}</span>
-          </div>\n""".format( clusID=i, percent=percent, status=status,
-                            r=rgb[0], g=rgb[1], b=rgb[2]))
-    #
+          </div>\n""".format(clusID=i, percent=percent, status=status,
+                             r=rgb[0], g=rgb[1], b=rgb[2]))
+
     text.append("""
         </div>
       </div>
     """)
-    #
+
     return text
 
 
@@ -363,12 +363,12 @@ class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
             ligand_bfactor = utl.RequestOEField(oetrajRecord, 'LigAverage', Types.Chem.Mol)
 
             # Extract the three plots from the TrajClus record
-            analysesDone = utl.RequestOEField( record, 'AnalysesDone', Types.StringVec)
+            analysesDone = utl.RequestOEField(record, 'AnalysesDone', Types.StringVec)
 
             if 'TrajClus' not in analysesDone:
-                raise ValueError('{} does not have TrajClus analyses done'.format(system_title) )
+                raise ValueError('{} does not have TrajClus analyses done'.format(system_title))
             else:
-                opt['Logger'].info('{} found TrajClus analyses'.format(system_title) )
+                opt['Logger'].info('{} found TrajClus analyses'.format(system_title))
 
             # Extract the relevant traj SVG from the TrajClus record
             clusRecord = utl.RequestOEField(record, 'TrajClus', Types.Record)
@@ -388,10 +388,10 @@ class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
             clusData['ClusterMethod'] = utl.RequestOEField(clusRecord, 'ClusterMethod', Types.String)
             clusData['HDBSCAN_alpha'] = utl.RequestOEField(clusRecord, 'HDBSCAN_alpha', Types.Float)
             clusData['nClusters'] = utl.RequestOEField(clusRecord, 'nClusters', Types.Int)
-            clusData['ClusterVec'] = utl.RequestOEField( clusRecord, 'Clusters', Types.IntVec)
-            clusData['ClusterCounts'] = utl.RequestOEField( clusRecord, 'ClusterCounts', Types.IntVec)
+            clusData['ClusterVec'] = utl.RequestOEField(clusRecord, 'Clusters', Types.IntVec)
+            clusData['ClusterCounts'] = utl.RequestOEField(clusRecord, 'ClusterCounts', Types.IntVec)
 
-            opt['Logger'].info('{} finished writing analysis files'.format(system_title) )
+            opt['Logger'].info('{} finished writing analysis files'.format(system_title))
 
             # prepare the 2D structure depiction
             oedepict.OEPrepareDepiction(ligInitPose)
@@ -400,7 +400,7 @@ class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
 
             # get the palette of graph marker colors
             nClustersP1 = clusData['nClusters']+1
-            clusRGB = utl.ColorblindRGBMarkerColors( nClustersP1)
+            clusRGB = utl.ColorblindRGBMarkerColors(nClustersP1)
             clusRGB[-1] = (76, 76, 76)
 
             with TemporaryDirectory() as output_directory:

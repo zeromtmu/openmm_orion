@@ -304,7 +304,7 @@ class GromacsSimulations(MDSimulations):
 
         else:
             # Generate topology files
-            parmed_structure.save(opt['grm_top_fn'], overwrite=True, combine='all')
+            parmed_structure.save(opt['grm_top_fn'], overwrite=True)
 
             subprocess.check_call(['gmx',
                                    'grompp',

@@ -2,7 +2,7 @@ import click
 
 from openeye import oechem
 
-from datarecord import read_mol_record
+from datarecord import read_mol_record, OEField
 
 from Standards import Fields
 
@@ -36,7 +36,7 @@ def main(ctx):
 @click.option("--profile", help="OCLI profile name", default="default")
 @click.pass_context
 def dataset(ctx, filename, id, profile=None, max_retries=2):
-    """ Records Extraction"""
+    """Records Extraction"""
 
     ctx.obj['filename'] = filename
 
@@ -78,7 +78,7 @@ def dataset(ctx, filename, id, profile=None, max_retries=2):
 
 
 @dataset.command("trajectory")
-@click.option("--format", help="Trajectory format", type=click.Choice(['h5', 'tar.gz']), default='h5')
+@click.option("--format", help="Trajectory format", default='tar.gz')
 @click.option("--stgn", help="MD Stage number", default="all")
 @click.option("--fixname", help="Edit the trajectory file name", default=None)
 @click.pass_context
@@ -116,10 +116,13 @@ def trajectory_extraction(ctx, format, stgn, fixname):
 
             if stage.has_value(Fields.trajectory):
                 fnt = stage.get_value(Fields.trajectory)
+                trj_field = stage.get_field(Fields.trajectory.get_name())
+                trj_meta = trj_field.get_meta()
 
             elif stage.has_value(Fields.orion_local_trj_field):
-
                 trj_id = stage.get_value(Fields.orion_local_trj_field)
+                trj_field = stage.get_field(Fields.orion_local_trj_field.get_name())
+                trj_meta = trj_field.get_meta()
 
                 suffix = ''
                 if stage.has_value(Fields.log_data):
@@ -140,7 +143,12 @@ def trajectory_extraction(ctx, format, stgn, fixname):
                 continue
 
             if fixname is not None:
-                stage.set_value(Fields.trajectory, fnt)
+                trj_field = OEField(Fields.trajectory.get_name(),
+                                    Fields.trajectory.get_type(),
+                                    meta=trj_meta)
+
+                stage.set_value(trj_field, fnt)
+
                 stages_work_on[idx] = stage
 
             record.set_value(Fields.md_stages, stages_work_on)
