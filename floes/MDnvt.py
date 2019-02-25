@@ -54,6 +54,8 @@ nvt = MDNvtCube('nvt', title='NVT simulation')
 nvt.promote_parameter('time', promoted_name='nanoseconds', default=0.01)
 nvt.promote_parameter('temperature', promoted_name='temperature', default=300.0,
                       description='Selected temperature in K')
+nvt.promote_parameter('md_engine', promoted_name='md_engine', default='OpenMM',
+                      description='Select the MD Engine')
 # Restraints
 nvt.set_parameters(restraints='noh (ligand or protein)')
 nvt.set_parameters(restraintWt=5.0)

@@ -51,6 +51,8 @@ ifs.promote_parameter("data_in", promoted_name="system", title='System Input Fil
 
 min = MDMinimizeCube('Minimize', title="System Minimization")
 min.promote_parameter('steps', promoted_name='steps', default=0)
+min.promote_parameter('md_engine', promoted_name='md_engine', default='OpenMM',
+                      description='Select the MD Engine')
 min.set_parameters(save_md_stage=True)
 
 ofs = DatasetWriterCube('ofs', title='Out')

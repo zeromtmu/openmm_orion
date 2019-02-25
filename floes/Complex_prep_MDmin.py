@@ -98,6 +98,8 @@ ff.set_parameters(lig_res_name='LIG')
 # Minimization
 minimize = MDMinimizeCube('minComplex', title="System Minimization")
 minimize.promote_parameter('steps', promoted_name='steps', default=0)
+minimize.promote_parameter('md_engine', promoted_name='md_engine', default='OpenMM',
+                           description='Select the MD Engine')
 
 ofs = DatasetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")

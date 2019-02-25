@@ -58,6 +58,8 @@ npt.promote_parameter('temperature', promoted_name='temperature', default=300.0,
                       description='Selected temperature in K')
 npt.promote_parameter('pressure', promoted_name='pressure', default=1.0,
                       description='Selected pressure in atm')
+npt.promote_parameter('md_engine', promoted_name='md_engine', default='OpenMM',
+                      description='Select the MD Engine')
 
 # Restraints
 npt.set_parameters(restraints="ca_protein or (noh ligand)")

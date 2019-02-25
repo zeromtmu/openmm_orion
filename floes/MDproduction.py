@@ -52,12 +52,14 @@ ifs.promote_parameter("data_in", promoted_name="system", title='System Input Fil
                       description="System input file")
 
 npt = MDNptCube('npt', title="Production")
-npt.promote_parameter('time', promoted_name='nanoseconds', default=2.0,
+npt.promote_parameter('time', promoted_name='nanoseconds', default=0.01,
                       description='Length of MD run in nanoseconds')
 npt.promote_parameter('temperature', promoted_name='temperature', default=300.0,
                       description='Selected temperature in K')
 npt.promote_parameter('pressure', promoted_name='pressure', default=1.0,
                       description='Selected pressure in atm')
+npt.promote_parameter('md_engine', promoted_name='md_engine', default='OpenMM',
+                      description='Select the MD Engine')
 
 # Trajectory and logging info frequency intervals
 npt.promote_parameter('trajectory_interval', promoted_name='trajectory_interval', default=0.001,

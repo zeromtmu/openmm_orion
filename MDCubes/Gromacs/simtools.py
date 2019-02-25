@@ -20,6 +20,8 @@ import tempfile
 
 from simtk import unit
 
+from simtk.openmm import app
+
 import simtk
 
 from MDCubes.utils import (MDSimulations,
@@ -50,11 +52,97 @@ from Standards import MDEngines
 
 class GromacsSimulations(MDSimulations):
 
-    def __init__(self, mdstate, parmed_structure, opt):
+    def __init__(self, mdstate,parmed_structure, opt):
         super().__init__(mdstate, parmed_structure, opt)
 
         velocities = mdstate.get_velocities()
         box = mdstate.get_box_vectors()
+
+        if box is not None:
+            omm_system = parmed_structure.createSystem(nonbondedMethod=app.CutoffPeriodic,
+                                                       nonbondedCutoff=10.0 * unit.angstroms,
+                                                       constraints=None,
+                                                       removeCMMotion=False,
+                                                       rigidWater=False)
+        else:
+            omm_system = parmed_structure.createSystem(nonbondedMethod=app.NoCutoff,
+                                                       constraints=None,
+                                                       removeCMMotion=False,
+                                                       rigidWater=False)
+        # Define unique atom types
+        atom_types_dic = {}
+        count_id = 0
+
+        # # Copy the topology and positions
+        topology = parmed_structure.topology
+        positions = parmed_structure.positions
+        #
+        # for c in topology.chains():
+        #     for r in c.residues():
+        #         for a in r.atoms():
+        #             if r.name + a.name in atom_types_dic:
+        #                 a.id = atom_types_dic[r.name + a.name]
+        #             else:
+        #                 a.id = 'O' + str(count_id)
+        #                 count_id += 1
+        #                 atom_types_dic[r.name + a.name] = a.id
+
+
+
+
+
+
+
+        def check_water(res):
+            two_bonds = list(res.bonds())
+
+            if len(two_bonds) == 2:
+
+                waters = []
+
+                for bond in two_bonds:
+
+                    elem0 = bond[0].element
+                    elem1 = bond[1].element
+
+                    if (elem0.atomic_number == 1 and elem1.atomic_number == 8) \
+                            or (elem0.atomic_number == 8 and elem1.atomic_number == 1):
+                        waters.append(True)
+
+                if all(waters):
+                    return True
+
+            else:
+                return False
+
+        for c in topology.chains():
+            for r in c.residues():
+                for a in r.atoms():
+                    if r.name + a.name in atom_types_dic:
+                        a.id = atom_types_dic[r.name + a.name]
+                    else:
+                        if check_water(r):
+                            if a.element.atomic_number == 1:
+                                a.id = 'HW'
+                            else:
+                                a.id = 'OW'
+                            atom_types_dic[r.name + a.name] = a.id
+                        else:
+                            a.id = 'O' + str(count_id)
+                            count_id += 1
+                            atom_types_dic[r.name + a.name] = a.id
+
+
+
+
+
+
+
+
+        # Define a new parmed structure with the new unique atom types
+        new_system_structure = parmed.openmm.load_topology(topology,
+                                                           system=omm_system,
+                                                           xyz=positions)
 
         self.stepLen = 0.002 * unit.picoseconds
 
@@ -66,18 +154,18 @@ class GromacsSimulations(MDSimulations):
         if opt['center'] and box is not None:
             opt['Logger'].info("[{}] Centering is On".format(opt['CubeTitle']))
             # Numpy array in A
-            coords = parmed_structure.coordinates
+            coords = new_system_structure.coordinates
             # System Center of Geometry
             cog = np.mean(coords, axis=0)
             # System box vectors
-            box_v = parmed_structure.box_vectors.in_units_of(unit.angstrom) / unit.angstrom
+            box_v = new_system_structure.box_vectors.in_units_of(unit.angstrom) / unit.angstrom
             box_v = np.array([box_v[0][0], box_v[1][1], box_v[2][2]])
             # Translation vector
             delta = box_v / 2 - cog
             # New Coordinates
             new_coords = coords + delta
-            parmed_structure.coordinates = new_coords
-            positions = parmed_structure.positions
+            new_system_structure.coordinates = new_coords
+            positions = new_system_structure.positions
             mdstate.set_positions(positions)
 
         if box is not None:
@@ -173,8 +261,8 @@ class GromacsSimulations(MDSimulations):
         opt['mdp_template'] = mdp_template
 
         # Generate coordinate file
-        parmed_structure.save(opt['grm_gro_fn'], overwrite=True)
-        parmed_structure.save(opt['grm_pdb_fn'], overwrite=True)
+        new_system_structure.save(opt['grm_gro_fn'], overwrite=True)
+        new_system_structure.save(opt['grm_pdb_fn'], overwrite=True)
 
         # Generate Gromacs .mdp configuration files
         with open(opt['mdp_fn'], 'w') as of:
@@ -193,7 +281,7 @@ class GromacsSimulations(MDSimulations):
         if apply_restraints:
 
             # Generate topology files
-            parmed_structure.save(opt['grm_top_fn'], overwrite=True, combine='all')
+            new_system_structure.save(opt['grm_top_fn'], overwrite=True, combine='all')
 
             opt['Logger'].info("[{}] RESTRAINT mask applied to: {}"
                                "\tRestraint weight: {}".format(opt['CubeTitle'],
@@ -304,7 +392,7 @@ class GromacsSimulations(MDSimulations):
 
         else:
             # Generate topology files
-            parmed_structure.save(opt['grm_top_fn'], overwrite=True)
+            new_system_structure.save(opt['grm_top_fn'], overwrite=True)
 
             subprocess.check_call(['gmx',
                                    'grompp',
@@ -315,7 +403,6 @@ class GromacsSimulations(MDSimulations):
                                    '-maxwarn', b'5'])
 
         self.mdstate = mdstate
-        self.parmed_structure = parmed_structure
         self.opt = opt
 
         return
@@ -385,6 +472,6 @@ class GromacsSimulations(MDSimulations):
 
     def clean_up(self):
 
-        shutil.rmtree(self.opt['output_directory'], ignore_errors=True)
+        # shutil.rmtree(self.opt['output_directory'], ignore_errors=True)
 
         return
