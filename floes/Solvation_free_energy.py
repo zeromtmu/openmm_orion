@@ -48,7 +48,7 @@ job = WorkFloe("Solvation Free Energy",
 
 job.description = """
 The Solvation Free Energy protocol performs Solvation Free Energy Calculations (SFEC) on
-a set of provided ligands using YANK ( http://getyank.org/latest/ ). The ligands need
+a set of input ligands using YANK ( http://getyank.org/latest/ ). The ligands need
 to have coordinates, correct chemistry and must be neutral. Each ligand can have multiple
 conformers, but each conformer will be prepared and treated as a different ligand.
 The ligands are solvated in water (or other solvent or solvent mixture) and parametrized
