@@ -47,6 +47,8 @@ import io
 
 import shutil
 
+from openeye import oechem
+
 from Standards import MDEngines
 
 
@@ -87,12 +89,6 @@ class GromacsSimulations(MDSimulations):
         #                 count_id += 1
         #                 atom_types_dic[r.name + a.name] = a.id
 
-
-
-
-
-
-
         def check_water(res):
             two_bonds = list(res.bonds())
 
@@ -131,13 +127,6 @@ class GromacsSimulations(MDSimulations):
                             a.id = 'O' + str(count_id)
                             count_id += 1
                             atom_types_dic[r.name + a.name] = a.id
-
-
-
-
-
-
-
 
         # Define a new parmed structure with the new unique atom types
         new_system_structure = parmed.openmm.load_topology(topology,
@@ -274,14 +263,61 @@ class GromacsSimulations(MDSimulations):
         if opt['restraints']:
             res_atom_list = sorted(oeommutils.select_oemol_atom_idx_by_language(opt['molecule'], mask=opt['restraints']))
 
+            protein_list = sorted(oeommutils.select_oemol_atom_idx_by_language(opt['molecule'], mask='protein'))
+
+            if protein_list:
+                protein_range = [min(protein_list), max(protein_list)]
+                last_idx = protein_range[1]
+            else:
+                protein_range = None
+
+            ligand_list = sorted(oeommutils.select_oemol_atom_idx_by_language(opt['molecule'], mask='ligand'))
+
+            if ligand_list:
+                ligand_range = [min(ligand_list), max(ligand_list)]
+                last_idx =ligand_range[1]
+            else:
+                ligand_range = None
+
+            water_list = sorted(oeommutils.select_oemol_atom_idx_by_language(opt['molecule'], mask='water'))
+
+            if water_list:
+                water_range = [min(water_list), max(water_list)]
+                last_idx = water_range[1]
+
+            else:
+                water_range = None
+
+            exc_range = [last_idx + 1]
+
             if res_atom_list:
                 apply_restraints = True
+
+                restraints_dic = {}
+
+                for atmol in opt['molecule'].GetAtoms():
+                    at_idx = atmol.GetIdx()
+                    if at_idx in res_atom_list:
+                        res = oechem.OEAtomGetResidue(atmol)
+                        if oechem.OEIsStandardProteinResidue(res):
+                            if 'system1' in restraints_dic:
+                                restraints_dic['system1'].append(at_idx)
+                            else:
+                                restraints_dic['system1'] = []
+                                restraints_dic['system1'].append(at_idx)
+                        else:
+                            res_name = res.GetName()
+                            if res_name in restraints_dic:
+                                restraints_dic[res_name].append(at_idx)
+                            else:
+                                restraints_dic[res_name] = []
+                                restraints_dic[res_name].append(at_idx)
 
         # Apply restraints
         if apply_restraints:
 
             # Generate topology files
-            new_system_structure.save(opt['grm_top_fn'], overwrite=True, combine='all')
+            new_system_structure.save(opt['grm_top_fn'], overwrite=True)
 
             opt['Logger'].info("[{}] RESTRAINT mask applied to: {}"
                                "\tRestraint weight: {}".format(opt['CubeTitle'],
@@ -302,15 +338,30 @@ class GromacsSimulations(MDSimulations):
 
             count = 0
             with open(opt['grm_res_idx_fn'], 'w') as f:
-                f.write("[ Restraints_idx ]\n")
-                for i in range(0, len(res_atom_list)):
-                    f.write("{:>{digits}}".format(str(res_atom_list[i] + 1), digits=digits))
-                    if count == chunk - 1 or i == len(res_atom_list) - 1:
-                        count = 0
-                        f.write("\n")
-                    else:
-                        f.write(" ")
-                        count += 1
+
+                for key in restraints_dic.keys():
+                    f.write("[ {} ]\n".format(key))
+                    for i in range(0, len(restraints_dic[key])):
+
+                        sel = restraints_dic[key][i]
+
+                        if protein_range is not None and protein_range[0] <= sel <= protein_range[1]:
+                            index_rs = sel - protein_range[0]
+                        elif ligand_range is not None and ligand_range[0] <= sel <= ligand_range[1]:
+                            index_rs = sel - ligand_range[0]
+                        elif water_range is not None and water_range[0] <= sel <= water_range[1]:
+                            index_rs = sel - water_range[0]
+                        else:
+                            index_rs = sel - exc_range[0]
+
+                        f.write("{:>{digits}}".format(str(index_rs + 1), digits=digits))
+                        if count == chunk - 1 or i == len(res_atom_list) - 1:
+                            count = 0
+                            f.write("\n")
+                        else:
+                            f.write(" ")
+                            count += 1
+                    f.write('\n')
 
             # Restrained System index file
             opt['grm_system_fn'] = os.path.join(opt['output_directory'], opt['outfname']+'_sys')
@@ -343,40 +394,53 @@ class GromacsSimulations(MDSimulations):
                     count_systems += 1
 
             # Restrains position file name
-            opt['grm_itp_fn'] = os.path.join(opt['output_directory'], opt['outfname']+'.itp')
+            opt['grm_itp_fn'] = os.path.join(opt['output_directory'], opt['outfname'])
 
-            indx_selection = str(count_systems-1).encode()
+            indx_selection = count_systems
 
-            # Restarints weight
+            # Restraints weight
             res_wgt = opt['restraintWt'] * unit.kilocalories_per_mole / (unit.angstroms ** 2)
 
             # grm unit
             res_wgt_grm = str(int(res_wgt.in_units_of(unit.kilojoule_per_mole / (unit.nanometer ** 2)) / (
                         unit.kilojoule_per_mole / (unit.nanometer ** 2)))).encode()
 
-            p = subprocess.Popen(['gmx', 'genrestr',
-                                  '-f', opt['grm_gro_fn'],
-                                  '-n', opt['grm_ndx_fn'],
-                                  '-o', opt['grm_itp_fn'],
-                                  '-fc', res_wgt_grm, res_wgt_grm, res_wgt_grm],
-                                 stdin=subprocess.PIPE)
+            for key, idx in zip(restraints_dic.keys(), range(indx_selection - len(restraints_dic), indx_selection)):
 
-            p.communicate(indx_selection)
+                p = subprocess.Popen(['gmx', 'genrestr',
+                                      '-f', opt['grm_gro_fn'],
+                                      '-n', opt['grm_ndx_fn'],
+                                      '-o', opt['grm_itp_fn']+'_'+key+'.itp',
+                                      '-fc', res_wgt_grm, res_wgt_grm, res_wgt_grm],
+                                     stdin=subprocess.PIPE)
 
-            new_lines_top = ''
+                p.communicate(str(idx).encode())
+
             with open(opt['grm_top_fn'], 'r') as f:
-                for line in f:
-                    if line.startswith('[ system ]'):
-                        new_lines_top += """
+                lines = f.readlines()
+
+            # itp file names
+            itp_include_fns = {key: opt['grm_itp_fn']+'_'+key+'.itp' for key in restraints_dic.keys()}
+
+            for key in itp_include_fns.keys():
+                for idx in range(0, len(lines)):
+                    if lines[idx] == "[ moleculetype ]\n" and lines[idx + 2].startswith(key):
+                        for count in range(idx + 2, len(lines)):
+                            if lines[count] == "[ moleculetype ]\n":
+                                include = """                
 ; Include Position restraint file
 #ifdef POSRES
-#include "{fname}"
+#include "{}"
 #endif\n\n
-""".format(fname=opt['grm_itp_fn'])
-                    new_lines_top += line
+""".format(itp_include_fns[key])
+                                lines.insert(count - 1, include)
+
+                                break
+                        break
 
             with open(opt['grm_top_fn'], 'w') as f:
-                f.write(new_lines_top)
+                for line in lines:
+                    f.write(line)
 
         # Generate Gromacs .tpr file
         if apply_restraints:
@@ -472,6 +536,6 @@ class GromacsSimulations(MDSimulations):
 
     def clean_up(self):
 
-        # shutil.rmtree(self.opt['output_directory'], ignore_errors=True)
+        shutil.rmtree(self.opt['output_directory'], ignore_errors=True)
 
         return
