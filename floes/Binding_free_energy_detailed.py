@@ -51,20 +51,20 @@ job = WorkFloe('Binding Affinity Detailed',
                title='Binding Affinity Detailed')
 
 job.description = """
-NOTE: this is an Alpha Test version. 
-We are actively working on improving Yank in Orion
-
-The Absolute Binding Affinity Free Energy protocol (ABFE) performs Binding Affinity calculations
-on a set of provided ligands posed in a receptor by using YANK ( http://getyank.org/latest/ ). This floe 
-also accept a YANK yaml file provided by the user. Some of the parameters provided from the yaml file
-are merged with the YANK cube parameters to perform the simulation. 
-The ligands need to have coordinates and correct chemistry. Each ligand can have multiple conformers,
-but each conformer will be prepared and treated as a different ligand.
-The protein needs to be prepared to MD standard: This includes capping the protein,
+The Absolute Binding Affinity Free Energy protocol (ABFE) performs Binding Affinity calculations,
+using YANK ( http://getyank.org/latest/ ),
+on a set of provided ligands posed in a receptor.
+This floe requires a YANK yaml file provided by the user;
+the simulation-relevant parameters provided from the yaml file
+are merged with the YANK cube parameters to perform the simulation.
+The ligands need to have coordinates and correct chemistry.
+Though input separately from the protein,
+ligands need to be already posed in the protein binding site.
+A ligand can have multiple conformers,
+but each conformer will be prepared and treated as a separate ligand.
+The protein needs to be prepared to MD standards: This includes capping the protein,
 resolving missing atoms in protein residues and resolving missing protein loops.
 The parametrization of some common non-standard protein residues is partially supported.
-Though input separately from the protein, Ligands need to be already posed in the
-protein binding site.
 A bound complex is formed, solvated and parametrized according to the selected force fields.
 The unbound state is similarly prepared. For both bound and unbound states the ABFE
 calculation is preceded by minimization, warm up, and equilibration in the presence of

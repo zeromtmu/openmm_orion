@@ -38,13 +38,11 @@ job = WorkFloe('Simple MD',
                title='Simple MD')
 
 job.description = """
-NOTE: this is an Alpha Test version.
-We are actively working on improving the MD sampling.
-
-The Simple MD protocol performs MD simulations given system as input.
-Small organic molecules need to have coordinates, all atoms, and correct chemistry. Each
-molecule can have multiple conformers but each conformer will be run separately
-as a different ligand.
+The Simple MD protocol performs MD simulations given one or more
+complete molecular systems as input, each to be treated in its entirety as a solute.
+The solute need to have coordinates, all atoms, and correct chemistry.
+Each molecular system can have multiple conformers but each conformer will be
+run separately as a different solute.
 Proteins need to be prepared to an MD standard: protein chains must be capped,
 all atoms in protein residues (including hydrogens) must be present, and missing
 protein loops resolved. Crystallographic internal waters should be retained where
