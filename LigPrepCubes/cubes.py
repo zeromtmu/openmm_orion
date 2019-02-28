@@ -30,21 +30,23 @@ from openeye import oechem
 
 class LigandChargeCube(ParallelMixin, OERecordComputeCube):
     title = "Ligand Charge Cube"
-    version = "0.0.0"
+    version = "0.1.0"
     classification = [["Ligand Preparation", "OEChem", "Ligand preparation"]]
     tags = ['OEChem', 'Quacpac']
     description = """
-    This cube charges ligands by using the ELF10 charge method. If the ligands
-    are already charged the cube parameter charge_ligand can be used to skip the
-    charging stage
+    This cube charges small organic molecules by using the ELF10 charge method 
+    (based on am1bcc method). If the ligands are already charged and the user would 
+    like to skip this stage the cube parameter “charge_ligand” can be used. 
+    The cube requires a record as input with small organic molecules to be charged 
+    and produces a new record with the charged molecules.
 
     Input:
     -------
-    oechem.OEMCMol - Streamed-in of the ligand molecules
+    oechem.OEMCMol - Streamed-in of molecule to be charged 
 
     Output:
     -------
-    oechem.OEMCMol - Emits the charged ligands
+    oechem.OEMCMol - Streamed-out of records with the charged molecules.
     """
 
     # Override defaults for some parameters
@@ -113,20 +115,22 @@ class LigandChargeCube(ParallelMixin, OERecordComputeCube):
 
 class LigandSetting(OERecordComputeCube):
     title = "Ligand Setting"
-    version = "0.0.0"
+    version = "0.1.0"
     classification = [["Ligand Preparation", "OEChem", "Ligand preparation"]]
     tags = ['OEChem']
     description = """
-    This cube is setting the ligand to perform MD. The ligand residue name is set as
-    LIG.
-
+    This cube is used to set the ligand residue name as the cube parameter 
+    “lig_res_name” (default: “LIG”). This is necessary to facilitate the 
+    identification of system components during a system splitting.
+    
     Input:
     -------
     Data record Stream - Streamed-in of the ligand molecules
 
     Output:
     -------
-    Data Record Stream - Emits the MD set ligands
+    Data Record Stream - Streamed-out of records where each ligand has
+    a new residue name.
     """
 
     # Override defaults for some parameters
@@ -140,7 +144,7 @@ class LigandSetting(OERecordComputeCube):
     # Ligand Residue Name
     lig_res_name = parameter.StringParameter('lig_res_name',
                                              default='LIG',
-                                             help_text='The ligand residue name')
+                                             help_text='The new ligand residue name')
 
     def begin(self):
         self.opt = vars(self.args)

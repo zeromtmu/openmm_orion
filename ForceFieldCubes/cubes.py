@@ -43,19 +43,37 @@ from simtk import unit
 
 class ForceFieldCube(ParallelMixin, OERecordComputeCube):
     title = "Force Field Application Cube"
-    version = "0.0.0"
+    version = "0.1.0"
     classification = [["Force Field Application", "OEChem"]]
     tags = ['OEChem', 'OEBio', 'OpenMM']
     description = """
-    The system is parametrized by using the selected force fields
+    This cube parametrized a system with the selected force fields. 
+    The cube tries to split a system into components: protein, ligand, 
+    water and excipients. The user can select the parametrization to be 
+    applied to each component. The protein forcefield is limited to 
+    standard amino acids and limited support to non-standard. Sugars 
+    are not currently supported but this will be improved in coming 
+    releases. The cube requires a record as input and produces a new 
+    record where the system has been parametrized. The parametrization 
+    is carried out by using a Parmed object 
+    (https://github.com/ParmEd/ParmEd) 
+    which will be present on the emitted record. The supported protein 
+    force fields are amber99sb-ildn and the new amberfb-15. Small organic
+    molecules like ligands and excipients can be parametrized by using 
+    GAFF, GAFF2 and SMIRNOFF. The system spitting is based on the ligand 
+    residue name. The default one is “LIG” and can be changed by using 
+    the provided cube parameter. Water is currently parametrized by 
+    using TIP3P force field water model only.
 
     Input:
     -------
-    oechem.OEDataRecord - Streamed-in of the system to parametrize
+    oechem.OEDataRecord - Streamed-in of the systems to parametrize
 
     Output:
     -------
-    oechem.OEDataRecord - Emits the force field parametrized system
+    oechem.OEDataRecord - Streamed-out of records with the parametrized systems.
+    Each record will contain a new Parmed object that carry out the 
+    system parametrization
     """
 
     # Override defaults for some parameters
@@ -70,29 +88,30 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
         'protein_forcefield',
         default='amber99sbildn.xml',
         choices=['amber99sbildn.xml', 'amberfb15.xml'],
-        help_text='Force field parameters for protein')
+        help_text='Force field parameters to be applied to the protein')
 
     solvent_forcefield = parameter.StringParameter(
         'solvent_forcefield',
         default='tip3p.xml',
-        help_text='Force field parameters for solvent')
+        help_text='Force field parameters to be applied to the water')
 
     ligand_forcefield = parameter.StringParameter(
         'ligand_forcefield',
         default='GAFF',
         choices=['GAFF', 'GAFF2', 'SMIRNOFF'],
-        help_text='Force field to parametrize the ligand')
+        help_text='Force field to be applied to the ligand')
 
     lig_res_name = parameter.StringParameter(
         'lig_res_name',
         default='LIG',
-        help_text='Ligand residue name')
+        help_text='Ligand residue name. This is used during the spitting to identify the ligand')
 
     other_forcefield = parameter.StringParameter(
         'other_forcefield',
         default='GAFF',
         choices=['GAFF', 'GAFF2', 'SMIRNOFF'],
-        help_text='Force field used to parametrize other molecules not recognized by the protein force field')
+        help_text='Force field used to parametrize other molecules not recognized by the '
+                  'protein force field like excipients')
 
     def begin(self):
         self.opt = vars(self.args)

@@ -16,10 +16,21 @@ from os import environ
 
 
 class MDFloeReportCube(OERecordComputeCube):
-    version = "0.0.0"
+    version = "0.1.0"
     title = "MDFloeReportCube"
     description = """
-    This cube is used to generate an Orion floe report
+    The floe report cube generates an Orion floe report tiling the input ligands. 
+    Each input record must have ligand ID, ligand title, ligand name, the ligand 
+    depiction as svg string, the html report string linked to the ligand and 
+    optionally the ligand report label. 
+    
+    Input:
+    -------
+    Data record Stream - Streamed-in of ligands to be tiled in the Orion floe report
+
+    Output:
+    -------
+    None
     """
     classification = [["Floe Reports"]]
     tags = [tag for lists in classification for tag in lists]

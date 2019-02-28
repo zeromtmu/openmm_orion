@@ -7,6 +7,7 @@ from openeye import oezap
 from simtk import (unit, openmm)
 import parmed
 
+
 def ParmedAndOEMolAtomsMatch( parmedObj, mol):
     # first verify that the total number of atoms match
     pmdAtoms = parmedObj.atoms
@@ -20,7 +21,7 @@ def ParmedAndOEMolAtomsMatch( parmedObj, mol):
             print('different atomic number between parmed ({}) and OEMol({}) atom {}'.
                   format(pmdAtm.atomic_number,oeAtom.GetAtomicNum(),pmdAtm.name))
             return False
-    #
+
     return True
 
 
@@ -143,7 +144,7 @@ def ProtLigInteractionEFromParmedOETraj( pmed, ligOETraj, protOETraj):
     return plIntE, cplxE, protE, ligE
 
 
-def PBSA( ligand, protein):
+def PBSA(ligand, protein):
     bind = oezap.OEBind()
     bind.SetProtein(protein)
     results = oezap.OEBindResults()

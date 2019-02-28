@@ -32,23 +32,31 @@ from floe.constants import ADVANCED
 
 class ComplexPrepCube(OERecordComputeCube):
     title = "Complex Preparation Cube"
-    version = "0.0.0"
+    version = "0.1.0"
     classification = [["Complex Preparation", "OEChem", "Complex preparation"]]
     tags = ['OEChem']
     description = """
-        This cube assembles the complex made of the protein and the
-        ligands. If a ligand presents multiple conformers, then each conformer
-        is bonded to the protein to form the solvated complex. For example if a
-        ligand has 3 conformers then 3 complexes are generated.
+    This cube assembles the complex made of a protein and its docked ligands. 
+    Each ligand must have just one conformer. In order to deal with multiple 
+    conformers, the ligands must be processed by the “ID Setting Cube” which 
+    will split ligand conformers in single conformer. In addition, each ligand 
+    needs to have a ligand ID that can be set by using the “ID Setting Cube” as 
+    well. The ligands must be docked to the target protein otherwise a runtime 
+    error will be raised. If crystallographic water molecules are present in 
+    the target protein, the water molecules that clashes with the docked ligands 
+    will be removed. The ligand is identified by the ligand residue name that 
+    can be set by using the cube parameter. 
+    
+    Input:
+    -------
+    oechem.OEDataRecord - Streamed-in of the ligands
+    oechem.OEDataRecord - Streamed-in of a single target protein
+    
 
-        Input:
-        -------
-        oechem.OEDataRecord - Streamed-in of the protein and ligands
-
-        Output:
-        -------
-        oechem.OEDataRecord - Emits the complex molecules
-        """
+    Output:
+    -------
+    oechem.OEDataRecord - Streamed-out of records with the generated complexes    
+    """
 
     # Override defaults for some parameters
     parameter_overrides = {

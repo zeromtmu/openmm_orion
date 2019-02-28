@@ -43,19 +43,29 @@ from oeommtools import utils as oeommutils
 class MDMinimizeCube(ParallelMixin, OERecordComputeCube):
     title = 'Minimization Cube'
 
-    version = "0.0.0"
+    version = "0.1.0"
     classification = [["Simulation", "OpenMM", "Gromacs", "Minimization"]]
     tags = ['OpenMM', 'Parallel Cube']
 
     description = """
-    Minimize the protein:ligand complex.
+    This cube performs energy minimization on the provided system. The system 
+    must have been parametrized by the Force Field cube and the system Parmed 
+    object must be present on the input record. In addition, a system identification 
+    number must be present on the input record as well. This can be accomplished 
+    by using the “ID Setting Cube”. The system minimization is performed by 
+    the selected MD engine, currently OpenMM and Gromacs only. Restraints 
+    and constraints can be used as well. Currently implicit solvent models can 
+    be used in OpenMM only. The cube requires a record as input and produces 
+    a new record with the minimized system.
+    
+    Input:
+    -------
+    oechem.OEDataRecord - Streamed-in of the systems to minimize
 
-    This cube will take in the streamed complex.oeb.gz file containing
-    the solvated protein:ligand complex and minimize it.
-
-    Input parameters:
-    steps (integer): the number of steps of minimization to apply. If 0
-    the minimization will proceed until convergence is reached
+    Output:
+    -------
+    oechem.OEDataRecord - Streamed-out of records with the systems energy 
+    minimized.
     """
 
     # Override defaults for some parameters
@@ -94,7 +104,8 @@ class MDMinimizeCube(ParallelMixin, OERecordComputeCube):
         help_text="""Mask selection to freeze atoms along the MD
         simulation. Possible keywords are: ligand, protein, water,
         ions, ca_protein, cofactors. The selection can be refined by
-        using logical tokens: not, noh, and, or, diff, around. Not currently implemented in Gromacs""")
+        using logical tokens: not, noh, and, or, diff, around. NOTE:
+        Not currently implemented in Gromacs""")
 
     temperature = parameter.DecimalParameter(
         'temperature',
@@ -114,23 +125,25 @@ class MDMinimizeCube(ParallelMixin, OERecordComputeCube):
         help_text="""None, H-Bonds, H-Angles, or All-Bonds
         Which type of constraints to add to the system.
         None means no bonds are constrained.
-        HBonds means bonds with hydrogen are constrained, etc.""")
+        H-Bonds means bonds with hydrogen are constrained, etc.""")
 
     implicit_solvent = parameter.StringParameter(
         'implicit_solvent',
         default='None',
         choices=['None', 'HCT', 'OBC1', 'OBC2', 'GBn', 'GBn2'],
-        help_text="Implicit Solvent Model. Not currently implemented in Gromacs")
+        help_text="Implicit Solvent Model. NOTE:"
+                  "Not currently implemented in Gromacs")
 
     center = parameter.BooleanParameter(
         'center',
         default=True,
-        description='Center the system to the OpenMM unit cell')
+        description='Center the system to the OpenMM and Gromacs unit cell')
 
     verbose = parameter.BooleanParameter(
         'verbose',
         default=True,
-        description='Increase log file verbosity')
+        description='Increase log file verbosity. NOTE:'
+                    'Not currently implemented in Gromacs')
 
     suffix = parameter.StringParameter(
         'suffix',
@@ -140,7 +153,8 @@ class MDMinimizeCube(ParallelMixin, OERecordComputeCube):
     hmr = parameter.BooleanParameter(
         'hmr',
         default=False,
-        description='On enables Hydrogen Mass Repartitioning. Not currently implemented in Gromacs')
+        description='On enables Hydrogen Mass Repartitioning. NOTE:'
+                    'Not currently implemented in Gromacs')
 
     save_md_stage = parameter.BooleanParameter(
         'save_md_stage',
@@ -288,20 +302,31 @@ class MDMinimizeCube(ParallelMixin, OERecordComputeCube):
 
 class MDNvtCube(ParallelMixin, OERecordComputeCube):
     title = 'NVT Cube'
-    version = "0.0.0"
+    version = "0.1.0"
     classification = [["Simulation", "OpenMM", "Gromacs", "NVT"]]
     tags = ['OpenMM', 'Parallel Cube']
 
-    description = """NVT simulation of the protein:ligand complex.
+    description = """
+    This cube performs MD simulation in the NVT ensemble on the provided system. 
+    The system must have been parametrized by the Force Field cube and the system Parmed 
+    object must be present on the input record. In addition, a system identification 
+    number must be present on the input record as well. This can be accomplished 
+    by using the “ID Setting Cube”. The NVT MD simulation is performed by the selected 
+    MD engine, currently OpenMM and Gromacs only. Restraints and constraints can be 
+    used as well. Currently implicit solvent models can be used in OpenMM only. 
+    The cube requires a record as input and produces a new record with the time evolved 
+    system. The total sampling time can be set by using the “time” cube parameter 
+    while the trajectory snapshots can be set by using the “trajectory_interval” cube 
+    parameter.
 
-    This cube will take in the streamed complex.oeb.gz file containing
-    the solvated protein:ligand complex and will perform a MD simulation
-    at constant temperature and volume
 
-    Input parameters:
-    ----------------
-      picosec (decimal): Number of picoseconds to warm up the complex.
-      temperature (decimal): target temperature
+    Input:
+    -------
+    oechem.OEDataRecord - Streamed-in of the systems to NVT sample
+
+    Output:
+    -------
+    oechem.OEDataRecord - Streamed-out of records with the systems NVT time evolved
     """
 
     # Override defaults for some parameters
@@ -343,7 +368,8 @@ class MDNvtCube(ParallelMixin, OERecordComputeCube):
         help_text="""Mask selection to freeze atoms along the MD
         simulation. Possible keywords are: ligand, protein, water,
         ions, ca_protein, cofactors. The selection can be refined by
-        using logical tokens: not, noh, and, or, diff, around. Not currently implemented in Gromacs""")
+        using logical tokens: not, noh, and, or, diff, around. NOTE:
+        Not currently implemented in Gromacs""")
 
     nonbondedCutoff = parameter.DecimalParameter(
         'nonbondedCutoff',
@@ -364,7 +390,8 @@ class MDNvtCube(ParallelMixin, OERecordComputeCube):
         'implicit_solvent',
         default='None',
         choices=['None', 'HCT', 'OBC1', 'OBC2', 'GBn', 'GBn2'],
-        help_text="Implicit Solvent Model. Not currently implemented in Gromacs")
+        help_text="Implicit Solvent Model. NOTE:"
+                  "Not currently implemented in Gromacs")
 
     trajectory_interval = parameter.DecimalParameter(
         'trajectory_interval',
@@ -391,12 +418,14 @@ class MDNvtCube(ParallelMixin, OERecordComputeCube):
     verbose = parameter.BooleanParameter(
         'verbose',
         default=True,
-        help_text='Increase log file verbosity')
+        help_text='Increase log file verbosity. NOTE: '
+                  'Not currently implemented in Gromacs')
 
     hmr = parameter.BooleanParameter(
         'hmr',
         default=False,
-        help_text='On enables Hydrogen Mass Repartitioning. Not currently implemented in Gromacs')
+        help_text='On enables Hydrogen Mass Repartitioning. NOTE: '
+                  'Not currently implemented in Gromacs')
 
     save_md_stage = parameter.BooleanParameter(
         'save_md_stage',
@@ -558,21 +587,31 @@ class MDNvtCube(ParallelMixin, OERecordComputeCube):
 
 class MDNptCube(ParallelMixin, OERecordComputeCube):
     title = 'NPT Cube'
-    version = "0.0.0"
+    version = "0.1.0"
     classification = [["Simulation", "OpenMM", "Gromacs", "NPT"]]
     tags = ['OpenMM', 'Parallel Cube']
 
-    description = """NPT simulation of the protein:ligand complex.
+    description = """
+    This cube performs MD simulation in the NPT ensemble on the provided system. 
+    The system must have been parametrized by the Force Field cube and the system Parmed 
+    object must be present on the input record. In addition, a system identification 
+    number must be present on the input record as well. This can be accomplished 
+    by using the “ID Setting Cube”. The NPT MD simulation is performed by the selected 
+    MD engine, currently OpenMM and Gromacs only. Restraints and constraints can be 
+    used as well. Currently implicit solvent models can be used in OpenMM only. 
+    The cube requires a record as input and produces a new record with the time evolved 
+    system. The total sampling time can be set by using the “time” cube parameter 
+    while the trajectory snapshots can be set by using the “trajectory_interval” cube 
+    parameter.
 
-    This cube will take in the streamed complex.oeb.gz file containing
-    the solvated protein:ligand complex and will perform a MD simulation at
-    constant temperature and pressure.
 
-    Input parameters:
-    ----------------
-      picosec (decimal): Number of picoseconds to perform the complex simulation.
-      temperature (decimal): target temperature
-      pressure (decimal): target pressure
+    Input:
+    -------
+    oechem.OEDataRecord - Streamed-in of the systems to NVT sample
+
+    Output:
+    -------
+    oechem.OEDataRecord - Streamed-out of records with the systems NPT time evolved
     """
 
     # Override defaults for some parameters
