@@ -5,6 +5,7 @@ import numpy as np
 from openeye import oechem
 from openeye import oezap
 from simtk import (unit, openmm)
+import parmed
 
 def ParmedAndOEMolAtomsMatch( parmedObj, mol):
     # first verify that the total number of atoms match
@@ -26,13 +27,55 @@ def ParmedAndOEMolAtomsMatch( parmedObj, mol):
 def ProtLigInteractionEFromParmedOETraj( pmed, ligOETraj, protOETraj):
     # Generate ligand and protein parmed subsystems
     print('Generating ligand and protein parmed subsystems')
-    proteinPmed = pmed.split()[0][0]
-    ligandPmed = pmed.split()[1][0]
+
+    pmd_split = pmed.split()
+
+    ligand_check = False
+    for idx, pmd_str in enumerate(pmd_split):
+
+        if len(pmd_str[0].atoms) == ligOETraj.NumAtoms():
+
+            for parm_at, oe_at in zip(pmd_str[0].atoms, ligOETraj.GetAtoms()):
+                if parm_at.atomic_number != oe_at.GetAtomicNum():
+                    raise ValueError("Atomic number mismatch between the Parmed ligand and "
+                                     "the OpenEye ligand topologies: {} - {}".
+                                     format(parm_at.atomic_number, oe_at.GetAtomicNum()))
+
+            ligandPmed = pmd_str[0]
+            lig_idx = idx
+            ligand_check = True
+            break
+
+    if not ligand_check:
+        raise ValueError("The ligand cannot be found")
+
+    proteinPmed = parmed.Structure()
+
+    for idx in range(0, lig_idx):
+        proteinPmed += pmd_split[idx][0]
+
+    if len(proteinPmed.atoms) == protOETraj.NumAtoms():
+
+        for parm_at, oe_at in zip(proteinPmed.atoms, protOETraj.GetAtoms()):
+            if parm_at.atomic_number != oe_at.GetAtomicNum():
+                raise ValueError(
+                    "Atomic number mismatch between the Parmed Protein and the OpenEye Protein topologies: {} - {}".
+                        format(parm_at.atomic_number, oe_at.GetAtomicNum()))
+    else:
+        raise ValueError("Parmed Protein and OpenEye Protein number of atoms mismatch {} vs {}".
+                         format(proteinPmed.atoms, protOETraj.NumAtoms()))
+
+
+    # proteinPmed = pmed.split()[0][0]
+    # ligandPmed = pmed.split()[1][0]
     complexPmed = proteinPmed + ligandPmed
+
+
+
     #complexPmed.save("system.pdb", overwrite=True)
     #
     # Check that protein and ligand atoms match between parmed subsystems, ligOETraj, and protOETraj
-    if not ParmedAndOEMolAtomsMatch( ligandPmed, ligOETraj):
+    if not ParmedAndOEMolAtomsMatch(ligandPmed, ligOETraj):
         print('ligand atoms do not match between parmed and ligOETraj')
         return None, None, None, None
     if not ParmedAndOEMolAtomsMatch( proteinPmed, protOETraj):
@@ -92,9 +135,9 @@ def ProtLigInteractionEFromParmedOETraj( pmed, ligOETraj, protOETraj):
         cplxState = cplxSim.context.getState(getEnergy=True)
         cplxIntraE = cplxState.getPotentialEnergy().in_units_of(
             unit.kilocalorie_per_mole) / unit.kilocalorie_per_mole
-        cplxE.append( cplxIntraE)
+        cplxE.append(cplxIntraE)
 
-        plIntE.append( cplxIntraE-(protIntraE+ligIntraE) )
+        plIntE.append(cplxIntraE-(protIntraE+ligIntraE))
 
     print('OpenMM energies computed for protein, ligand, and complex trajectories')
     return plIntE, cplxE, protE, ligE

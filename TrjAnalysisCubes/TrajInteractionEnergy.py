@@ -15,6 +15,7 @@ from Standards import Fields
 import TrjAnalysisCubes.utils as utl
 import TrjAnalysisCubes.TrajMMPBSA_utils as mmpbsa
 
+
 class TrajInteractionEnergyCube(ParallelMixin, OERecordComputeCube):
     title = "Trajectory Interaction Energies"
     version = "0.0.0"
