@@ -29,20 +29,23 @@ def ProtLigInteractionEFromParmedOETraj( pmed, ligOETraj, protOETraj):
     # Generate ligand and protein parmed subsystems
     print('Generating ligand and protein parmed subsystems')
 
+    # Parmed spitting
     pmd_split = pmed.split()
 
     ligand_check = False
     for idx, pmd_str in enumerate(pmd_split):
 
         if len(pmd_str[0].atoms) == ligOETraj.NumAtoms():
-
+            # Checking Parmed ligand topology vs OE ligand topology
             for parm_at, oe_at in zip(pmd_str[0].atoms, ligOETraj.GetAtoms()):
                 if parm_at.atomic_number != oe_at.GetAtomicNum():
                     raise ValueError("Atomic number mismatch between the Parmed ligand and "
                                      "the OpenEye ligand topologies: {} - {}".
                                      format(parm_at.atomic_number, oe_at.GetAtomicNum()))
-
+            # Parmed ligand structure
             ligandPmed = pmd_str[0]
+
+            # Ligand index in the parmed list splitting
             lig_idx = idx
             ligand_check = True
             break
@@ -52,9 +55,11 @@ def ProtLigInteractionEFromParmedOETraj( pmed, ligOETraj, protOETraj):
 
     proteinPmed = parmed.Structure()
 
+    # Parmed Protein structure
     for idx in range(0, lig_idx):
         proteinPmed += pmd_split[idx][0]
 
+    # Checking Parmed Protein topology vs OE Protein topology
     if len(proteinPmed.atoms) == protOETraj.NumAtoms():
 
         for parm_at, oe_at in zip(proteinPmed.atoms, protOETraj.GetAtoms()):
@@ -66,15 +71,9 @@ def ProtLigInteractionEFromParmedOETraj( pmed, ligOETraj, protOETraj):
         raise ValueError("Parmed Protein and OpenEye Protein number of atoms mismatch {} vs {}".
                          format(proteinPmed.atoms, protOETraj.NumAtoms()))
 
-
-    # proteinPmed = pmed.split()[0][0]
-    # ligandPmed = pmed.split()[1][0]
+    # Parmed Complex
     complexPmed = proteinPmed + ligandPmed
 
-
-
-    #complexPmed.save("system.pdb", overwrite=True)
-    #
     # Check that protein and ligand atoms match between parmed subsystems, ligOETraj, and protOETraj
     if not ParmedAndOEMolAtomsMatch(ligandPmed, ligOETraj):
         print('ligand atoms do not match between parmed and ligOETraj')

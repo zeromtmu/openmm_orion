@@ -172,6 +172,24 @@ def release(ctx):
     with open("requirements_dev.txt", "w") as f:
         f.writelines(original_requirements)
 
+
+
+@task
+def docs(ctx):
+    clean_docs(ctx)
+    curdir = os.getcwd()
+    run('cube_doc MDOrion docs/source')
+    run('floe_doc "OpenEye MDOrion Floes" floes docs/source')
+    os.chdir('docs')
+    run("make html")
+    os.chdir(curdir)
+
+# @task
+# def make_package_docs(ctx):
+#     docs(ctx)
+#     run("make_package_docs docs/build/html/cubes")
+
+
 @task
 def clean(ctx):
     """
