@@ -120,10 +120,12 @@ complx.set_parameters(lig_res_name='LIG')
 # The solvation cube is used to solvate the system and define the ionic strength of the solution
 
 solvate = SolvationCube("Hydration", title="System Hydration")
-solvate.promote_parameter('density', promoted_name='density', default=1.03,
-                          description="Solution density in g/ml")
-solvate.promote_parameter('salt_concentration', promoted_name='salt_concentration', default=50.0,
-                          description='Salt concentration (Na+, Cl-) in millimolar')
+# solvate.promote_parameter('density', promoted_name='density', default=1.03,
+#                           description="Solution density in g/ml")
+# solvate.promote_parameter('salt_concentration', promoted_name='salt_concentration', default=50.0,
+#                           description='Salt concentration (Na+, Cl-) in millimolar')
+solvate.set_parameters(density=1.03)
+solvate.set_parameters(salt_concentration=50.0)
 solvate.set_parameters(close_solvent=True)
 
 # Force Field Application
@@ -136,9 +138,9 @@ ff.set_parameters(lig_res_name='LIG')
 prod = MDNptCube("Production", title="Production")
 prod.promote_parameter('time', promoted_name='prod_ns', default=2.0,
                        description='Length of MD run in nanoseconds')
-prod.promote_parameter('temperature', promoted_name='temperature', default=300.0,
-                       description='Temperature (Kelvin)')
-prod.promote_parameter('pressure', promoted_name='pressure', default=1.0, description='Pressure (atm)')
+# prod.promote_parameter('temperature', promoted_name='temperature', default=300.0,
+#                        description='Temperature (Kelvin)')
+# prod.promote_parameter('pressure', promoted_name='pressure', default=1.0, description='Pressure (atm)')
 prod.promote_parameter('trajectory_interval', promoted_name='prod_trajectory_interval', default=0.002,
                        description='Trajectory saving interval in ns')
 prod.promote_parameter('hmr', title='Use Hydrogen Mass Repartitioning', default=False,
@@ -163,7 +165,7 @@ minComplex.promote_parameter("md_engine", promoted_name="md_engine")
 # NVT simulation. Here the assembled system is warmed up to the final selected temperature
 warmup = MDNvtCube('warmup', title='System Warm Up')
 warmup.set_parameters(time=0.01)
-warmup.promote_parameter("temperature", promoted_name="temperature")
+# warmup.promote_parameter("temperature", promoted_name="temperature")
 warmup.set_parameters(restraints="noh (ligand or protein)")
 warmup.set_parameters(restraintWt=2.0)
 warmup.set_parameters(trajectory_interval=0.0)
@@ -182,8 +184,8 @@ warmup.promote_parameter("md_engine", promoted_name="md_engine")
 # NPT Equilibration stage 1
 equil1 = MDNptCube('equil1', title='System Equilibration I')
 equil1.set_parameters(time=0.01)
-equil1.promote_parameter("temperature", promoted_name="temperature")
-equil1.promote_parameter("pressure", promoted_name="pressure")
+# equil1.promote_parameter("temperature", promoted_name="temperature")
+# equil1.promote_parameter("pressure", promoted_name="pressure")
 equil1.promote_parameter("hmr", promoted_name="hmr")
 equil1.set_parameters(restraints="noh (ligand or protein)")
 equil1.set_parameters(restraintWt=2.0)
@@ -196,8 +198,8 @@ equil1.promote_parameter("md_engine", promoted_name="md_engine")
 # NPT Equilibration stage 2
 equil2 = MDNptCube('equil2', title='System Equilibration II')
 equil2.set_parameters(time=0.02)
-equil2.promote_parameter("temperature", promoted_name="temperature")
-equil2.promote_parameter("pressure", promoted_name="pressure")
+# equil2.promote_parameter("temperature", promoted_name="temperature")
+# equil2.promote_parameter("pressure", promoted_name="pressure")
 equil2.promote_parameter("hmr", promoted_name="hmr")
 equil2.set_parameters(restraints="noh (ligand or protein)")
 equil2.set_parameters(restraintWt=0.5)
@@ -209,8 +211,8 @@ equil2.promote_parameter("md_engine", promoted_name="md_engine")
 # NPT Equilibration stage 3
 equil3 = MDNptCube('equil3', title='System Equilibration III')
 equil3.set_parameters(time=0.03)
-equil3.promote_parameter("temperature", promoted_name="temperature")
-equil3.promote_parameter("pressure", promoted_name="pressure")
+# equil3.promote_parameter("temperature", promoted_name="temperature")
+# equil3.promote_parameter("pressure", promoted_name="pressure")
 equil3.promote_parameter("hmr", promoted_name="hmr")
 equil3.set_parameters(restraints="ca_protein or (noh ligand)")
 equil3.set_parameters(restraintWt=0.1)
@@ -257,16 +259,16 @@ prod.failure.connect(fail.intake)
 prod.success.connect(ofs.intake)
 prod.success.connect(trajCube.intake)
 trajCube.success.connect(IntECube.intake)
-trajCube.failure.connect(fail.intake)
+# trajCube.failure.connect(fail.intake)
 IntECube.success.connect(PBSACube.intake)
-IntECube.failure.connect(fail.intake)
+# IntECube.failure.connect(fail.intake)
 PBSACube.success.connect(clusCube.intake)
-PBSACube.failure.connect(fail.intake)
+# PBSACube.failure.connect(fail.intake)
 clusCube.success.connect(report_gen.intake)
-clusCube.failure.connect(fail.intake)
+# clusCube.failure.connect(fail.intake)
 report_gen.success.connect(report.intake)
-report_gen.failure.connect(fail.intake)
-report.failure.connect(fail.intake)
+# report_gen.failure.connect(fail.intake)
+# report.failure.connect(fail.intake)
 
 if __name__ == "__main__":
     job.run()

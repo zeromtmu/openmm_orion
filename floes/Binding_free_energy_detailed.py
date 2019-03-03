@@ -123,12 +123,12 @@ job.add_cube(complx)
 
 # The solvation cube is used to solvate the system and define the ionic strength of the solution
 solvateComplex = SolvationCube("HydrationComplex", title="Complex Hydration")
-solvateComplex.promote_parameter('density', promoted_name='density', default=1.03,
-                                 description="Solution density in g/ml")
-solvateComplex.promote_parameter('salt_concentration', promoted_name='salt_concentration', default=50.0,
-                                 description='Salt concentration (Na+, Cl-) in millimolar')
-solvateComplex.set_parameters(solvents='[H]O[H]')
-solvateComplex.set_parameters(molar_fractions='1.0')
+# solvateComplex.promote_parameter('density', promoted_name='density', default=1.03,
+#                                  description="Solution density in g/ml")
+# solvateComplex.promote_parameter('salt_concentration', promoted_name='salt_concentration', default=50.0,
+#                                  description='Salt concentration (Na+, Cl-) in millimolar')
+solvateComplex.set_parameters(density=1.03)
+solvateComplex.set_parameters(salt_concentration=50.0)
 solvateComplex.set_parameters(close_solvent=True)
 job.add_cube(solvateComplex)
 
@@ -152,10 +152,10 @@ abfe = YankBindingFECube("YankABFE", title="Yank ABFE")
 abfe.promote_parameter('iterations', promoted_name='iterations',
                        description="Total Number of Yank iterations for the entire floe. "
                                    "A Yank iteration is 500 MD steps")
-abfe.promote_parameter('temperature', promoted_name='temperature', default=300.0,
-                       description='Temperature (Kelvin)')
-abfe.promote_parameter('pressure', promoted_name='pressure', default=1.0,
-                       description='Pressure (atm)')
+# abfe.promote_parameter('temperature', promoted_name='temperature', default=300.0,
+#                        description='Temperature (Kelvin)')
+# abfe.promote_parameter('pressure', promoted_name='pressure', default=1.0,
+#                        description='Pressure (atm)')
 abfe.promote_parameter('hmr', promoted_name='hmr', default=False,
                        description='Hydrogen Mass Repartitioning')
 abfe.promote_parameter('restraints', promoted_name='restraints',
@@ -166,7 +166,7 @@ abfe.set_parameters(lig_res_name='LIG')
 abfe.promote_parameter('verbose', promoted_name='verbose', default=False, description="Yank verbose mode on/off")
 abfe.promote_parameter('user_yank_yaml_file', promoted_name='yaml', default=None)
 abfe.set_parameters(sampler='repex')
-abfe.promote_parameter('protocol_repex', promoted_name='protocol_repex', default='windows_29',
+abfe.promote_parameter('protocol_repex', promoted_name='protocol_repex', default='auto_protocol',
                        description="Select the Repex window schedule protocol")
 job.add_cube(abfe)
 
@@ -182,7 +182,7 @@ job.add_cube(minComplex)
 # NVT simulation. Here the assembled system is warmed up to the final selected temperature
 warmupComplex = MDNvtCube('warmupComplex', title='Complex Warm Up')
 warmupComplex.set_parameters(time=0.02)
-warmupComplex.promote_parameter('temperature', promoted_name='temperature')
+# warmupComplex.promote_parameter('temperature', promoted_name='temperature')
 warmupComplex.promote_parameter('hmr', promoted_name='hmr')
 warmupComplex.set_parameters(restraints="noh (ligand or protein)")
 warmupComplex.set_parameters(restraintWt=2.0)
@@ -199,8 +199,8 @@ job.add_cube(warmupComplex)
 # NPT Equilibration stage 1
 equil1Complex = MDNptCube('equil1Complex', title='Complex Equilibration I')
 equil1Complex.set_parameters(time=0.02)
-equil1Complex.promote_parameter('temperature', promoted_name='temperature')
-equil1Complex.promote_parameter('pressure', promoted_name='pressure')
+# equil1Complex.promote_parameter('temperature', promoted_name='temperature')
+# equil1Complex.promote_parameter('pressure', promoted_name='pressure')
 equil1Complex.promote_parameter('hmr', promoted_name='hmr')
 equil1Complex.set_parameters(restraints="noh (ligand or protein)")
 equil1Complex.set_parameters(restraintWt=2.0)
@@ -212,8 +212,8 @@ job.add_cube(equil1Complex)
 # NPT Equilibration stage 2
 equil2Complex = MDNptCube('equil2Complex', title='Complex Equilibration II')
 equil2Complex.set_parameters(time=0.02)
-equil2Complex.promote_parameter('temperature', promoted_name='temperature')
-equil2Complex.promote_parameter('pressure', promoted_name='pressure')
+# equil2Complex.promote_parameter('temperature', promoted_name='temperature')
+# equil2Complex.promote_parameter('pressure', promoted_name='pressure')
 equil2Complex.promote_parameter('hmr', promoted_name='hmr')
 equil2Complex.set_parameters(restraints="noh (ligand or protein)")
 equil2Complex.set_parameters(restraintWt=0.5)
@@ -225,8 +225,8 @@ job.add_cube(equil2Complex)
 # NPT Equilibration stage 3
 equil3Complex = MDNptCube('equil3Complex', title='Complex Equilibration III')
 equil3Complex.set_parameters(time=0.02)
-equil3Complex.promote_parameter('temperature', promoted_name='temperature')
-equil3Complex.promote_parameter('pressure', promoted_name='pressure')
+# equil3Complex.promote_parameter('temperature', promoted_name='temperature')
+# equil3Complex.promote_parameter('pressure', promoted_name='pressure')
 equil3Complex.promote_parameter('hmr', promoted_name='hmr')
 equil3Complex.set_parameters(restraints="ca_protein or (noh ligand)")
 equil3Complex.set_parameters(restraintWt=0.1)
@@ -239,8 +239,6 @@ job.add_cube(equil3Complex)
 
 # Solvate Ligands
 solvateLigand = SolvationCube("HydrationLigand", title="Unbound Ligand Hydration")
-solvateLigand.set_parameters(solvents='[H]O[H]')
-solvateLigand.set_parameters(molar_fractions='1.0')
 solvateLigand.set_parameters(close_solvent=True)
 job.add_cube(solvateLigand)
 
@@ -261,7 +259,7 @@ job.add_cube(minimizeLigand)
 # Ligand NVT Warm-up
 warmupLigand = MDNvtCube('warmupLigand', title='Unbound Ligand Warm Up')
 warmupLigand.set_parameters(time=0.02)
-warmupLigand.promote_parameter('temperature', promoted_name='temperature')
+# warmupLigand.promote_parameter('temperature', promoted_name='temperature')
 warmupLigand.promote_parameter('hmr', promoted_name='hmr')
 warmupLigand.set_parameters(restraints="noh ligand")
 warmupLigand.set_parameters(restraintWt=2.0)
@@ -273,8 +271,8 @@ job.add_cube(warmupLigand)
 # Ligand NPT Equilibration stage
 equilLigand = MDNptCube('equilLigand', title='Unbound Ligand Equilibration')
 equilLigand.set_parameters(time=0.02)
-equilLigand.promote_parameter('temperature', promoted_name='temperature')
-equilLigand.promote_parameter('pressure', promoted_name='pressure')
+# equilLigand.promote_parameter('temperature', promoted_name='temperature')
+# equilLigand.promote_parameter('pressure', promoted_name='pressure')
 equilLigand.promote_parameter('hmr', promoted_name='hmr')
 equilLigand.set_parameters(restraints="noh ligand")
 equilLigand.set_parameters(restraintWt=0.1)

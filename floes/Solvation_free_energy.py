@@ -92,7 +92,7 @@ solvate = SolvationCube("Solvation", title="System Solvation")
 solvate.promote_parameter("density", promoted_name="density", title="Solution density in g/ml", default=1.0,
                           description="Solution Density in g/ml")
 solvate.promote_parameter("solvents", promoted_name="solvents", title="Solvent components",
-                          default='[H]O[H]',
+                          default='tip3p',
                           description="Comma separated smiles strings of solvent components")
 solvate.promote_parameter("molar_fractions", promoted_name="molar_fractions",
                           title="Molar fractions",
@@ -118,10 +118,10 @@ job.add_cube(yank_proxy)
 solvationfe = YankSolvationFECube("SolvationFE", title="Yank Solvation")
 solvationfe.promote_parameter('iterations', promoted_name='iterations')
 solvationfe.promote_parameter('verbose', promoted_name='verbose', default=False)
-solvationfe.promote_parameter('temperature', promoted_name='temperature', default=300.0,
-                              description='Temperature (Kelvin)')
-solvationfe.promote_parameter('pressure', promoted_name='pressure', default=1.0,
-                              description='Pressure (atm)')
+# solvationfe.promote_parameter('temperature', promoted_name='temperature', default=300.0,
+#                               description='Temperature (Kelvin)')
+# solvationfe.promote_parameter('pressure', promoted_name='pressure', default=1.0,
+#                               description='Pressure (atm)')
 solvationfe.promote_parameter('hmr', promoted_name='hmr', default=False,
                               description='Hydrogen Mass Repartitioning')
 solvationfe.set_parameters(lig_res_name='LIG')
@@ -139,7 +139,7 @@ job.add_cube(minimize)
 # NVT Warm-up
 warmup = MDNvtCube('warmup', title='System Warm Up')
 warmup.set_parameters(time=0.02)
-warmup.promote_parameter("temperature", promoted_name="temperature")
+# warmup.promote_parameter("temperature", promoted_name="temperature")
 warmup.set_parameters(restraints="noh ligand")
 warmup.set_parameters(restraintWt=2.0)
 warmup.set_parameters(trajectory_interval=0.0)
@@ -152,8 +152,8 @@ job.add_cube(warmup)
 # NPT Equilibration stage
 equil = MDNptCube('equil', title='System Equilibration')
 equil.set_parameters(time=0.02)
-equil.promote_parameter("temperature", promoted_name="temperature")
-equil.promote_parameter("pressure", promoted_name="pressure")
+# equil.promote_parameter("temperature", promoted_name="temperature")
+# equil.promote_parameter("pressure", promoted_name="pressure")
 equil.promote_parameter("hmr", promoted_name="hmr")
 equil.set_parameters(restraints="noh ligand")
 equil.set_parameters(restraintWt=0.1)
