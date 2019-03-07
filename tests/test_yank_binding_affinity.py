@@ -1,4 +1,4 @@
-# (C) 2018 OpenEye Scientific Software Inc. All rights reserved.
+# (C) 2019 OpenEye Scientific Software Inc. All rights reserved.
 #
 # TERMS FOR USE OF SAMPLE CODE The software below ("Sample Code") is
 # provided to current licensees or subscribers of OpenEye products or
@@ -44,6 +44,7 @@ PACKAGE_DIR = os.path.dirname(os.path.dirname(MDOrion.__file__))
 
 FILE_DIR = os.path.join(PACKAGE_DIR, "tests", "data")
 FLOES_DIR = os.path.join(PACKAGE_DIR, "floes")
+FLOES_DEV_DIR = os.path.join(PACKAGE_DIR, "floes_dev")
 
 session = OrionSession()
 
@@ -55,7 +56,7 @@ class TestYankBindingFloes(FloeTestCase):
     @pytest.mark.slow
     def test_yank_binding_repex_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
-            os.path.join(FLOES_DIR, "Binding_free_energy_repex.py"),
+            os.path.join(FLOES_DEV_DIR, "Binding_free_energy_repex.py"),
             run_timeout=43200,
             queue_timeout=2000
         )
@@ -154,7 +155,7 @@ class TestYankBindingFloes(FloeTestCase):
     @pytest.mark.slow
     def test_yank_binding_repex_multi_ligs_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
-            os.path.join(FLOES_DIR, "Binding_free_energy_repex.py"),
+            os.path.join(FLOES_DEV_DIR, "Binding_free_energy_repex.py"),
             run_timeout=43200,
             queue_timeout=2000
         )
@@ -250,7 +251,7 @@ class TestYankBindingFloes(FloeTestCase):
     @pytest.mark.slow
     def test_yank_binding_sams_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
-            os.path.join(FLOES_DIR, "Binding_free_energy_sams.py"),
+            os.path.join(FLOES_DEV_DIR, "Binding_free_energy_sams.py"),
             run_timeout=43200,
             queue_timeout=2000
         )
@@ -346,7 +347,7 @@ class TestYankBindingFloes(FloeTestCase):
     @pytest.mark.slow
     def test_yank_binding_sams_multi_ligs_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
-            os.path.join(FLOES_DIR, "Binding_free_energy_sams.py"),
+            os.path.join(FLOES_DEV_DIR, "Binding_free_energy_sams.py"),
             run_timeout=43200,
             queue_timeout=2000
         )

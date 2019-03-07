@@ -1,4 +1,4 @@
-# (C) 2018 OpenEye Scientific Software Inc. All rights reserved.
+# (C) 2019 OpenEye Scientific Software Inc. All rights reserved.
 #
 # TERMS FOR USE OF SAMPLE CODE The software below ("Sample Code") is
 # provided to current licensees or subscribers of OpenEye products or
@@ -27,7 +27,7 @@ from openeye.oechem import oeifstream
 from datarecord import read_mol_record
 
 import MDOrion
-from Standards import Fields
+from MDOrion.Standards import Fields
 
 
 from simtk import (unit,
@@ -40,7 +40,7 @@ from openeye import oechem
 PACKAGE_DIR = os.path.dirname(os.path.dirname(MDOrion.__file__))
 
 FILE_DIR = os.path.join(PACKAGE_DIR, "tests", "data")
-FLOES_DIR = os.path.join(PACKAGE_DIR, "floes")
+FLOES_DEV_DIR = os.path.join(PACKAGE_DIR, "floes_dev")
 
 session = OrionSession()
 
@@ -84,7 +84,7 @@ class TestMDOrionFloes(FloeTestCase):
     @pytest.mark.fast
     def test_omm_minimization_floe(self):
         workfloe = WorkFloeWrapper.get_workfloe(
-            os.path.join(FLOES_DIR, "MDminimize.py"),
+            os.path.join(FLOES_DEV_DIR, "MDminimize.py"),
             run_timeout=43200,
             queue_timeout=2000
         )

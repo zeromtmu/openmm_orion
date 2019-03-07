@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# (C) 2018 OpenEye Scientific Software Inc. All rights reserved.
+# (C) 2019 OpenEye Scientific Software Inc. All rights reserved.
 #
 # TERMS FOR USE OF SAMPLE CODE The software below ("Sample Code") is
 # provided to current licensees or subscribers of OpenEye products or
@@ -19,11 +19,14 @@
 
 
 from floe.api import WorkFloe
-from cuberecord import (DatasetWriterCube, DatasetReaderCube)
-from TrjAnalysisCubes.TrajToOEMol import TrajToOEMolCube
-#
+
+from cuberecord import (DatasetWriterCube,
+                        DatasetReaderCube)
+
+from MDOrion.TrjAnalysis.cubes import TrajToOEMolCube
+
 job = WorkFloe("Testing TrajToOEMol")
-#
+
 job.description = """
 Testing Floe
 #

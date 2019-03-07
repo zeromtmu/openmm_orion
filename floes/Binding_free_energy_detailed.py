@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# (C) 2018 OpenEye Scientific Software Inc. All rights reserved.
+# (C) 2019 OpenEye Scientific Software Inc. All rights reserved.
 #
 # TERMS FOR USE OF SAMPLE CODE The software below ("Sample Code") is
 # provided to current licensees or subscribers of OpenEye products or
@@ -17,35 +17,33 @@
 # liable for any damages or liability in connection with the Sample Code
 # or its use.
 
-release = True
-
 from floe.api import WorkFloe
 
-from MDCubes.cubes import (MDMinimizeCube,
-                           MDNvtCube,
-                           MDNptCube)
+from MDOrion.MDEngines.cubes import (MDMinimizeCube,
+                                     MDNvtCube,
+                                     MDNptCube)
 
-from ComplexPrepCubes.cubes import ComplexPrepCube
+from MDOrion.ComplexPrep.cubes import ComplexPrepCube
 
-from SystemCubes.cubes import SolvationCube
+from MDOrion.System.cubes import SolvationCube
 
-from ProtPrepCubes.cubes import ProteinSetting
+from MDOrion.ProtPrep.cubes import ProteinSetting
 
-from ForceFieldCubes.cubes import ForceFieldCube
+from MDOrion.ForceField.cubes import ForceFieldCube
 
-from LigPrepCubes.cubes import (LigandChargeCube,
-                                LigandSetting)
+from MDOrion.LigPrep.cubes import (LigandChargeCube,
+                                   LigandSetting)
 
-from SystemCubes.cubes import IDSettingCube
+from MDOrion.System.cubes import IDSettingCube
 
-from YankCubes.cubes import (SyncBindingFECube,
-                             YankBindingFECube,
-                             YankProxyCube)
+from MDOrion.Yank.cubes import (SyncBindingFECube,
+                                YankBindingFECube,
+                                YankProxyCube)
 
 from cuberecord import (DatasetWriterCube,
                         DatasetReaderCube)
 
-from TrjAnalysisCubes.traj_cubes import MDFloeReportCube
+from MDOrion.TrjAnalysis.cubes import MDFloeReportCube
 
 job = WorkFloe('Binding Affinity Detailed',
                title='Binding Affinity Detailed')

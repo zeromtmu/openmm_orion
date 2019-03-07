@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# (C) 2018 OpenEye Scientific Software Inc. All rights reserved.
+# (C) 2019 OpenEye Scientific Software Inc. All rights reserved.
 #
 # TERMS FOR USE OF SAMPLE CODE The software below ("Sample Code") is
 # provided to current licensees or subscribers of OpenEye products or
@@ -17,22 +17,21 @@
 # liable for any damages or liability in connection with the Sample Code
 # or its use.
 
-release = True
 
 from floe.api import WorkFloe
 
 from cuberecord import (DatasetWriterCube,
                         DatasetReaderCube)
 
-from MDCubes.cubes import (MDMinimizeCube,
-                           MDNvtCube,
-                           MDNptCube)
+from MDOrion.MDEngines.cubes import (MDMinimizeCube,
+                                     MDNvtCube,
+                                     MDNptCube)
 
-from SystemCubes.cubes import SolvationCube
+from MDOrion.System.cubes import SolvationCube
 
-from ForceFieldCubes.cubes import ForceFieldCube
+from MDOrion.ForceField.cubes import ForceFieldCube
 
-from SystemCubes.cubes import IDSettingCube
+from MDOrion.System.cubes import IDSettingCube
 
 job = WorkFloe('Simple MD',
                title='Simple MD')

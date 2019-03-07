@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from floe.api import WorkFloe
 from cuberecord import DatasetWriterCube, DatasetReaderCube
-from TrjAnalysisCubes.LigBasedTrajClustering import ClusterOETrajCube
+from MDOrion.TrjAnalysis.cubes import ClusterOETrajCube
 
 job = WorkFloe("Testing Traj OEMol Clustering")
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from floe.api import WorkFloe
 from cuberecord import DatasetWriterCube, DatasetReaderCube
-from TrjAnalysisCubes.TrajInteractionEnergy import TrajInteractionEnergyCube
+from MDOrion.TrjAnalysis.cubes import TrajInteractionEnergyCube
 
 job = WorkFloe("Testing Traj Protein-Ligand Interaction Energies")
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# (C) 2018 OpenEye Scientific Software Inc. All rights reserved.
+# (C) 2019 OpenEye Scientific Software Inc. All rights reserved.
 #
 # TERMS FOR USE OF SAMPLE CODE The software below ("Sample Code") is
 # provided to current licensees or subscribers of OpenEye products or
@@ -17,37 +17,34 @@
 # liable for any damages or liability in connection with the Sample Code
 # or its use.
 
-release = True
-
 from floe.api import WorkFloe
 
 from cuberecord import (DatasetWriterCube,
                         DatasetReaderCube)
 
-from MDCubes.cubes import (MDMinimizeCube,
-                           MDNvtCube,
-                           MDNptCube)
+from MDOrion.MDEngines.cubes import (MDMinimizeCube,
+                                     MDNvtCube,
+                                     MDNptCube)
 
-from ComplexPrepCubes.cubes import ComplexPrepCube
+from MDOrion.ComplexPrep.cubes import ComplexPrepCube
 
-from SystemCubes.cubes import SolvationCube
+from MDOrion.System.cubes import SolvationCube
 
-from ForceFieldCubes.cubes import ForceFieldCube
+from MDOrion.ForceField.cubes import ForceFieldCube
 
-from ProtPrepCubes.cubes import ProteinSetting
+from MDOrion.ProtPrep.cubes import ProteinSetting
 
-from LigPrepCubes.cubes import (LigandChargeCube,
-                                LigandSetting)
+from MDOrion.LigPrep.cubes import (LigandChargeCube,
+                                   LigandSetting)
 
-from SystemCubes.cubes import IDSettingCube
+from MDOrion.System.cubes import IDSettingCube
 
-from TrjAnalysisCubes.TrajToOEMol import TrajToOEMolCube
-from TrjAnalysisCubes.TrajInteractionEnergy import TrajInteractionEnergyCube
-from TrjAnalysisCubes.TrajPBSA import TrajPBSACube
-from TrjAnalysisCubes.LigBasedTrajClustering import ClusterOETrajCube
-from TrjAnalysisCubes.MDTrajAnalysisFloeReport import MDTrajAnalysisClusterReport
-
-from TrjAnalysisCubes.traj_cubes import MDFloeReportCube
+from MDOrion.TrjAnalysis.cubes import TrajToOEMolCube
+from MDOrion.TrjAnalysis.cubes import TrajInteractionEnergyCube
+from MDOrion.TrjAnalysis.cubes import TrajPBSACube
+from MDOrion.TrjAnalysis.cubes import ClusterOETrajCube
+from MDOrion.TrjAnalysis.cubes import MDTrajAnalysisClusterReport
+from MDOrion.TrjAnalysis.cubes import MDFloeReportCube
 
 job = WorkFloe('Short Trajectory MD with Analysis',
                title='Short Trajectory MD with Analysis')

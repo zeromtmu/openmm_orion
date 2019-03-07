@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from floe.api import WorkFloe
 from cuberecord import DatasetWriterCube, DatasetReaderCube
-from TrjAnalysisCubes.MDTrajAnalysisFloeReport import MDTrajAnalysisClusterReport
+from MDOrion.TrjAnalysis.cubes import MDTrajAnalysisClusterReport
 #
 job = WorkFloe("Floe Report from Analyzed Short Trajectory MD")
 #

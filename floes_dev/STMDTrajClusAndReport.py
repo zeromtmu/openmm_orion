@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 from floe.api import WorkFloe
 from cuberecord import DatasetWriterCube, DatasetReaderCube
-from TrjAnalysisCubes.TrajToOEMol import TrajToOEMolCube
-from TrjAnalysisCubes.TrajInteractionEnergy import TrajInteractionEnergyCube
-from TrjAnalysisCubes.TrajPBSA import TrajPBSACube
-from TrjAnalysisCubes.LigBasedTrajClustering import ClusterOETrajCube
-from TrjAnalysisCubes.MDTrajAnalysisFloeReport import MDTrajAnalysisClusterReport
+from MDOrion.TrjAnalysis.cubes import TrajToOEMolCube
+from MDOrion.TrjAnalysis.cubes import TrajInteractionEnergyCube
+from MDOrion.TrjAnalysis.cubes import TrajPBSACube
+from MDOrion.TrjAnalysis.cubes import ClusterOETrajCube
+from MDOrion.TrjAnalysis.cubes import MDTrajAnalysisClusterReport
 #
 job = WorkFloe("Analysing Trajectory from Short Trajectory MD")
 #

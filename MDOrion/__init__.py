@@ -1,4 +1,4 @@
-# (C) 2018 OpenEye Scientific Software Inc. All rights reserved.
+# (C) 2019 OpenEye Scientific Software Inc. All rights reserved.
 #
 # TERMS FOR USE OF SAMPLE CODE The software below ("Sample Code") is
 # provided to current licensees or subscribers of OpenEye products or
@@ -17,14 +17,30 @@
 
 __version__ = '0.8.3'
 
+from MDOrion import ComplexPrep
 
-import ComplexPrepCubes
-import ForceFieldCubes
-import LigPrepCubes
-import MDCubes
-import ProtPrepCubes
-import Standards
-import SystemCubes
-import TrjAnalysisCubes
-import YankCubes
-import MDOcli
+from .ComplexPrep.cubes import ComplexPrepCube
+
+from .ForceField.cubes import ForceFieldCube
+
+from .LigPrep.cubes import LigandChargeCube
+from .LigPrep.cubes import LigandSetting
+
+from .MDEngines.cubes import MDMinimizeCube
+from .MDEngines.cubes import MDNvtCube
+from .MDEngines.cubes import MDNptCube
+
+from .ProtPrep.cubes import ProteinSetting
+
+from .System.cubes import IDSettingCube
+from .System.cubes import SolvationCube
+
+from .TrjAnalysis.cubes import MDFloeReportCube
+from .TrjAnalysis.cubes import TrajToOEMolCube
+from .TrjAnalysis.cubes import TrajPBSACube
+from .TrjAnalysis.cubes import TrajInteractionEnergyCube
+from .TrjAnalysis.cubes import MDTrajAnalysisClusterReport
+from .TrjAnalysis.cubes import ClusterOETrajCube
+
+from .Yank.cubes import YankSolvationFECube
+from .Yank.cubes import YankBindingFECube

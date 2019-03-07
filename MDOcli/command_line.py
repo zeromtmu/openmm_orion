@@ -4,7 +4,7 @@ from openeye import oechem
 
 from datarecord import read_mol_record, OEField
 
-from Standards import Fields
+from MDOrion.Standards import Fields
 
 from datarecord import (Types,
                         OEWriteRecord)
