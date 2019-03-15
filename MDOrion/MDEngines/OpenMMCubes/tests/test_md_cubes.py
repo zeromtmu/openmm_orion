@@ -124,7 +124,7 @@ def calculate_VT(mdstate, parmed_structure):
     return volume, temperature
 
 
-class MinimizationCubeTester(unittest.TestCase):
+class OmmMinimizationCubeTester(unittest.TestCase):
     """
     Test the OpenMM Minimization cube
     """
@@ -192,6 +192,7 @@ class MinimizationCubeTester(unittest.TestCase):
 
     @pytest.mark.slow
     def test_success(self):
+        self.cube.args.md_engine = "OpenMM"
         self.cube.args.steps = 100000
         self._test_success()
 
@@ -202,7 +203,7 @@ class MinimizationCubeTester(unittest.TestCase):
         self.runner.finalize()
 
 
-class NVTCubeTester(unittest.TestCase):
+class OmmNVTCubeTester(unittest.TestCase):
     """
     Test the OpenMM NVT cube
     """
@@ -232,7 +233,7 @@ class NVTCubeTester(unittest.TestCase):
         record = self.runner.outputs["success"].get()
 
         stages = record.get_value(Fields.md_stages)
-        self.assertEqual(len(stages), 4)
+        self.assertEqual(len(stages), 3)
 
         stage = stages[-1]
 
@@ -251,8 +252,8 @@ class NVTCubeTester(unittest.TestCase):
         # Check 3*std volume
         # Average volume and its standard deviation (in nm^3) measured along
         # one 5ns run for the selected system
-        avg_volume = 634.5680811 * (unit.nanometers ** 3)
-        std_volume = 0.000001
+        avg_volume = 623.66769 * (unit.nanometers ** 3)
+        std_volume = 0.0001
 
         self.assertAlmostEqual(avg_volume / (unit.nanometers ** 3),
                                vol_f.in_units_of(unit.nanometers ** 3) / (unit.nanometers ** 3),
@@ -261,14 +262,15 @@ class NVTCubeTester(unittest.TestCase):
         # Check temperature
         # Average temperature and its standard deviation (in K) measured along
         # one 5ns run for the selected system
-        avg_temperature = 300.0517613 * unit.kelvin
-        std_temperature = 1.157850765
+        avg_temperature = 300.0263654 * unit.kelvin
+        std_temperature = 1.520666995
         self.assertAlmostEqual(avg_temperature / unit.kelvin,
                                temp_f.in_units_of(unit.kelvin) / unit.kelvin,
                                delta=3 * std_temperature)
 
     @pytest.mark.slow
     def test_success(self):
+        self.cube.args.md_engine = "OpenMM"
         self.cube.args.time = 0.01  # in nanoseconds
         self.cube.args.nonbondedCutoff = 10.0  # in A
         self.cube.args.temperature = 300.0  # in K
@@ -286,7 +288,7 @@ class NVTCubeTester(unittest.TestCase):
         self.runner.finalize()
 
 
-class NPTCubeTester(unittest.TestCase):
+class OmmNPTCubeTester(unittest.TestCase):
     """
     Test the OpenMM NPT cube
     """
@@ -317,7 +319,7 @@ class NPTCubeTester(unittest.TestCase):
         record = self.runner.outputs["success"].get()
 
         stages = record.get_value(Fields.md_stages)
-        self.assertEqual(len(stages), 4)
+        self.assertEqual(len(stages), 3)
 
         stage = stages[-1]
 
@@ -337,8 +339,8 @@ class NPTCubeTester(unittest.TestCase):
         # Average volume and its standard deviation (in nm^3) measured along
         # one 5ns run for the selected system
 
-        avg_volume = 632.9923452 * (unit.nanometers ** 3)
-        std_volume = 1.200821012
+        avg_volume = 632.9050577 * (unit.nanometers ** 3)
+        std_volume = 1.1894640704
 
         self.assertAlmostEqual(avg_volume / (unit.nanometers ** 3),
                                vol_f.in_units_of(unit.nanometers ** 3) / (unit.nanometers ** 3),
@@ -347,14 +349,15 @@ class NPTCubeTester(unittest.TestCase):
         # Check temperature
         # Average temperature and its standard deviation (in K) measured along
         # one 5ns run for the selected system
-        avg_temperature = 300.0278579 * unit.kelvin
-        std_temperature = 1.189319355
+        avg_temperature = 299.9697515 * unit.kelvin
+        std_temperature = 1.553636257
         self.assertAlmostEqual(avg_temperature / unit.kelvin,
                                temp_f.in_units_of(unit.kelvin) / unit.kelvin,
                                delta=3 * std_temperature)
 
     @pytest.mark.slow
     def test_success(self):
+        self.cube.args.md_engine = "OpenMM"
         self.cube.args.time = 0.01  # in nanoseconds
         self.cube.args.nonbondedCutoff = 10.0  # in A
         self.cube.args.temperature = 300.0  # in K

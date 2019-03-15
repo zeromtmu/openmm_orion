@@ -1,8 +1,8 @@
 ######################
-Snowball Documentation
+Molecular Dynamics Orion Package Documentation
 ######################
 
-Snowball provides a general purpose set of cubes for applying commonly used OpenEye toolkit functions.
+The Molecular Dynamics Orion package provides MD simulation support in Orion by using different MD engines
 
 ..  toctree::
     :maxdepth: 2

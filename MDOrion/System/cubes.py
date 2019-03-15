@@ -30,10 +30,10 @@ from oeommtools import packmol
 
 
 class IDSettingCube(OERecordComputeCube):
-    title = "ID Setting"
+    title = "System ID Setting"
     version = "0.1.0"
-    classification = [["System Preparation", "OEChem"]]
-    tags = ['OEChem']
+    classification = [["System Preparation"]]
+    tags = ['System', 'Complex', 'Protein', 'Ligand']
     description = """
     This cube set IDs for each record as integers. If the input system 
     on a record has multiple conformers these are spit in single one with 
@@ -185,10 +185,10 @@ class IDSettingCube(OERecordComputeCube):
 
 
 class SolvationCube(ParallelMixin, OERecordComputeCube):
-    title = "Solvation Cube Packmol"
+    title = "Solvation Packmol"
     version = "0.1.0"
-    classification = [["Preparation", "OEChem"]]
-    tags = ['OEChem', 'PackMol']
+    classification = [["System Preparation"]]
+    tags = ['Complex', 'Protein', 'Ligand', 'Solvation']
     description = """
     The solvation cube solvates a given solute input system in a 
     selected mixture of solvents. The solvents can be specified by 

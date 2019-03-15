@@ -14,8 +14,9 @@ from os import environ
 
 import MDOrion.MDEngines.utils as omm_utils
 
-from MDOrion import (TrjAnalysis as utl,
-                     TrjAnalysis as mmpbsa)
+import MDOrion.TrjAnalysis.utils as utl
+
+import MDOrion.TrjAnalysis.TrajMMPBSA_utils as mmpbsa
 
 import oetrajanalysis.OETrajBasicAnalysis_utils as oetrjutl
 
@@ -72,8 +73,8 @@ class MDFloeReportCube(OERecordComputeCube):
     -------
     None
     """
-    classification = [["Floe Reports"]]
-    tags = [tag for lists in classification for tag in lists]
+    classification = [["Analysis"]]
+    tags = ['Report']
 
     # Override defaults for some parameters
     parameter_overrides = {
@@ -233,8 +234,8 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
     title = 'Traj to OEMol Cube'
 
     version = "0.1.0"
-    classification = [["Simulation", "Traj Analysis"]]
-    tags = ['Parallel Cube']
+    classification = [["Analysis"]]
+    tags = ['Trajectory', 'Ligand', 'Protein']
 
     description = """
     Converting MD Traj into multiconf OEMols for Ligand and Protein
@@ -422,7 +423,7 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
 class TrajPBSACube(ParallelMixin, OERecordComputeCube):
     title = "Trajectory Poisson-Boltzmann and Surface Area Energies"
     version = "0.0.0"
-    classification = [["Energy Analysis"]]
+    classification = [["Analysis"]]
     tags = ['OEChem', 'Zap', 'TrajAnalysis', 'MMPBSA']
     description = """
     Protein-ligand interaction solvation energies are calculated on an existing MD trajectory.
@@ -569,7 +570,7 @@ class TrajPBSACube(ParallelMixin, OERecordComputeCube):
 class TrajInteractionEnergyCube(ParallelMixin, OERecordComputeCube):
     title = "Trajectory Interaction Energies"
     version = "0.0.0"
-    classification = [["Energy Analysis"]]
+    classification = [["Analysis"]]
     tags = ['OEChem', 'OpenMM', 'TrajAnalysis', 'MMPBSA']
     description = """
     Protein-ligand interaction energies are calculated on an existing MD trajectory.
@@ -680,17 +681,12 @@ class TrajInteractionEnergyCube(ParallelMixin, OERecordComputeCube):
         return
 
 
-
-
-
-
-
 class ClusterOETrajCube(ParallelMixin, OERecordComputeCube):
     title = 'Cluster Protein-Ligand Traj OEMols'
 
     version = "0.1.0"
-    classification = [["Simulation", "Traj Analysis"]]
-    tags = ['Parallel Cube']
+    classification = [["Analysis"]]
+    tags = ['Clustering', 'Ligand', 'Protein']
 
     description = """
     Cluster  multiconf MD trajectory OEMols for Ligand and Protein
@@ -849,8 +845,8 @@ class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
     title = 'Extract relevant outputs of MD Traj Cluster  Analysis'
 
     version = "0.1.0"
-    classification = [["Simulation", "Traj Analysis"]]
-    tags = ['Parallel Cube']
+    classification = [["Analysis"]]
+    tags = ['Ligand', 'Protein']
 
     description = """
     Extract relevant outputs of Ligand and Protein

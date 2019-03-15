@@ -27,8 +27,8 @@ from floe.api import parameter
 class ProteinSetting(OERecordComputeCube):
     title = "Protein Setting"
     version = "0.1.0"
-    classification = [["Protein Preparation", "OEChem"]]
-    tags = ['OEChem']
+    classification = [["System Preparation"]]
+    tags = ['Protein']
     description = """
     This cube is currently used just to check that one
     protein as provided as system input to perform MD. A

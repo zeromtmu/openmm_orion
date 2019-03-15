@@ -29,10 +29,10 @@ from openeye import oechem
 
 
 class LigandChargeCube(ParallelMixin, OERecordComputeCube):
-    title = "Ligand Charge Cube"
+    title = "Ligand Charge"
     version = "0.1.0"
-    classification = [["Ligand Preparation", "OEChem", "Ligand preparation"]]
-    tags = ['OEChem', 'Quacpac']
+    classification = [["System Preparation"]]
+    tags = ["Ligand"]
     description = """
     This cube charges small organic molecules by using the ELF10 charge method 
     (based on am1bcc method). If the ligands are already charged and the user would 
@@ -116,8 +116,8 @@ class LigandChargeCube(ParallelMixin, OERecordComputeCube):
 class LigandSetting(OERecordComputeCube):
     title = "Ligand Setting"
     version = "0.1.0"
-    classification = [["Ligand Preparation", "OEChem", "Ligand preparation"]]
-    tags = ['OEChem']
+    classification = [["System Preparation"]]
+    tags = ['Ligand']
     description = """
     This cube is used to set the ligand residue name as the cube parameter 
     “lig_res_name” (default: “LIG”). This is necessary to facilitate the 

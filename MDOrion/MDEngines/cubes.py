@@ -44,8 +44,8 @@ class MDMinimizeCube(ParallelMixin, OERecordComputeCube):
     title = 'Minimization Cube'
 
     version = "0.1.0"
-    classification = [["Simulation", "OpenMM", "Gromacs", "Minimization"]]
-    tags = ['OpenMM', 'Parallel Cube']
+    classification = [["MD Simulations"]]
+    tags = ['OpenMM', 'Gromacs', 'Minimization']
 
     description = """
     This cube performs energy minimization on the provided system. The system 
@@ -303,8 +303,8 @@ class MDMinimizeCube(ParallelMixin, OERecordComputeCube):
 class MDNvtCube(ParallelMixin, OERecordComputeCube):
     title = 'NVT Cube'
     version = "0.1.0"
-    classification = [["Simulation", "OpenMM", "Gromacs", "NVT"]]
-    tags = ['OpenMM', 'Parallel Cube']
+    classification = [["MD Simulations"]]
+    tags = ['Gromacs', 'OpenMM', 'NVT']
 
     description = """
     This cube performs MD simulation in the NVT ensemble on the provided system. 
@@ -588,8 +588,8 @@ class MDNvtCube(ParallelMixin, OERecordComputeCube):
 class MDNptCube(ParallelMixin, OERecordComputeCube):
     title = 'NPT Cube'
     version = "0.1.0"
-    classification = [["Simulation", "OpenMM", "Gromacs", "NPT"]]
-    tags = ['OpenMM', 'Parallel Cube']
+    classification = [['MD Simulations']]
+    tags = ['Gromacs', 'OpenMM', 'NPT']
 
     description = """
     This cube performs MD simulation in the NPT ensemble on the provided system. 

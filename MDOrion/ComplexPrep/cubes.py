@@ -31,10 +31,10 @@ from floe.constants import ADVANCED
 
 
 class ComplexPrepCube(OERecordComputeCube):
-    title = "Complex Preparation Cube"
+    title = "Complex Preparation"
     version = "0.1.0"
-    classification = [["Complex Preparation", "OEChem", "Complex preparation"]]
-    tags = ['OEChem']
+    classification = [["System Preparation"]]
+    tags = ['Complex', 'Ligand', 'Protein']
     description = """
     This cube assembles the complex made of a protein and its docked ligands. 
     Each ligand must have just one conformer. In order to deal with multiple 

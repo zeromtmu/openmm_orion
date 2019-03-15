@@ -42,10 +42,10 @@ from simtk import unit
 
 
 class ForceFieldCube(ParallelMixin, OERecordComputeCube):
-    title = "Force Field Application Cube"
+    title = "Force Field Application"
     version = "0.1.0"
-    classification = [["Force Field Application", "OEChem"]]
-    tags = ['OEChem', 'OEBio', 'OpenMM']
+    classification = [["Force Field"]]
+    tags = ['ForceField']
     description = """
     This cube parametrized a system with the selected force fields. 
     The cube tries to split a system into components: protein, ligand, 

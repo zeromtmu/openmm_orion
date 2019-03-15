@@ -520,7 +520,11 @@ class GromacsSimulations(MDSimulations):
 
     def update_state(self):
 
-        gro_structure = parmed.load_file(os.path.join(self.opt['output_directory'], self.opt['grm_def_fn']+'.gro'))
+        # top_fn = self.opt['grm_top_fn']
+
+        gro_fn = os.path.join(self.opt['output_directory'], self.opt['grm_def_fn'] + '.gro')
+
+        gro_structure = parmed.gromacs.GromacsGroFile().parse(gro_fn, skip_bonds=True)
 
         new_mdstate = copy.deepcopy(self.mdstate)
 

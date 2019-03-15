@@ -81,8 +81,8 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
 
     See http://getyank.org for more information about YANK.
     """
-    classification = [["Alchemical free energy calculations"]]
-    tags = [tag for lists in classification for tag in lists]
+    classification = [["Free Energy"]]
+    tags = ['Yank', 'Solvation', 'Ligand', "Free Energy"]
 
     # Override defaults for some parameters
     parameter_overrides = {
@@ -464,8 +464,8 @@ class SyncBindingFECube(OERecordComputeCube):
     solvated complexes
     """
 
-    classification = [["Synchronization Cube"]]
-    tags = [tag for lists in classification for tag in lists]
+    classification = [["Synchronization"]]
+    tags = ["Ligand", "Protein", "Free Energy", "Yank"]
 
     # Override defaults for some parameters
     parameter_overrides = {
@@ -566,8 +566,8 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
     See http://getyank.org for more information about YANK.
     """
-    classification = [["Alchemical free energy calculations"]]
-    tags = [tag for lists in classification for tag in lists]
+    classification = [["Free Energy"]]
+    tags = ["Ligand", "Protein", "Free Energy", "Yank"]
 
     # Override defaults for some parameters
     parameter_overrides = {
@@ -1015,8 +1015,8 @@ class YankProxyCube(OERecordComputeCube):
     This cube is used to implement a cycle with the Yank Solvation FE and
     Yank Binding Cubes.
     """
-    classification = [["Alchemical free energy calculations"]]
-    tags = [tag for lists in classification for tag in lists]
+    classification = [["Free Energy"]]
+    tags = ["Ligand", "Protein", "Free Energy", "Yank"]
 
     # Override defaults for some parameters
     parameter_overrides = {
