@@ -246,7 +246,26 @@ def PoseInteractionsSVG(ligand, proteinOrig, width=400, height=300):
     #oedepict.OEAddInteractiveIcon(image, oedepict.OEIconLocation_TopRight, iconscale)
     svgBytes = oedepict.OEWriteImageToString("svg", image)
 
-    return svgBytes.decode("utf-8")
+    svgString = svgBytes.decode("utf-8")
+
+    # TODO BUG TEMPORARY FIX FOR TOOLKIT VERSION 2018.10.1 JIRA CASE https://openeye.atlassian.net/browse/TOOLKS-624
+
+    lines = svgString.splitlines(True)
+
+    new_str = """.oedepict-visible {
+     visibility: visible;
+    }"""
+
+    for idx in range(0, len(lines)):
+        if lines[idx] == ' visibility: hidden;\n':
+            lines.insert(idx + 2, new_str)
+            break
+
+    svg_out = " ".join(lines)
+
+    # TODO END
+
+    return svg_out
 
 
 def ligand_to_svg_stmd(ligand, ligand_name):

@@ -969,7 +969,7 @@ class MDTrajAnalysisClusterReport(ParallelMixin, OERecordComputeCube):
                 report_file.write(_clus_floe_report_header2)
 
                 report_file.write(_clus_floe_report_midHtml0.format(
-                    query_depiction=oedepict.OEWriteImageToString("svg", img).decode("utf8")))
+                    query_depiction=oedepict.OEWriteImageToString("svg", img).decode("utf-8")))
 
                 report_file.write("""      <h3>
                         {mmpbsaLabel}
