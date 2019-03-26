@@ -17,11 +17,22 @@
 
 
 from datarecord.types import CustomHandler
+
 import pickle
+
 import parmed
 
 from MDOrion.MDEngines.utils import MDState
+
 import copy
+
+from orionclient.session import in_orion, OrionSession
+
+from orionclient.types import File
+
+from os import environ
+
+import os
 
 
 class ParmedData(CustomHandler):
@@ -74,3 +85,51 @@ class MDStateData(CustomHandler):
     def deserialize(data):
         new_state = pickle.loads(bytes(data))
         return new_state
+
+
+def upload_file(filename, orion_name='OrionFile'):
+
+    if in_orion():
+
+        session = OrionSession()
+
+        file_upload = File.upload(session,
+                                  orion_name,
+                                  filename)
+
+        session.tag_resource(file_upload, "Trajectory")
+
+        job_id = environ.get('ORION_JOB_ID')
+
+        if job_id:
+            session.tag_resource(file_upload, "Job {}".format(job_id))
+
+        file_id = file_upload.id
+
+    else:
+        file_id = filename
+
+    return file_id
+
+
+def download_file(file_id, filename, orion_delete=False):
+
+    if in_orion() or isinstance(file_id, int):
+
+        session = OrionSession()
+
+        resource = session.get_resource(File, file_id)
+
+        resource.download_to_file(filename)
+
+        fn_local = filename
+
+        if orion_delete:
+            session.delete_resource(resource)
+    else:
+        fn_local = file_id
+
+    if not os.path.isfile(fn_local):
+        raise IOError("The trajectory file has not been found: {}".format(fn_local))
+
+    return fn_local

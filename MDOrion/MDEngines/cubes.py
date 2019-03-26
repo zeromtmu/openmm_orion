@@ -23,12 +23,10 @@ from floe.api import (ParallelMixin,
 
 from cuberecord import OERecordComputeCube
 
-import MDOrion.MDEngines.utils as utils
-
-from MDOrion.Standards import (Fields,
-                               MDRecords,
-                               MDStageTypes,
+from MDOrion.Standards import (MDStageTypes,
                                MDEngines)
+
+from MDOrion.Standards.mdrecord import MDDataRecord
 
 from MDOrion.MDEngines.utils import md_simulation
 
@@ -206,45 +204,23 @@ class MDMinimizeCube(ParallelMixin, OERecordComputeCube):
 
             str_logger += "\n{:<25} = {:<10}".format("Simulation Type", opt['SimType'])
 
-            if not record.has_value(Fields.primary_molecule):
-                raise ValueError("Missing the Primary Molecule field")
+            # Create the MD record to use the MD Record API
+            mdrecord = MDDataRecord(record)
 
-            system = record.get_value(Fields.primary_molecule)
+            system = mdrecord.get_primary
 
-            if not record.has_value(Fields.title):
+            if not mdrecord.has_title:
                 opt['Logger'].warn("Missing record Title field")
                 system_title = system.GetTitle()[0:12]
             else:
-                system_title = record.get_value(Fields.title)
-
-            if not record.has_value(Fields.id):
-                raise ValueError("Missing ID Field")
+                system_title = mdrecord.get_title
 
             opt['system_title'] = system_title
-            opt['system_id'] = record.get_value(Fields.id)
+            opt['system_id'] = mdrecord.get_id
 
-            # Extract from the record the Parmed structure
-            if not record.has_value(Fields.pmd_structure):
-                raise ValueError("The System does not seem to be parametrized by the Force Field")
-
-            parmed_structure = record.get_value(Fields.pmd_structure)
-
-            # Extract from the record the md stages
-            if not record.has_value(Fields.md_stages):
-                raise ValueError("The System does not seem to be parametrized by the Force Field")
-
-            # Extract the MDStageRecord list
-            md_stages = record.get_value(Fields.md_stages)
-
-            # Extract the most recent MDStageRecord
-            md_stage_record = md_stages[-1]
-
-            # Extract the MDSystemRecord
-            md_system_record = md_stage_record.get_value(Fields.md_system)
-
-            # Extract from the MDSystemRecord the topology and the MD State
-            system = md_system_record.get_value(Fields.topology)
-            mdstate = md_system_record.get_value(Fields.md_state)
+            parmed_structure = mdrecord.get_parmed
+            system = mdrecord.get_stage_topology()
+            mdstate = mdrecord.get_stage_state()
 
             opt['outfname'] = '{}-{}'.format(system_title + '_' + str(opt['system_id']), opt['suffix'])
             opt['molecule'] = system
@@ -273,24 +249,23 @@ class MDMinimizeCube(ParallelMixin, OERecordComputeCube):
             new_pos = new_temp_mol.GetCoords()
             system.SetCoords(new_pos)
 
-            record.set_value(Fields.primary_molecule, system)
+            mdrecord.set_primary(system)
 
-            md_stage_record = MDRecords.MDStageRecord(self.title, MDStageTypes.MINIMIZATION,
-                                                      MDRecords.MDSystemRecord(system, new_mdstate),
-                                                      log=opt['str_logger'])
+            mdrecord.set_parmed(parmed_structure)
 
-            record.set_value(Fields.pmd_structure, parmed_structure)
-
+            md_stage_record = mdrecord.create_stage(self.title,
+                                                    MDStageTypes.MINIMIZATION,
+                                                    system,
+                                                    new_mdstate,
+                                                    log=opt['str_logger'])
             if opt['save_md_stage']:
                 opt['Logger'].info("[{}] Saving MD stage: {}".format(opt['CubeTitle'], opt['SimType']))
 
-                md_stages.append(md_stage_record)
+                mdrecord.append_stage(md_stage_record)
             else:
-                md_stages[-1] = md_stage_record
+                mdrecord.set_last_stage(md_stage_record)
 
-            record.set_value(Fields.md_stages, md_stages)
-
-            self.success.emit(record)
+            self.success.emit(mdrecord.get_record)
 
         except:
             self.log.error(traceback.format_exc())
@@ -478,45 +453,23 @@ class MDNvtCube(ParallelMixin, OERecordComputeCube):
 
             str_logger += "\n{:<25} = {:<10}".format("Simulation Type", opt['SimType'])
 
-            if not record.has_value(Fields.primary_molecule):
-                raise ValueError("Missing the Primary Molecule field")
+            # Create the MD record to use the MD Record API
+            mdrecord = MDDataRecord(record)
 
-            system = record.get_value(Fields.primary_molecule)
+            system = mdrecord.get_primary
 
-            if not record.has_value(Fields.title):
+            if not mdrecord.has_title:
                 opt['Logger'].warn("Missing record Title field")
                 system_title = system.GetTitle()[0:12]
             else:
-                system_title = record.get_value(Fields.title)
-
-            if not record.has_value(Fields.id):
-                raise ValueError("Missing the ID field")
+                system_title = mdrecord.get_title
 
             opt['system_title'] = system_title
-            opt['system_id'] = record.get_value(Fields.id)
+            opt['system_id'] = mdrecord.get_id
 
-            # Extract from the record the Parmed structure
-            if not record.has_value(Fields.pmd_structure):
-                raise ValueError("The System does not seem to be parametrized by the Force Field")
-
-            parmed_structure = record.get_value(Fields.pmd_structure)
-
-            # Extract from the record the md stages
-            if not record.has_value(Fields.md_stages):
-                raise ValueError("The System does not seem to be parametrized by the Force Field")
-
-            # Extract the MDStageRecord list
-            md_stages = record.get_value(Fields.md_stages)
-
-            # Extract the most recent MDStageRecord
-            md_stage_record = md_stages[-1]
-
-            # Extract the MDSystemRecord
-            md_system_record = md_stage_record.get_value(Fields.md_system)
-
-            # Extract from the MDSystemRecord the topology and the MDState
-            system = md_system_record.get_value(Fields.topology)
-            mdstate = md_system_record.get_value(Fields.md_state)
+            parmed_structure = mdrecord.get_parmed
+            system = mdrecord.get_stage_topology()
+            mdstate = mdrecord.get_stage_state()
 
             opt['outfname'] = '{}-{}'.format(system_title + '_'+str(opt['system_id']), opt['suffix'])
             opt['molecule'] = system
@@ -544,7 +497,9 @@ class MDNvtCube(ParallelMixin, OERecordComputeCube):
                                                          verbose=False)
             new_pos = new_temp_mol.GetCoords()
             system.SetCoords(new_pos)
-            record.set_value(Fields.primary_molecule, system)
+
+            mdrecord.set_primary(system)
+            mdrecord.set_parmed(parmed_structure)
 
             # Trajectory
             if opt['trajectory_interval']:
@@ -553,29 +508,26 @@ class MDNvtCube(ParallelMixin, OERecordComputeCube):
                     trajectory_engine = MDEngines.OpenMM
                 else:
                     trajectory_engine = MDEngines.Gromacs
-                lf = utils.upload_file(filename, orion_name=filename)
             else:  # Empty Trajectory
-                lf = None
+                filename = None
                 trajectory_engine = None
 
-            record.set_value(Fields.pmd_structure, parmed_structure)
-
-            md_stage_record = MDRecords.MDStageRecord(self.title, MDStageTypes.NVT,
-                                                      MDRecords.MDSystemRecord(system, new_mdstate),
-                                                      log=opt['str_logger'],
-                                                      trajectory=lf,
-                                                      trajectory_engine=trajectory_engine)
-
+            md_stage_record = mdrecord.create_stage(self.title,
+                                                    MDStageTypes.NVT,
+                                                    system,
+                                                    new_mdstate,
+                                                    log=opt['str_logger'],
+                                                    trajectory=filename,
+                                                    trajectory_engine=trajectory_engine,
+                                                    orion_name=filename)
             if opt['save_md_stage']:
                 opt['Logger'].info("[{}] Saving MD stage: {}".format(opt['CubeTitle'], opt['SimType']))
+                mdrecord.append_stage(md_stage_record)
 
-                md_stages.append(md_stage_record)
             else:
-                md_stages[-1] = md_stage_record
+                mdrecord.set_last_stage(md_stage_record)
 
-            record.set_value(Fields.md_stages, md_stages)
-
-            self.success.emit(record)
+            self.success.emit(mdrecord.get_record)
 
         except:
             self.log.error(traceback.format_exc())
@@ -763,45 +715,23 @@ class MDNptCube(ParallelMixin, OERecordComputeCube):
 
             str_logger += "\n{:<25} = {:<10}".format("Simulation Type", opt['SimType'])
 
-            if not record.has_value(Fields.primary_molecule):
-                raise ValueError("Missing the Primary Molecule field")
+            # Create the MD record to use the MD Record API
+            mdrecord = MDDataRecord(record)
 
-            system = record.get_value(Fields.primary_molecule)
+            system = mdrecord.get_primary
 
-            if not record.has_value(Fields.title):
+            if not mdrecord.has_title:
                 opt['Logger'].warn("Missing record Title field")
                 system_title = system.GetTitle()[0:12]
             else:
-                system_title = record.get_value(Fields.title)
-
-            if not record.has_value(Fields.id):
-                raise ValueError("Missing the ID field")
+                system_title = mdrecord.get_title
 
             opt['system_title'] = system_title
-            opt['system_id'] = record.get_value(Fields.id)
+            opt['system_id'] = mdrecord.get_id
 
-            # Extract from the record the Parmed structure
-            if not record.has_value(Fields.pmd_structure):
-                raise ValueError("The System does not seem to be parametrized by the Force Field")
-
-            parmed_structure = record.get_value(Fields.pmd_structure)
-
-            # Extract from the record the md stages
-            if not record.has_value(Fields.md_stages):
-                raise ValueError("The System does not seem to be parametrized by the Force Field")
-
-            # Extract the MDStageRecord list
-            md_stages = record.get_value(Fields.md_stages)
-
-            # Extract the most recent MDStageRecord
-            md_stage_record = md_stages[-1]
-
-            # Extract the MDSystemRecord
-            md_system_record = md_stage_record.get_value(Fields.md_system)
-
-            # Extract from the MDSystemRecord the topology and the Parmed structure
-            system = md_system_record.get_value(Fields.topology)
-            mdstate = md_system_record.get_value(Fields.md_state)
+            parmed_structure = mdrecord.get_parmed
+            system = mdrecord.get_stage_topology()
+            mdstate = mdrecord.get_stage_state()
 
             opt['outfname'] = '{}-{}'.format(system_title + '_' + str(opt['system_id']), opt['suffix'])
             opt['molecule'] = system
@@ -829,7 +759,9 @@ class MDNptCube(ParallelMixin, OERecordComputeCube):
                                                          verbose=False)
             new_pos = new_temp_mol.GetCoords()
             system.SetCoords(new_pos)
-            record.set_value(Fields.primary_molecule, system)
+
+            mdrecord.set_primary(system)
+            mdrecord.set_parmed(parmed_structure)
 
             # Trajectory
             if opt['trajectory_interval']:
@@ -838,29 +770,28 @@ class MDNptCube(ParallelMixin, OERecordComputeCube):
                     trajectory_engine = MDEngines.OpenMM
                 else:
                     trajectory_engine = MDEngines.Gromacs
-                lf = utils.upload_file(filename, orion_name=filename)
+
             else:  # Empty Trajectory
-                lf = None
+                filename = None
                 trajectory_engine = None
 
-            record.set_value(Fields.pmd_structure, parmed_structure)
-
-            md_stage_record = MDRecords.MDStageRecord(self.title, MDStageTypes.NPT,
-                                                      MDRecords.MDSystemRecord(system, new_mdstate),
-                                                      log=opt['str_logger'],
-                                                      trajectory=lf,
-                                                      trajectory_engine=trajectory_engine)
+            md_stage_record = mdrecord.create_stage(self.title,
+                                                    MDStageTypes.NPT,
+                                                    system,
+                                                    new_mdstate,
+                                                    log=opt['str_logger'],
+                                                    trajectory=filename,
+                                                    trajectory_engine=trajectory_engine,
+                                                    orion_name=filename)
 
             if opt['save_md_stage']:
                 opt['Logger'].info("[{}] Saving MD stage: {}".format(opt['CubeTitle'], opt['SimType']))
 
-                md_stages.append(md_stage_record)
+                mdrecord.append_stage(md_stage_record)
             else:
-                md_stages[-1] = md_stage_record
+                mdrecord.set_last_stage(md_stage_record)
 
-            record.set_value(Fields.md_stages, md_stages)
-
-            self.success.emit(record)
+            self.success.emit(mdrecord.get_record)
 
         except:
             self.log.error(traceback.format_exc())

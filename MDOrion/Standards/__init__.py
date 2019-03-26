@@ -17,3 +17,5 @@
 
 
 from .standards import *
+
+from .mdrecord import MDDataRecord

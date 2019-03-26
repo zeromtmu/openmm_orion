@@ -27,6 +27,9 @@ from datarecord import (Types,
                         OEField,
                         OERecord)
 
+import os
+
+from MDOrion.Standards import utils
 
 # ------------ Stage Standard Names ------------- #
 
@@ -131,34 +134,81 @@ class Fields:
 
 # ---------------- Record Standards -------------- #
 
-# The MDSystemRecord class holds the system topology as an OEMol and the System
-# MD State made of system positions, velocities and box_vectors
-
 class MDRecords:
-    class MDSystemRecord(OERecord):
 
-        def __init__(self, molecule, state):
-            super().__init__()
-            self.set_value(Fields.topology, molecule)
-            self.set_value(Fields.md_state, state)
+    # class MDSystemRecord(OERecord):
+    #
+    #     def __init__(self, molecule, state):
+    #         super().__init__()
+    #         self.set_value(Fields.topology, molecule)
+    #         self.set_value(Fields.md_state, state)
 
-    class MDStageRecord(OERecord):
+    @staticmethod
+    def MDSystemRecord(molecule, state):
+        record = OERecord()
+        record.set_value(Fields.topology, molecule)
+        record.set_value(Fields.md_state, state)
+        return record
 
-        def __init__(self, stage_name, stage_type, system_record, log=None, trajectory=None, trajectory_engine=None):
-            super().__init__()
-            self.set_value(Fields.stage_name, stage_name)
-            self.set_value(Fields.stage_type, stage_type)
-            self.set_value(Fields.md_system, system_record)
-            if log is not None:
-                self.set_value(Fields.log_data, log)
-            if trajectory is not None:
-                if trajectory_engine not in MDEngines.all:
-                    raise ValueError("The selected MD engine is not supported")
+    # class MDStageRecord(OERecord):
+    #
+    #     def __init__(self, stage_name, stage_type, system_record, log=None, trajectory=None, trajectory_engine=None):
+    #
+    #         super().__init__()
+    #
+    #         self.set_value(Fields.stage_name, stage_name)
+    #         self.set_value(Fields.stage_type, stage_type)
+    #         self.set_value(Fields.md_system, system_record)
+    #
+    #         if log is not None:
+    #             self.set_value(Fields.log_data, log)
+    #         if trajectory is not None:
+    #             if trajectory_engine not in MDEngines.all:
+    #                 raise ValueError("The selected MD engine is not supported")
+    #
+    #             trj_meta = OEFieldMeta()
+    #             trj_meta.set_attribute(Meta.Annotation.Description, trajectory_engine)
+    #
+    #             trj_field = OEField(Fields.trajectory.get_name(),
+    #                                 Fields.trajectory.get_type(),
+    #                                 meta=trj_meta)
+    #
+    #             self.set_value(trj_field, trajectory)
 
-                trj_meta = OEFieldMeta()
-                trj_meta.set_attribute(Meta.Annotation.Description, trajectory_engine)
+    @staticmethod
+    def MDStageRecord(stage_name,
+                      stage_type,
+                      system_record,
+                      log=None,
+                      trajectory=None,
+                      trajectory_engine=None,
+                      orion_name="OrionFile"):
 
-                trj_field = OEField(Fields.trajectory.get_name(), Fields.trajectory.get_type(),
-                                    meta=trj_meta)
-                self.set_value(trj_field, trajectory)
+        record = OERecord()
 
+        record.set_value(Fields.stage_name, stage_name)
+        record.set_value(Fields.stage_type, stage_type)
+        record.set_value(Fields.md_system, system_record)
+
+        if log is not None:
+            record.set_value(Fields.log_data, log)
+        if trajectory is not None:
+
+            if trajectory_engine not in MDEngines.all:
+                raise ValueError("The selected MD engine is not supported")
+
+            trj_meta = OEFieldMeta()
+            trj_meta.set_attribute(Meta.Annotation.Description, trajectory_engine)
+
+            trj_field = OEField(Fields.trajectory.get_name(),
+                                Fields.trajectory.get_type(),
+                                meta=trj_meta)
+
+            if not os.path.isfile(trajectory):
+                raise IOError("The trajectory file has not been found: {}".format(trajectory))
+
+            lf = utils.upload_file(trajectory, orion_name=orion_name)
+
+            record.set_value(trj_field, lf)
+
+        return record

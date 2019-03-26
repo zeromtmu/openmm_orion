@@ -290,7 +290,7 @@ class TestMDOrionFloes(FloeTestCase):
         # Check the out record list
         self.assertEqual(count, 1)
 
-
+    @pytest.mark.multi
     @pytest.mark.floetest
     @pytest.mark.slow
     def test_omm_STMD_multi_ligs_floe(self):
@@ -627,6 +627,7 @@ class TestMDOrionFloes(FloeTestCase):
         # Check the out record list
         self.assertEqual(count, 1)
 
+    @pytest.mark.multi
     @pytest.mark.floetest
     @pytest.mark.slow
     def test_gmx_STMD_multi_ligs_floe(self):

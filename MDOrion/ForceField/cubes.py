@@ -31,9 +31,9 @@ from openeye import oechem
 
 from oeommtools import data_utils as pack_utils
 
-from MDOrion.Standards import (MDStageTypes,
-                               Fields,
-                               MDRecords)
+from MDOrion.Standards import MDStageTypes
+
+from MDOrion.Standards.mdrecord import MDDataRecord
 
 from MDOrion.MDEngines.utils import MDState
 
@@ -122,18 +122,16 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
             opt = self.opt
             opt['CubeTitle'] = self.title
 
-            if not record.has_value(Fields.primary_molecule):
-                self.log.error("Missing molecule Primary Molecule' field")
-                self.failure.emit(record)
-                return
+            # Create the MD record to use the MD Record API
+            mdrecord = MDDataRecord(record)
 
-            system = record.get_value(Fields.primary_molecule)
+            system = mdrecord.get_primary
 
-            if not record.has_value(Fields.title):
+            if not mdrecord.has_title:
                 self.log.warn("Missing record Title field")
                 system_title = system.GetTitle()[0:12]
             else:
-                system_title = record.get_value(Fields.title)
+                system_title = mdrecord.get_title
 
             # Split the complex in components in order to apply the FF
             protein, ligand, water, excipients = oeommutils.split(system, ligand_res_name=opt['lig_res_name'])
@@ -145,10 +143,7 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
                                                                                          ligand.NumAtoms(),
                                                                                          water.NumAtoms(),
                                                                                          excipients.NumAtoms()))
-            if not record.has_value(Fields.id):
-                raise ValueError("Missing ID Field")
-
-            sys_id = record.get_value(Fields.id)
+            sys_id = mdrecord.get_id
 
             # Unique prefix name used to output parametrization files
             opt['prefix_name'] = system_title + '_'+str(sys_id)
@@ -251,20 +246,16 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
                                                            constraints=None,
                                                            removeCMMotion=False,
                                                            rigidWater=False)
+            mdrecord.set_title(system_title)
+            mdrecord.set_primary(system_reassembled)
+            mdrecord.set_parmed(system_structure)
+            setup_stage = mdrecord.create_stage(self.title,
+                                                MDStageTypes.SETUP,
+                                                system_reassembled,
+                                                MDState(system_structure))
+            mdrecord.init_stages(setup_stage)
 
-            record.set_value(Fields.primary_molecule, system_reassembled)
-            record.set_value(Fields.title, system_title)
-
-            record.set_value(Fields.pmd_structure, system_structure)
-
-            mdstate = MDState(system_structure)
-
-            md_stage = MDRecords.MDStageRecord(self.title, MDStageTypes.SETUP,
-                                               MDRecords.MDSystemRecord(system_reassembled, mdstate))
-
-            record.set_value(Fields.md_stages, [md_stage])
-
-            self.success.emit(record)
+            self.success.emit(mdrecord.get_record)
 
         except:
             self.log.error(traceback.format_exc())

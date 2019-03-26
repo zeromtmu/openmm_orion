@@ -68,6 +68,8 @@ from floereport import FloeReport, LocalFloeReport
 
 from os import environ
 
+from MDOrion.Standards.mdrecord import MDDataRecord
+
 
 class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
     version = "0.0.0"
@@ -179,23 +181,19 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                                                                 getattr(self.args, tmp_default.name),
                                                                 tmp_description)
 
-            if not record.has_value(Fields.primary_molecule):
-                raise ValueError("Missing the Primary Molecule field")
+            # Create the MD record to use the MD Record API
+            mdrecord = MDDataRecord(record)
 
-            system = record.get_value(Fields.primary_molecule)
+            system = mdrecord.get_primary
 
-            if not record.has_value(Fields.title):
+            if not mdrecord.has_title:
                 opt['Logger'].warn("Missing record Title field")
                 system_title = system.GetTitle()[0:12]
             else:
-                system_title = record.get_value(Fields.title)
+                system_title = mdrecord.get_title
 
             opt['system_title'] = system_title
-
-            if not record.has_value(Fields.id):
-                raise ValueError("Missing the ID field")
-
-            opt['system_id'] = record.get_value(Fields.id)
+            opt['system_id'] = mdrecord.get_id
 
             if opt['iterations'] <= 0:
                 raise ValueError("The number of iterations cannot be a non-negative number: {}".format(opt['iterations']))
@@ -262,26 +260,8 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                 self.log.info("Updating parameters for molecule: {}\n{}".format(system.GetTitle(), new_args))
                 opt.update(new_args)
 
-            if not record.has_value(Fields.md_stages):
-                raise ValueError("The System does not seem to be parametrized by the Force Field")
-
-            # Extract the MDStageRecord list
-            md_stages = record.get_value(Fields.md_stages)
-
-            # Extract the most recent MDStageRecord
-            md_stage_record = md_stages[-1]
-
-            # Extract from the record the Parmed structure
-            if not record.has_value(Fields.pmd_structure):
-                raise ValueError("The System does not seem to be parametrized by the Force Field")
-
-            solvated_structure = record.get_value(Fields.pmd_structure)
-
-            # Extract the MDSystemRecord
-            md_system_record = md_stage_record.get_value(Fields.md_system)
-
-            # Extract the MD State
-            mdstate = md_system_record.get_value(Fields.md_state)
+            solvated_structure = mdrecord.get_parmed
+            mdstate = mdrecord.get_stage_state()
 
             # Update the Parmed structure with the MD State
             solvated_structure.positions = mdstate.get_positions()
@@ -322,25 +302,13 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                 # Restarting
                 if current_iterations != 0:
 
-                    if md_stage_record.has_value(Fields.trajectory):
-                        yank_files = md_stage_record.get_value(Fields.trajectory)
-
-                    elif md_stage_record.has_value(Fields.orion_local_trj_field):
-                        yank_files = md_stage_record.get_value(Fields.orion_local_trj_field)
-
-                    else:
-                        print("No Yank trajectory file have been found in the selected stage record {}".format(
-                            md_stage_record.get_value(Fields.stage_name)))
-
-                    filename = os.path.join(output_directory, "yank_files.tar")
-
-                    fn_local = omm_utils.download_file(yank_files, filename, delete=False)
-
-                    with tarfile.open(fn_local) as tar:
+                    yank_files = mdrecord.get_stage_trajectory(trajectory_name="yank_files.tar",
+                                                               out_directory=output_directory)
+                    with tarfile.open(yank_files) as tar:
                         tar.extractall(path=output_directory)
 
-                    # remove the tar file
-                    os.remove(fn_local)
+                    # remove the file
+                    os.remove(yank_files)
 
                     # Disable minimization if restart is enabled
                     opt['minimize'] = False
@@ -400,23 +368,27 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                 with tarfile.open(tar_fn, mode='w:gz') as archive:
                     archive.add(output_directory, arcname='.', recursive=True)
 
-                # Create Large file object if required
-                lf = omm_utils.upload_file(tar_fn, orion_name=opt['system_title']+'.tar.gz')
-
                 str_logger += '\n' + '-' * 32 + ' SIMULATION ' + '-' * 32
 
                 with open(os.path.join(output_directory, "experiments/experiments.log"), 'r') as flog:
                     str_logger += '\n'+flog.read()
 
-                md_stage_record = MDRecords.MDStageRecord(self.title, MDStageTypes.FEC,
-                                                          MDRecords.MDSystemRecord(system, mdstate),
-                                                          log=str_logger,
-                                                          trajectory=lf, trajectory_engine=MDEngines.OpenMM)
+                md_stage_record = mdrecord.create_stage(self.title,
+                                                        MDStageTypes.FEC,
+                                                        system,
+                                                        mdstate,
+                                                        log=str_logger,
+                                                        trajectory=tar_fn,
+                                                        trajectory_engine=MDEngines.OpenMM,
+                                                        orion_name=opt['system_title'] + '.tar.gz')
+
+                trj_id = md_stage_record.get_value(Fields.trajectory)
+
                 if current_iterations == 0:
-                    record.set_value(Fields.trj_garbage_field, [lf])
+                    record.set_value(Fields.trj_garbage_field, [trj_id])
                 else:
                     trj_garbage_list = record.get_value(Fields.trj_garbage_field)
-                    trj_garbage_list.append(lf)
+                    trj_garbage_list.append(trj_id)
                     record.set_value(Fields.trj_garbage_field, trj_garbage_list)
 
                 # Run Yank analysis
@@ -436,13 +408,8 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                     record.set_value(Fields.floe_report_label, "&Delta;Gs = {:.1f} &plusmn; {:.1f} kcal/mol".
                                      format(DeltaG_solvation, dDeltaG_solvation))
 
-                # md_stages.append(md_stage_record)
-                md_stages[-1] = md_stage_record
-
-                record.set_value(Fields.md_stages, md_stages)
-
-                record.set_value(Fields.primary_molecule, system)
-
+                mdrecord.set_last_stage(md_stage_record)
+                mdrecord.set_primary(system)
                 record.set_value(current_iteration_field, opt['new_iterations'])
 
                 self.success.emit(record)
@@ -460,7 +427,7 @@ class SyncBindingFECube(OERecordComputeCube):
     version = "0.0.0"
     title = "SyncSolvationFECube"
     description = """
-    This cube is used to synchronize the solvated ligands and the related
+    This cube is used to sxynchronize the solvated ligands and the related
     solvated complexes
     """
 
@@ -701,23 +668,19 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                                                                 getattr(self.args, tmp_default.name),
                                                                 tmp_description)
 
-            if not record.has_value(Fields.primary_molecule):
-                raise ValueError("The Primary Molecule is missing field")
-        
-            complex = record.get_value(Fields.primary_molecule)
+            # Create the MD record to use the MD Record API
+            mdrecord = MDDataRecord(record)
 
-            if not record.has_value(Fields.title):
+            complex = mdrecord.get_primary
+
+            if not mdrecord.has_title:
                 opt['Logger'].warn("Missing record Title field")
                 system_title = complex.GetTitle()[0:12]
             else:
-                system_title = record.get_value(Fields.title)
+                system_title = mdrecord.get_title
 
             opt['system_title'] = system_title
-            
-            if not record.has_value(Fields.id):
-                raise ValueError("Missing the ID field")
-
-            opt['system_id'] = record.get_value(Fields.id)
+            opt['system_id'] = mdrecord.get_id
 
             if not record.has_value(Fields.ligand_name):
                 raise ValueError("The ligand name has not been defined")
@@ -811,17 +774,9 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                 mdstate = MDState(solvated_complex_parmed_structure)
 
             else:
-                # Extract the MDStageRecord list
-                md_stages = record.get_value(Fields.md_stages)
 
-                # Extract the most recent MDStageRecord
-                md_stage_record = md_stages[-1]
-
-                complex_mdsystem_record = md_stage_record.get_value(Fields.md_system)
-
-                mdstate = complex_mdsystem_record.get_value(Fields.md_state)
-
-                solvated_complex_parmed_structure = record.get_value(Fields.pmd_structure)
+                mdstate = mdrecord.get_stage_state()
+                solvated_complex_parmed_structure = mdrecord.get_parmed
 
                 solvated_complex_parmed_structure.positions = mdstate.get_positions()
                 solvated_complex_parmed_structure.velocities = mdstate.get_velocities()
@@ -841,25 +796,14 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
                 if current_iterations != 0:
 
-                    if md_stage_record.has_value(Fields.trajectory):
-                        yank_files = md_stage_record.get_value(Fields.trajectory)
+                    yank_files = mdrecord.get_stage_trajectory(trajectory_name="yank_files.tar",
+                                                               out_directory=output_directory)
 
-                    elif md_stage_record.has_value(Fields.orion_local_trj_field):
-                        yank_files = md_stage_record.get_value(Fields.orion_local_trj_field)
-
-                    else:
-                        print("No Yank trajectory file have been found in the selected stage record {}".format(
-                            md_stage_record.get_value(Fields.stage_name)))
-
-                    filename = os.path.join(output_directory, "yank_files.tar")
-
-                    fn_local = omm_utils.download_file(yank_files, filename, delete=False)
-
-                    with tarfile.open(fn_local) as tar:
+                    with tarfile.open(yank_files) as tar:
                         tar.extractall(path=output_directory)
 
                     # remove the file
-                    os.remove(fn_local)
+                    os.remove(yank_files)
 
                     # Disable minimization if restart is enabled
                     opt['minimize'] = False
@@ -931,26 +875,28 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                 with tarfile.open(tar_fn, mode='w:gz') as archive:
                     archive.add(output_directory, arcname='.', recursive=True)
 
-                # Create Large file object if required
-                lf = omm_utils.upload_file(tar_fn, orion_name=opt['system_title']+'.tar.gz')
-
                 str_logger += '\n' + '-' * 32 + ' SIMULATION ' + '-' * 32
 
                 with open(os.path.join(output_directory, "experiments/experiments.log"), 'r') as flog:
                     str_logger += '\n' + flog.read()
 
-                md_stage_record = MDRecords.MDStageRecord(self.title, MDStageTypes.FEC,
-                                                          MDRecords.MDSystemRecord(complex,
-                                                                                   mdstate),
-                                                          log=str_logger,
-                                                          trajectory=lf, trajectory_engine=MDEngines.OpenMM)
+                md_stage_record = mdrecord.create_stage(self.title,
+                                                        MDStageTypes.FEC,
+                                                        complex,
+                                                        mdstate,
+                                                        log=str_logger,
+                                                        trajectory=tar_fn,
+                                                        trajectory_engine=MDEngines.OpenMM,
+                                                        orion_name=opt['system_title'] + '.tar.gz')
+
+                trj_id = md_stage_record.get_value(Fields.trajectory)
+
                 if current_iterations != 0:
-                    # md_stages.append(md_stage_record)
-                    md_stages[-1] = md_stage_record
-                    record.set_value(Fields.md_stages, md_stages)
+
+                    mdrecord.set_last_stage(md_stage_record)
 
                     trj_garbage_list = record.get_value(Fields.trj_garbage_field)
-                    trj_garbage_list.append(lf)
+                    trj_garbage_list.append(trj_id)
                     record.set_value(Fields.trj_garbage_field, trj_garbage_list)
 
                 else:
@@ -966,16 +912,18 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                             continue
                         record.set_value(field, old_record_copy.get_value(field))
 
-                    record.set_value(Fields.md_stages, [md_stage_record])
-                    record.set_value(Fields.id, opt['system_id'])
-                    record.set_value(Fields.title, opt['system_title'])
-                    record.set_value(Fields.pmd_structure, solvated_complex_parmed_structure)
+                    mdrecord = MDDataRecord(record)
+                    mdrecord.init_stages(md_stage_record)
+
+                    mdrecord.set_id(opt['system_id'])
+                    mdrecord.set_title(opt['system_title'])
+                    mdrecord.set_parmed(solvated_complex_parmed_structure)
 
                     iterations_per_cube_field = OEField("iterations_per_cube", Types.Int)
                     record.set_value(iterations_per_cube_field, iterations_per_cube_opt)
                     self.log.info("[{}] iterations per cube saved on the record: {}".format(self.title,
                                                                                             iterations_per_cube_opt))
-                    record.set_value(Fields.trj_garbage_field, [lf])
+                    record.set_value(Fields.trj_garbage_field, [trj_id])
 
                 # Run the analysis
                 if opt['new_iterations'] == opt['iterations']:
@@ -995,7 +943,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                                      format(DeltaG_binding, dDeltaG_binding))
 
             record.set_value(current_iteration_field, opt['new_iterations'])
-            record.set_value(Fields.primary_molecule, complex)
+            mdrecord.set_primary(complex)
 
             self.success.emit(record)
 
