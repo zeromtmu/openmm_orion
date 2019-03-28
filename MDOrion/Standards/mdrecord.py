@@ -495,7 +495,7 @@ class MDDataRecord(object):
         trajectory_name and downloaded in the passed out_directory. The stage to get the trajectory can be selected
         by its name by using the name parameter. If no name is specified the "last" stage is selected. If a MD stage
         is passed the trajectory associated with this stage is processed. If a name and a MD stage is specified
-        the MD stage name is ignored
+        the MD stage name is ignored. None is returned if No trajectory has been found on the MD stage
 
         Parameters:
         -----------
@@ -521,17 +521,16 @@ class MDDataRecord(object):
         else:
             stage = self.get_stage_by_name(name)
 
-        if stage.get_value(Fields.trajectory) is None:
-            return False
-
         if stage.has_value(Fields.trajectory):
             trj_id = stage.get_value(Fields.trajectory)
 
         elif stage.has_value(Fields.orion_local_trj_field):
+
             trj_id = stage.get_value(Fields.orion_local_trj_field)
 
         else:
-            raise ValueError("No trajectory file have been found in the selected MD Stage {}".format(stage))
+            print("WARNING: No trajectory has been found")
+            return None
 
         trj_fn = os.path.join(out_directory, trajectory_name)
 

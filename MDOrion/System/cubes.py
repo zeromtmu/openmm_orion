@@ -28,6 +28,7 @@ from floe.api import (ParallelMixin,
 
 from oeommtools import packmol
 
+from MDOrion.Standards.mdrecord import MDDataRecord
 
 class IDSettingCube(OERecordComputeCube):
     title = "System ID Setting"
@@ -332,3 +333,98 @@ class SolvationCube(ParallelMixin, OERecordComputeCube):
             self.failure.emit(record)
 
         return
+
+
+class ParmTest1(OERecordComputeCube):
+    title = "TEST PARM1"
+    version = "0.1.0"
+    classification = [["System Preparation"]]
+    tags = ['System', 'Complex', 'Protein', 'Ligand']
+    description = """
+    TESTING
+    """
+
+    # Override defaults for some parameters
+    parameter_overrides = {
+        "memory_mb": {"default": 2000},
+        "spot_policy": {"default": "Prohibited"},
+        "prefetch_count": {"default": 1},  # 1 molecule at a time
+        "item_count": {"default": 1}  # 1 molecule at a time
+    }
+
+    def begin(self):
+        self.opt = vars(self.args)
+        self.opt['Logger'] = self.log
+
+    def process(self, record, port):
+        try:
+
+            # Create the MD record to use the MD Record API
+            mdrecord = MDDataRecord(record)
+
+            parmed = mdrecord.get_parmed
+
+            import pickle, base64
+
+            # pkl_obj = base64.b64encode(pickle.dumps(parmed.__getstate__()))
+            #
+            # with open('parmed.pickle', 'wb') as f:
+            #     f.write(pkl_obj)
+
+            with open('parmed.pickle', 'wb') as f:
+                pickle.dump(parmed.__getstate__(), f)
+
+            self.success.emit(record)
+
+        except:
+            self.log.error(traceback.format_exc())
+            # Return failed record
+            self.failure.emit(record)
+
+
+class ParmTest2(OERecordComputeCube):
+    title = "TEST PARM2"
+    version = "0.1.0"
+    classification = [["System Preparation"]]
+    tags = ['System', 'Complex', 'Protein', 'Ligand']
+    description = """
+    TESTING
+    """
+
+    # Override defaults for some parameters
+    parameter_overrides = {
+        "memory_mb": {"default": 2000},
+        "spot_policy": {"default": "Prohibited"},
+        "prefetch_count": {"default": 1},  # 1 molecule at a time
+        "item_count": {"default": 1}  # 1 molecule at a time
+    }
+
+    def begin(self):
+        self.opt = vars(self.args)
+        self.opt['Logger'] = self.log
+
+    def process(self, record, port):
+        try:
+            import pickle, base64, parmed
+
+            # with open('parmed.pickle', 'rb') as f:
+            #     data = f.read()
+            #
+            # decoded_obj = base64.b64decode(data)
+            #
+            # parm_dic = pickle.loads(decoded_obj)
+
+            with open('parmed.pickle', 'rb') as f:
+                parm_dic = pickle.load(f)
+
+            struct = parmed.structure.Structure()
+            struct.__setstate__(parm_dic)
+
+            struct.save("cazzo.pdb")
+
+            self.success.emit(record)
+
+        except:
+            self.log.error(traceback.format_exc())
+            # Return failed record
+            self.failure.emit(record)

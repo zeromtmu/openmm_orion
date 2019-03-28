@@ -12,8 +12,6 @@ from orionclient.types import File
 
 from os import environ
 
-import MDOrion.MDEngines.utils as omm_utils
-
 import MDOrion.TrjAnalysis.utils as utl
 
 import MDOrion.TrjAnalysis.TrajMMPBSA_utils as mmpbsa
@@ -45,6 +43,7 @@ from datarecord import (Types,
                         OEField,
                         OERecord)
 
+from MDOrion.Standards.mdrecord import MDDataRecord
 
 from MDOrion.TrjAnalysis.TrajAnFloeReport_utils import (_clus_floe_report_header,
                                                         _clus_floe_report_header2,
@@ -104,15 +103,11 @@ class MDFloeReportCube(OERecordComputeCube):
 
         try:
 
-            if not record.has_value(Fields.title):
-                raise ValueError("Missing the title field")
+            # Create the MD record to use the MD Record API
+            mdrecord = MDDataRecord(record)
 
-            system_title = record.get_value(Fields.title)
-
-            if not record.has_value(Fields.id):
-                raise ValueError("Missing the ID field")
-
-            system_id = record.get_value(Fields.id)
+            system_title = mdrecord.get_title
+            system_id = mdrecord.get_id
 
             if not record.has_value(Fields.floe_report):
                 raise ValueError("Missing the report field for the system {}".format(system_title + "_" + system_id))
@@ -277,61 +272,29 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
             # the parallel cube processes
             opt = dict(self.opt)
 
+            # Create the MD record to use the MD Record API
+            mdrecord = MDDataRecord(record)
+
             # Logger string
             opt['Logger'].info(' ')
-            system_title = utl.RequestOEFieldType(record, Fields.title)
+            system_title = mdrecord.get_title
             opt['Logger'].info('{}: Attempting MD Traj conversion into OEMols'.format(system_title))
-            idx = utl.RequestOEFieldType( record, Fields.id)
 
-            # Extract the MDStageRecord list
-            md_stages = utl.RequestOEFieldType(record, Fields.md_stages)
-            if len(md_stages) < 2:
-                raise ValueError('{} does not have at least 2 MD Stages'.format(system_title))
+            md_stageLast_record = mdrecord.get_last_stage
 
-            # Extract and verify the traj filename for the last MD stage
-            md_stageLast_record = md_stages[-1]
-
-            # begin debug Bayly
-            #lastName = utl.RequestOEFieldType(md_stageLast_record, Fields.stage_type)
-            lastName = utl.RequestOEFieldType(md_stageLast_record, Fields.stage_name)
-            # end debug Bayly
-
-            if lastName != 'Production':
-                raise ValueError('Cannot find the Production stage')
-
-            # copy the trajecotry file into the Temporary directory
             with TemporaryDirectory() as output_directory:
 
                 opt['Logger'].info('{} Temp Directory: {}'.format(system_title, output_directory))
 
-                # kludge for local floe with traj already in current directory
-                trajID = system_title + '_' + str(idx) + '-prod.tar.gz'
-
-                if os.path.exists(trajID):
-                    opt['Logger'].info('{} local Trajectory file {} exists'.format(system_title, trajID))
-                    if md_stageLast_record.has_value(Fields.trajectory):
-                        trj_field = md_stageLast_record.get_field(Fields.trajectory.get_name())
-                    if md_stageLast_record.has_value(Fields.orion_local_trj_field):
-                        trj_field = md_stageLast_record.get_field(Fields.trajectory.get_name())
-
-                elif md_stageLast_record.has_value(Fields.trajectory):
-                    trajID = md_stageLast_record.get_value(Fields.trajectory)
-                    trj_field = md_stageLast_record.get_field(Fields.trajectory.get_name())
-
-                elif md_stageLast_record.has_value(Fields.orion_local_trj_field):
-                    opt['Logger'].info('{} Orion S3 Trajectory Field Detected'.format(system_title))
-                    trajID = md_stageLast_record.get_value(Fields.orion_local_trj_field)
-                    trj_field = md_stageLast_record.get_field(Fields.trajectory.get_name())
-                else:
-                    raise ValueError("No trajectory have been found in the selected stage record {}".format(
-                        md_stageLast_record.get_value(Fields.stage_name)))
-
+                trj_field = md_stageLast_record.get_field(Fields.trajectory.get_name())
                 trj_meta = trj_field.get_meta()
                 md_engine = trj_meta.get_attribute(Meta.Annotation.Description)
 
-                trj_selected_filename = os.path.join(output_directory, "trajectory.tar.gz")
+                trj_local = mdrecord.get_stage_trajectory(trajectory_name="trajectory.tar.gz",
+                                                          out_directory=output_directory)
 
-                trj_local = omm_utils.download_file(trajID, trj_selected_filename, delete=False)
+                if trj_local is None:
+                    raise ValueError("No Trajectory has been found on the MD stage record")
 
                 # Un-tar the Trajectory files
                 with tarfile.open(trj_local) as tar:
@@ -340,16 +303,14 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
                 opt['Logger'].info('{} Trajectory filename: {}'.format(system_title, trj_local))
 
                 # Extract the Setup Topology
-                md_stage0_record = md_stages[0]
+                md_stage0_record = mdrecord.get_stage_by_name("System Parametrization")
 
                 setupType = utl.RequestOEFieldType(md_stage0_record, Fields.stage_type)
 
                 if setupType != 'SETUP':
                     raise ValueError('{} Cannot find the SETUP stage'.format(system_title))
 
-                md_system = utl.RequestOEFieldType(md_stage0_record, Fields.md_system)
-
-                setupOEMol = utl.RequestOEFieldType(md_system, Fields.topology)
+                setupOEMol = mdrecord.get_stage_topology(stage=md_stage0_record)
 
                 opt['Logger'].info('{} Setup topology has {} atoms'.format(system_title, setupOEMol.NumAtoms()))
 
