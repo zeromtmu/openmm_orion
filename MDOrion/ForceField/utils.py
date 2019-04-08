@@ -154,8 +154,8 @@ def applyffExcipients(excipients, opt):
     # OpenMM topology and positions from OEMol
     topology, positions = oeommutils.oemol_to_openmmTop(excipients)
 
-    # Try to apply the selected FF on the excipients
-    forcefield = app.ForceField(opt['protein_forcefield'])
+    # Ions are contained in the amberff14 force field
+    forcefield = app.ForceField("amber14/tip3p.xml")
 
     # List of the unrecognized excipients
     unmatched_res_list = forcefield.getUnmatchedResidues(topology)
@@ -246,7 +246,10 @@ def applyffExcipients(excipients, opt):
 
         if rec_excp.NumAtoms() > 0:
             top_known, pos_known = oeommutils.oemol_to_openmmTop(rec_excp)
-            ff_rec = app.ForceField(opt['protein_forcefield'])
+
+            # Ions are contained in the amberff14 force field
+            ff_rec = app.ForceField("amber14/tip3p.xml")
+
             try:
                 omm_system = ff_rec.createSystem(top_known, rigidWater=False, constraints=None)
                 rec_struc = parmed.openmm.load_topology(top_known, omm_system, xyz=pos_known)
