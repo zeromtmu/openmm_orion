@@ -133,3 +133,67 @@ def download_file(file_id, filename, orion_delete=False):
         raise IOError("The trajectory file has not been found: {}".format(fn_local))
 
     return fn_local
+
+
+def upload_data(filename, orion_name='OrionFile'):
+
+    if in_orion():
+
+        session = OrionSession()
+
+        file_upload = File.upload(session,
+                                  orion_name,
+                                  filename)
+
+        session.tag_resource(file_upload, "MD Data")
+
+        job_id = environ.get('ORION_JOB_ID')
+
+        if job_id:
+            session.tag_resource(file_upload, "Job {}".format(job_id))
+
+        file_id = file_upload.id
+
+    else:
+        file_id = filename
+
+    return file_id
+
+
+def download_data(file_id, orion_fn, orion_delete=False):
+
+    if in_orion() or isinstance(file_id, int):
+
+        session = OrionSession()
+
+        resource = session.get_resource(File, file_id)
+
+        resource.download_to_file(orion_fn)
+
+        fn_local = orion_fn
+
+        if orion_delete:
+            session.delete_resource(resource)
+    else:
+        fn_local = file_id
+
+    if not os.path.isfile(fn_local):
+        raise IOError("The MD data file has not been found: {}".format(fn_local))
+
+    return fn_local
+
+# TODO in ORION
+def delete_data(file_id):
+    if in_orion():
+        pass
+    else:
+        os.remove(file_id)
+    return True
+
+# TODO in ORION
+def delete_file(file_id):
+    if in_orion():
+        pass
+    else:
+        os.remove(file_id)
+    return True

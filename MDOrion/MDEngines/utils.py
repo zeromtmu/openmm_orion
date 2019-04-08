@@ -34,6 +34,10 @@ import fcntl
 
 import os
 
+from simtk import unit
+
+import itertools
+
 md_keys_converter = {'OpenMM':
 
                          {'constraints':
@@ -71,6 +75,11 @@ class MDState(object):
 
     def get_positions(self):
         return self.__positions__
+
+    def get_oe_positions(self):
+        pos = self.__positions__.in_units_of(unit.angstrom) / unit.angstrom
+        pos = list(itertools.chain.from_iterable(pos))
+        return pos
 
     def get_velocities(self):
         return self.__velocities__

@@ -38,7 +38,10 @@ from MDOrion.Standards.mdrecord import MDDataRecord
 from MDOrion.MDEngines.utils import MDState
 
 from simtk.openmm import app
+
 from simtk import unit
+
+import os
 
 
 class ForceFieldCube(ParallelMixin, OERecordComputeCube):
@@ -105,6 +108,11 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
         'lig_res_name',
         default='LIG',
         help_text='Ligand residue name. This is used during the spitting to identify the ligand')
+
+    suffix = parameter.StringParameter(
+        'suffix',
+        default='prep',
+        help_text='Filename suffix for output simulation files')
 
     other_forcefield = parameter.StringParameter(
         'other_forcefield',
@@ -248,14 +256,25 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
                                                            rigidWater=False)
             mdrecord.set_title(system_title)
             mdrecord.set_primary(system_reassembled)
+
             mdrecord.set_parmed(system_structure)
-            setup_stage = mdrecord.create_stage(self.title,
-                                                MDStageTypes.SETUP,
-                                                system_reassembled,
-                                                MDState(system_structure))
-            mdrecord.init_stages(setup_stage)
+
+            # Create a collection per record. This works just in Orion
+            if mdrecord.create_collection(system_title+'_' + str(sys_id)):
+                self.log.info("A collection has been added to the record: {}".format(system_title+'_' + str(sys_id)))
+
+            data_fn = os.path.basename(mdrecord.cwd) + '_' + system_title+'_' + str(sys_id) + '-' + opt['suffix']+'.tar.gz'
+
+            if not mdrecord.add_new_stage(self.title,
+                                          MDStageTypes.SETUP,
+                                          system_reassembled,
+                                          MDState(system_structure),
+                                          data_fn):
+                raise ValueError("Problems adding the new Parametrization Stage")
 
             self.success.emit(mdrecord.get_record)
+
+            del mdrecord
 
         except:
             self.log.error(traceback.format_exc())

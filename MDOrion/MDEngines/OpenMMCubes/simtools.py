@@ -55,14 +55,9 @@ import time
 
 from MDOrion.MDEngines.utils import (MDSimulations,
                                      md_keys_converter)
-
-import tempfile
-
 import tarfile
 
-import shutil
-
-from MDOrion.Standards import MDEngines
+from MDOrion.Standards import MDEngines, MDFileNames
 
 
 class OpenMMSimulations(MDSimulations):
@@ -78,11 +73,8 @@ class OpenMMSimulations(MDSimulations):
         velocities = mdstate.get_velocities()
         box = mdstate.get_box_vectors()
 
-        # Create temp directory
-        opt['output_directory'] = tempfile.mkdtemp()
-
-        opt['omm_log_fn'] = os.path.join(opt['output_directory'], opt['outfname']+'.log')
-        opt['omm_trj_fn'] = os.path.join(opt['output_directory'], opt['outfname'] + '.h5')
+        opt['omm_log_fn'] = os.path.join(opt['out_directory'], 'trajectory.log')
+        opt['omm_trj_fn'] = os.path.join(opt['out_directory'], 'trajectory.h5')
 
         # Time step in ps
         if opt['hmr']:
@@ -401,7 +393,7 @@ class OpenMMSimulations(MDSimulations):
                 # Save trajectory files
                 if self.opt['trajectory_interval']:
 
-                    tar_fn = self.opt['outfname'] + '.tar.gz'
+                    tar_fn = self.opt['trj_fn']
 
                     with tarfile.open(tar_fn, mode='w:gz') as archive:
                         archive.add(self.opt['omm_trj_fn'], arcname=os.path.basename(self.opt['omm_trj_fn']))
@@ -435,8 +427,6 @@ class OpenMMSimulations(MDSimulations):
         del self.omm_simulation.context
         del self.omm_simulation.integrator
         del self.omm_simulation
-
-        shutil.rmtree(self.opt['output_directory'], ignore_errors=True)
 
         return
 
