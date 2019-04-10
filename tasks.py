@@ -200,7 +200,7 @@ def clean(ctx):
     clean_pycache(ctx)
     shutil.rmtree("dist", ignore_errors=True)
     shutil.rmtree("build", ignore_errors=True)
-    egg_path = "{}.egg-info".format("MDOrion".replace("-", "_"))
+    egg_path = "{}.egg-info".format("OpenEye_MD_Floes".replace("-", "_"))
     if os.path.isfile(egg_path):
         os.remove(egg_path)
     elif os.path.isdir(egg_path):

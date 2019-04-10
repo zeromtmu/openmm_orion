@@ -26,7 +26,7 @@ from cuberecord import OERecordComputeCube
 from MDOrion.Standards import (MDStageTypes,
                                MDEngines)
 
-from MDOrion.Standards.mdrecord import MDDataRecord, MDFileNames
+from MDOrion.Standards.mdrecord import MDDataRecord
 
 from MDOrion.MDEngines.utils import md_simulation
 
@@ -502,7 +502,8 @@ class MDNvtCube(ParallelMixin, OERecordComputeCube):
                                           log=opt['str_logger'],
                                           trajectory_fn=trajectory_fn,
                                           trajectory_engine=trajectory_engine,
-                                          orion_name=trajectory_fn):
+                                          trajectory_orion_ui=opt['system_title'] + '_' + str(opt['system_id']) + '-' + opt['suffix']
+                                          ):
 
                 raise ValueError("Problems adding in the new NVT Stage")
 
@@ -753,16 +754,17 @@ class MDNptCube(ParallelMixin, OERecordComputeCube):
 
             data_fn = opt['out_fn'] + '.tar.gz'
 
-            if not (mdrecord.add_new_stage(self.title,
-                                           MDStageTypes.NPT,
-                                           system,
-                                           new_mdstate,
-                                           data_fn,
-                                           opt['save_md_stage'],
-                                           log=opt['str_logger'],
-                                           trajectory_fn=trajectory_fn,
-                                           trajectory_engine=trajectory_engine,
-                                           orion_name=trajectory_fn)):
+            if not mdrecord.add_new_stage(self.title,
+                                          MDStageTypes.NPT,
+                                          system,
+                                          new_mdstate,
+                                          data_fn,
+                                          opt['save_md_stage'],
+                                          log=opt['str_logger'],
+                                          trajectory_fn=trajectory_fn,
+                                          trajectory_engine=trajectory_engine,
+                                          trajectory_orion_ui=opt['system_title'] + '_' + str(opt['system_id']) + '-' + opt['suffix']
+                                          ):
 
                 raise ValueError("Problems adding in the new NPT Stage")
 

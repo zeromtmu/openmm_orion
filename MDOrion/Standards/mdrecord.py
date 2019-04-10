@@ -1,5 +1,4 @@
 from MDOrion.Standards import (Fields,
-                               MDEngines,
                                MDFileNames)
 
 from MDOrion.Standards import utils
@@ -27,9 +26,10 @@ import pickle
 
 import shutil
 
-from orionclient.types import ShardCollection, Shard
+from orionclient.types import ShardCollection
 
-from orionclient.session import in_orion, APISession
+from orionclient.session import (in_orion,
+                                 APISession)
 
 
 def mdstages(f):
@@ -62,11 +62,12 @@ def stage_system(f):
         dir_stage = mdrec.processed[stage_name]
 
         if not dir_stage:
+
+            dir_stage = tempfile.mkdtemp(prefix=stage_name + '_', dir=mdrec.cwd)
+
             file_id = stage.get_value(Fields.mddata)
 
-            fn = utils.download_data(file_id, orion_fn=MDFileNames.mddata)
-
-            dir_stage = tempfile.mkdtemp(prefix=stage_name+'_', dir=mdrec.cwd)
+            fn = utils.download_data(file_id, dir_stage, collection_id=mdrec.collection_id)
 
             with tarfile.open(fn) as tar:
                 tar.extractall(path=dir_stage)
@@ -92,6 +93,19 @@ class MDDataRecord(object):
             stages = self.rec.get_value(Fields.md_stages)
             self.processed = {stg.get_value(Fields.stage_name): False for stg in stages}
 
+        if in_orion():
+            if self.rec.has_field(Fields.collection):
+                self.collection_id = self.rec.get_value(Fields.collection)
+
+                session = APISession
+
+                collection = session.get_resource(ShardCollection, self.collection_id)
+
+                collection.open()
+
+        else:
+            self.collection_id = None
+
         self.cwd = tempfile.mkdtemp()
 
     def __del__(self):
@@ -99,6 +113,16 @@ class MDDataRecord(object):
             shutil.rmtree(self.cwd, ignore_errors=True)
         except OSError as e:
             print("Error: {} - {}".format(e.filename, e.strerror))
+
+        if in_orion():
+
+            if self.collection_id is not None:
+
+                session = APISession
+
+                collection = session.get_resource(ShardCollection, self.collection_id)
+
+                collection.close()
 
     @property
     def get_record(self):
@@ -131,6 +155,11 @@ class MDDataRecord(object):
     def set_primary(self, primary_mol):
         """
         This method sets the primary molecule on the record
+
+        Parameters:
+        -----------
+        primary_mol: OEMol
+            The primary molecule to set on the record
 
         Return:
         -------
@@ -181,6 +210,11 @@ class MDDataRecord(object):
         """
         This method sets the identification field ID on the record
 
+        Parameters:
+        -----------
+        id: Int
+            An identification integer for the record
+
         Return:
         -------
             : Bool
@@ -230,6 +264,11 @@ class MDDataRecord(object):
         """
         This method sets the system Title field on the record
 
+        Parameters:
+        -----------
+        title: String
+            A string used to identify the  molecular system
+
         Return:
         -------
             : Bool
@@ -247,6 +286,11 @@ class MDDataRecord(object):
         """
         This method sets a collection field on the record to be used in Orion
 
+        Parameters:
+        -----------
+        name: String
+            A string used to identify in the Orion UI the record collection
+
         Return:
         -------
             : Bool
@@ -260,11 +304,11 @@ class MDDataRecord(object):
 
             session = APISession
 
-            metadata = {"size_bytes": 0}
+            collection = ShardCollection.create(session, name)
 
-            collection = ShardCollection.create(session, name, metadata)
+            self.rec.set_value(Fields.collection, collection.id)
 
-            self.collection = collection
+            self.collection_id = collection.id
 
         else:
             return False
@@ -356,14 +400,14 @@ class MDDataRecord(object):
             stage = self.get_stage_by_idx(0)
 
             fid = stage.get_value(Fields.mddata)
-            utils.delete_data(fid)
+            utils.delete_data(fid, collection_id=self.collection_id)
 
             if stage.get_value(Fields.trajectory) is not None:
                 tid = stage.get_value(Fields.trajectory)
                 utils.delete_file(tid)
 
             self.rec.delete_field(Fields.md_stages)
-            del self.processed
+            self.processed = {}
 
             return True
 
@@ -371,7 +415,7 @@ class MDDataRecord(object):
             last_stage = stages[-1]
             name = last_stage.get_value(Fields.stage_name)
             fid = last_stage.get_value(Fields.mddata)
-            utils.delete_data(fid)
+            utils.delete_data(fid, collection_id=self.collection_id)
 
             if last_stage.get_value(Fields.trajectory) is not None:
                 tid = last_stage.get_value(Fields.trajectory)
@@ -389,7 +433,7 @@ class MDDataRecord(object):
 
                 if name == stg_name:
                     fid = stage.get_value(Fields.mddata)
-                    utils.delete_data(fid)
+                    utils.delete_data(fid, collection_id=self.collection_id)
 
                     if stage.get_value(Fields.trajectory) is not None:
                         tid = stage.get_value(Fields.trajectory)
@@ -575,7 +619,7 @@ class MDDataRecord(object):
                       log=None,
                       trajectory_fn=None,
                       trajectory_engine=None,
-                      orion_name="OrionFile"):
+                      trajectory_orion_ui='OrionFile'):
         """
         This method append a new MD stage to the MD stage record.
 
@@ -601,10 +645,9 @@ class MDDataRecord(object):
             The trajectory name or id associated with the new MD stage
         trajectory_engine: String or None
             The MD engine used to generate the new MD stage. Possible names: OpenMM or Gromacs
-        orion_name: String
-            The Orion name to be visualize in the Orion UI
-
-        Return:
+        trajectory_ui_orion: String
+            The trajectory string name to be displayed in the Orion UI
+         Return:
         -------
             : Bool
             True if the MD stage creation was successful
@@ -657,12 +700,12 @@ class MDDataRecord(object):
                     raise ValueError(
                         "The selected stage name is already present in the MD stages: {}".format(stage_names))
 
-            lf = utils.upload_data(data_fn, orion_name=orion_name)
+            lf = utils.upload_data(data_fn, collection_id=self.collection_id)
 
             record.set_value(Fields.mddata, lf)
 
             if trajectory_fn is not None:
-                lft = utils.upload_file(trajectory_fn, orion_name='OrionName')
+                lft = utils.upload_file(trajectory_fn, orion_ui_name=trajectory_orion_ui)
                 record.set_value(trj_field, lft)
 
             stages = self.get_stages
@@ -677,12 +720,12 @@ class MDDataRecord(object):
 
         else:
 
-            lf = utils.upload_data(data_fn, orion_name=orion_name)
+            lf = utils.upload_data(data_fn, collection_id=self.collection_id)
 
             record.set_value(Fields.mddata, lf)
 
             if trajectory_fn is not None:
-                lft = utils.upload_file(trajectory_fn, orion_name='OrionName')
+                lft = utils.upload_file(trajectory_fn, orion_ui_name=trajectory_orion_ui)
                 record.set_value(trj_field, lft)
 
             self.rec.set_value(Fields.md_stages, [record])
@@ -743,13 +786,13 @@ class MDDataRecord(object):
 
         for stage in stages:
             fid = stage.get_value(Fields.mddata)
-            utils.delete_data(fid)
+            utils.delete_data(fid, collection_id=self.collection_id)
 
             if stage.get_value(Fields.trajectory) is not None:
                 tid = stage.get_value(Fields.trajectory)
                 utils.delete_file(tid)
 
-        del self.processed
+        self.processed = {}
         self.rec.delete_field(Fields.md_stages)
 
         return True

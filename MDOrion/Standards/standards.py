@@ -24,14 +24,11 @@ from datarecord import OEPrimaryMolField
 from datarecord import (Types,
                         Meta,
                         OEFieldMeta,
-                        OEField,
-                        OERecord)
+                        OEField)
 
-import os
-
-from MDOrion.Standards import utils
 
 # ------------ Stage Standard Names ------------- #
+
 
 class MDStageTypes:
     SETUP = 'SETUP'
@@ -105,9 +102,6 @@ class Fields:
     # MD State
     md_state = OEField("MDState_OPLMD", MDStateData)
 
-    # # MD System Field
-    # md_system = OEField("MDSystem_OPLMD", Types.Record)
-
     # Trajectory
     if in_orion():
         trajectory = OEField("Trajectory_OPLMD", Types.Int)
@@ -125,7 +119,7 @@ class Fields:
     # orion_local_trj_field = OEField("Trajectory_OPLMD", Types.Int)
 
     # Collection is used to offload data from the record which mush be < 100Mb
-    collection = OEField("Collection_OPLMD", Types.String)
+    collection = OEField("Collection_ID_OPLMD", Types.Int)
 
     # Stage list Field
     md_stages = OEField("MDStages_OPLMD", Types.RecordVec)
@@ -143,53 +137,3 @@ class Fields:
                                             meta=OEFieldMeta().set_option(Meta.Hints.Image_SVG))
 
     floe_report_label = OEField('Floe_report_label_OPLMD', Types.String)
-
-
-
-# ---------------- Record Standards -------------- #
-
-class MDRecords:
-    @staticmethod
-    def MDSystemRecord(molecule, state):
-        record = OERecord()
-        record.set_value(Fields.topology, molecule)
-        record.set_value(Fields.md_state, state)
-        return record
-
-    @staticmethod
-    def MDStageRecord(stage_name,
-                      stage_type,
-                      system_record,
-                      log=None,
-                      trajectory=None,
-                      trajectory_engine=None,
-                      orion_name="OrionFile"):
-
-        record = OERecord()
-
-        record.set_value(Fields.stage_name, stage_name)
-        record.set_value(Fields.stage_type, stage_type)
-        record.set_value(Fields.md_system, system_record)
-
-        if log is not None:
-            record.set_value(Fields.log_data, log)
-        if trajectory is not None:
-
-            if trajectory_engine not in MDEngines.all:
-                raise ValueError("The selected MD engine is not supported")
-
-            trj_meta = OEFieldMeta()
-            trj_meta.set_attribute(Meta.Annotation.Description, trajectory_engine)
-
-            trj_field = OEField(Fields.trajectory.get_name(),
-                                Fields.trajectory.get_type(),
-                                meta=trj_meta)
-
-            if not os.path.isfile(trajectory):
-                raise IOError("The trajectory file has not been found: {}".format(trajectory))
-
-            lf = utils.upload_file(trajectory, orion_name=orion_name)
-
-            record.set_value(trj_field, lf)
-
-        return record

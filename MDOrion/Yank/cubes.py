@@ -33,8 +33,6 @@ from simtk.openmm import (app,
                           unit,
                           XmlSerializer)
 
-from tempfile import TemporaryDirectory
-
 import tarfile
 
 import os
@@ -307,6 +305,7 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                 opt['resume_sim'] = True
                 opt['resume_setup'] = True
             else:
+
                 with open(opt['solvated_structure_fn'], 'w') as f:
                     app.PDBFile.writeFile(solvated_structure.topology, solvated_structure.positions, file=f)
 
@@ -336,6 +335,8 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
 
             if current_iterations == 0:
 
+                mdrecord.delete_stage_by_idx(0)
+
                 iterations_per_cube = yankutils.calculate_iteration_time(output_directory, opt['new_iterations'])
 
                 if iterations_per_cube == 0:
@@ -353,7 +354,6 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
 
                 self.log.info("{} iterations per cube saved on the record: {}".format(self.title,
                                                                                       iterations_per_cube_opt))
-
             opt['out_fn'] = os.path.basename(mdrecord.cwd) + '_' + \
                             opt['system_title'] + '_' + \
                             str(opt['system_id']) + '-' + \
@@ -394,7 +394,8 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                                           log=str_logger,
                                           trajectory_fn=trj_fn,
                                           trajectory_engine=MDEngines.OpenMM,
-                                          orion_name=trj_fn):
+                                          trajectory_orion_ui=opt['system_title'] + '_' + str(opt['system_id']) + '-' + opt['suffix']
+                                          ):
 
                 raise ValueError("Problems adding in the new FEC Stage")
 
@@ -494,12 +495,16 @@ class SyncBindingFECube(OERecordComputeCube):
                 for field in pair[0].get_fields():
                     new_record.set_value(field, pair[0].get_value(field))
 
+                mdrecord = MDDataRecord(new_record)
+
                 ligand_mdrecord = MDDataRecord(pair[0])
                 complex_mdrecord = MDDataRecord(pair[1])
 
-                new_record.set_value(Fields.primary_molecule, complex_mdrecord.get_primary)
-                new_record.set_value(Fields.id, complex_mdrecord.get_id)
-                new_record.set_value(Fields.title, complex_mdrecord.get_title)
+                mdrecord.set_primary(complex_mdrecord.get_primary)
+                mdrecord.set_id(complex_mdrecord.get_id)
+                mdrecord.set_title(complex_mdrecord.get_title)
+
+                # mdrecord.delete_parmed
 
                 # Extract and update ligand parmed structure
                 ligand_pmd_structure = ligand_mdrecord.get_parmed(sync_stage_name='last')
@@ -513,9 +518,9 @@ class SyncBindingFECube(OERecordComputeCube):
                 new_record.set_value(ligand_solvated_field, ligand_pmd_structure)
                 new_record.set_value(complex_solvated_field, complex_pmd_structure)
 
-                # Clean UP
+                # # Clean UP
                 complex_mdrecord.delete_stages
-                ligand_mdrecord.delete_stage_by_idx(0)
+                mdrecord.delete_stage_by_idx(0)
 
                 self.success.emit(new_record)
 
@@ -762,9 +767,9 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
             for i in range(0, len(solvent_res_names)):
                 if '+' in solvent_res_names[i]:
-                    solvent_res_names[i] = "'"+solvent_res_names[i]+"'"
+                    solvent_res_names[i] = "'" + solvent_res_names[i] + "'"
                 if '-' in solvent_res_names[i]:
-                    solvent_res_names[i] = "'"+solvent_res_names[i]+"'"
+                    solvent_res_names[i] = "'" + solvent_res_names[i] + "'"
 
             opt['solvent_str_names'] = ' '.join(solvent_res_names)
 
@@ -786,7 +791,6 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                 mdstate = MDState(solvated_complex_parmed_structure)
 
                 # Remove From the record the ligand and complex field
-
                 record.delete_field(solvated_ligand_pmd_field)
                 record.delete_field(solvated_complex_pmd_field)
 
@@ -928,7 +932,8 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
                                           log=str_logger,
                                           trajectory_fn=trj_fn,
                                           trajectory_engine=MDEngines.OpenMM,
-                                          orion_name=trj_fn):
+                                          trajectory_orion_ui=opt['system_title'] + '_' + str(opt['system_id']) + '-' + opt['suffix']
+                                          ):
                 raise ValueError("Problems adding in the new FEC Stage")
 
             # Run the analysis
