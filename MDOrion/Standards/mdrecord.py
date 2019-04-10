@@ -365,6 +365,20 @@ class MDDataRecord(object):
 
     @mdstages
     def get_stage_by_idx(self, idx):
+        """
+        This method returns a MD stage selected by passing the an index. If the index is not present
+        an exception is raised.
+
+        Parameters:
+        -----------
+        idx: Int
+            The stage index to retrieve
+
+        Return:
+        -------
+        record: OERecord
+            The MD stage selected by its index
+        """
 
         if idx > len(self.processed):
             raise ValueError("The selected stage index is greater than the md stages size {} > {}".
@@ -372,8 +386,6 @@ class MDDataRecord(object):
 
         return self.rec.get_value(Fields.md_stages)[idx]
 
-    # TODO ERASE THIS METHOD OR EXTEND IT WHEN ERASING A STAGE IN ORION MUST DELETE A SHARD
-    # FROM THE SHARD COLLECTION
     @mdstages
     def delete_stage_by_name(self, stg_name='last'):
         """
@@ -450,6 +462,20 @@ class MDDataRecord(object):
 
     @mdstages
     def delete_stage_by_idx(self, idx):
+        """
+        This method deletes an MD stage selected by passing its index. If the stage index
+        cannot be found an exception is raised.
+
+        Parameters:
+        -----------
+        idx: Int
+            The MD stage index
+
+        Return:
+        -------
+        record: Bool
+            True if the deletion was successful
+        """
 
         stage = self.get_stage_by_idx(idx)
         name = stage.get_value(Fields.stage_name)
@@ -799,10 +825,9 @@ class MDDataRecord(object):
 
     def get_parmed(self, sync_stage_name=None):
         """
-        This method returns the Parmed object present on the record. An exception is raised if
-        the Parmed object cannot be found. If sync_stage_name is not None the parmed structure
-        positions, velocities and box vectors will be synchronized with the MD State selected by
-        passing the MD stage name
+        This method returns the Parmed object. An exception is raised if the Parmed object cannot
+        be found. If sync_stage_name is not None the parmed structure positions, velocities and
+        box vectors will be synchronized with the MD State selected by passing the MD stage name
 
         Parameters:
         -----------
@@ -832,20 +857,15 @@ class MDDataRecord(object):
 
             with TemporaryDirectory() as output_directory:
 
-                parmed_fn = "parmed.pickle"
+                parmed_fn = os.path.join(output_directory, "parmed.pickle")
 
-                fn_local = os.path.join(output_directory, parmed_fn)
+                shard.download_to_file(parmed_fn)
 
-                shard.download_to_file(fn_local)
+                with open(parmed_fn, 'rb') as f:
+                    parm_dic = pickle.load(f)
 
-                
-
-
-
-
-
-
-
+                pmd_structure = parmed.structure.Structure()
+                pmd_structure.__setstate__(parm_dic)
 
         if sync_stage_name is not None:
             mdstate = self.get_stage_state(stg_name=sync_stage_name)
@@ -858,9 +878,10 @@ class MDDataRecord(object):
 
     def set_parmed(self, pmdobj, sync_stage_name=None):
         """
-        This method sets the Parmed object on the record. Return True if the setting was successful.
-        If sync_stage_name is not None the parmed structure positions, velocities and box vectors
-        will be synchronized with the MD State selected by passing the MD stage name
+        This method sets the Parmed object. Return True if the setting was successful.
+        If sync_stage_name is not None the parmed structure positions, velocities and
+        box vectors will be synchronized with the MD State selected by passing the MD
+        stage name
 
         Parameters:
         -----------
@@ -885,7 +906,31 @@ class MDDataRecord(object):
             pmdobj.velocities = mdstate.get_velocities()
             pmdobj.box_vectors = mdstate.get_box_vectors()
 
-        self.rec.set_value(Fields.pmd_structure, pmdobj)
+        if in_orion():
+
+            with TemporaryDirectory() as output_directory:
+
+                parmed_fn = os.path.join(output_directory, 'parmed.pickle')
+
+                with open(parmed_fn, 'wb') as f:
+                    pickle.dump(pmdobj.__getstate__(), f)
+
+                if self.collection_id is None:
+                    raise ValueError("The Collection ID is None")
+
+                session = APISession
+
+                collection = session.get_resource(ShardCollection, self.collection_id)
+
+                shard = Shard.create(collection)
+
+                shard.upload_file(parmed_fn)
+
+                shard.close()
+
+                self.rec.set_value(Fields.pmd_structure, shard.id)
+        else:
+            self.rec.set_value(Fields.pmd_structure, pmdobj)
 
         return True
 
@@ -919,6 +964,19 @@ class MDDataRecord(object):
 
         if not self.has_parmed:
             raise ValueError("The Parmed structure is not present on the record")
+
+        if in_orion():
+
+            if self.collection_id is None:
+                raise ValueError("The Collection ID is None")
+
+            session = APISession
+
+            collection = session.get_resource(ShardCollection, self.collection_id)
+
+            file_id = self.rec.get_value(Fields.pmd_structure)
+
+            session.delete_resource(Shard(collection=collection, id=file_id))
 
         self.rec.delete_field(Fields.pmd_structure)
 
