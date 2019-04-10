@@ -84,8 +84,16 @@ class Fields:
     # Primary Molecule
     primary_molecule = OEPrimaryMolField()
 
-    # Parmed Structure Field
-    pmd_structure = OEField('Structure_Parmed_OPLMD', ParmedData)
+    # Parmed Structure, Trajectory and MDData Fields
+    if in_orion():
+        pmd_structure = OEField('Structure_Parmed_OPLMD', Types.Int)
+        trajectory = OEField("Trajectory_OPLMD", Types.Int)
+        mddata = OEField("MDData_OPLMD", Types.Int)
+
+    else:
+        pmd_structure = OEField('Structure_Parmed_OPLMD', ParmedData)
+        trajectory = OEField("Trajectory_OPLMD", Types.String)
+        mddata = OEField("MDData_OPLMD", Types.String)
 
     # The Stage Name
     stage_name = OEField('Stage_name_OPLMD', Types.String)
@@ -101,22 +109,6 @@ class Fields:
 
     # MD State
     md_state = OEField("MDState_OPLMD", MDStateData)
-
-    # Trajectory
-    if in_orion():
-        trajectory = OEField("Trajectory_OPLMD", Types.Int)
-    else:
-        trajectory = OEField("Trajectory_OPLMD", Types.String)
-
-    # MD Data
-    if in_orion():
-        mddata = OEField("MDData_OPLMD", Types.Int)
-    else:
-        mddata = OEField("MDData_OPLMD", Types.String)
-
-    # This Field is introduced to deal with record trajectory field
-    # that are linked to Orion S3 storage but they are locally used
-    # orion_local_trj_field = OEField("Trajectory_OPLMD", Types.Int)
 
     # Collection is used to offload data from the record which mush be < 100Mb
     collection = OEField("Collection_ID_OPLMD", Types.Int)
@@ -137,3 +129,4 @@ class Fields:
                                             meta=OEFieldMeta().set_option(Meta.Hints.Image_SVG))
 
     floe_report_label = OEField('Floe_report_label_OPLMD', Types.String)
+

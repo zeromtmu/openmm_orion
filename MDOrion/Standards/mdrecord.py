@@ -26,7 +26,7 @@ import pickle
 
 import shutil
 
-from orionclient.types import ShardCollection
+from orionclient.types import ShardCollection, Shard
 
 from orionclient.session import (in_orion,
                                  APISession)
@@ -816,9 +816,36 @@ class MDDataRecord(object):
         """
 
         if not self.rec.has_field(Fields.pmd_structure):
-            raise ValueError("The Parmed Structure is not present on the record")
+            raise ValueError("The Parmed reference is not present on the record")
 
         pmd_structure = self.rec.get_value(Fields.pmd_structure)
+
+        if in_orion():
+            session = APISession
+
+            if self.collection_id is None:
+                raise ValueError("The Collection ID is None")
+
+            collection = session.get_resource(ShardCollection, self.collection_id)
+
+            shard = session.get_resource(Shard(collection=collection), pmd_structure)
+
+            with TemporaryDirectory() as output_directory:
+
+                parmed_fn = "parmed.pickle"
+
+                fn_local = os.path.join(output_directory, parmed_fn)
+
+                shard.download_to_file(fn_local)
+
+                
+
+
+
+
+
+
+
 
         if sync_stage_name is not None:
             mdstate = self.get_stage_state(stg_name=sync_stage_name)
