@@ -684,7 +684,7 @@ class MDDataRecord(object):
 
             trj_meta = OEFieldMeta()
             trj_meta.set_attribute(Meta.Annotation.Description, trajectory_engine)
-            trj_field = OEField(Fields.trajectory.get_name(),Fields.trajectory.get_type())
+            trj_field = OEField(Fields.trajectory.get_name(), Fields.trajectory.get_type())
 
         if self.rec.has_field(Fields.md_stages):
 

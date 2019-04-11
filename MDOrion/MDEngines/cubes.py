@@ -242,7 +242,7 @@ class MDMinimizeCube(ParallelMixin, OERecordComputeCube):
                                           system,
                                           new_mdstate,
                                           data_fn,
-                                          opt['save_md_stage'],
+                                          append=opt['save_md_stage'],
                                           log=opt['str_logger']):
 
                 raise ValueError("Problems adding the new Minimization Stage")
@@ -498,11 +498,11 @@ class MDNvtCube(ParallelMixin, OERecordComputeCube):
                                           system,
                                           new_mdstate,
                                           data_fn,
-                                          opt['save_md_stage'],
+                                          append=opt['save_md_stage'],
                                           log=opt['str_logger'],
                                           trajectory_fn=trajectory_fn,
                                           trajectory_engine=trajectory_engine,
-                                          trajectory_orion_ui=opt['system_title'] + '_' + str(opt['system_id']) + '-' + opt['suffix']
+                                          trajectory_orion_ui=opt['system_title'] + '_' + str(opt['system_id']) + '-' + opt['suffix']+'.tar.gz'
                                           ):
 
                 raise ValueError("Problems adding in the new NVT Stage")
@@ -759,11 +759,11 @@ class MDNptCube(ParallelMixin, OERecordComputeCube):
                                           system,
                                           new_mdstate,
                                           data_fn,
-                                          opt['save_md_stage'],
+                                          append=opt['save_md_stage'],
                                           log=opt['str_logger'],
                                           trajectory_fn=trajectory_fn,
                                           trajectory_engine=trajectory_engine,
-                                          trajectory_orion_ui=opt['system_title'] + '_' + str(opt['system_id']) + '-' + opt['suffix']
+                                          trajectory_orion_ui=opt['system_title'] + '_' + str(opt['system_id']) + '-' + opt['suffix']+'.tar.gz'
                                           ):
 
                 raise ValueError("Problems adding in the new NPT Stage")
