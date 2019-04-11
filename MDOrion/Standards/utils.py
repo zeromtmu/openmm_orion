@@ -139,9 +139,13 @@ def download_file(file_id, filename):
 def delete_file(file_id):
 
     if in_orion():
+
         session = APISession
+
         resource = session.get_resource(File, file_id)
+
         session.delete_resource(resource)
+
     else:
         os.remove(file_id)
 
