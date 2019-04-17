@@ -7,18 +7,27 @@ from datarecord import read_mol_record, OEField
 from MDOrion.Standards import Fields
 
 from datarecord import (Types,
-                        OEWriteRecord)
+                        OEWriteRecord,
+                        OERecord)
 
 from datarecord.datarecord import RecordVecData, RecordData
 
-from orionclient.types import File
+from orionclient.types import File, Shard, ShardCollection
 
 import os
 
 from orionclient.session import (OrionSession,
                                  get_profile_config,
-                                 get_session)
+                                 get_session,
+                                 APISession)
 
+from MDOrion.Standards.mdrecord import MDDataRecord
+
+from tempfile import TemporaryDirectory
+
+import pickle
+
+import parmed
 
 @click.group(
     context_settings={
@@ -76,131 +85,206 @@ def dataset(ctx, filename, id, profile=None, max_retries=2):
     else:
         click.secho("Unable to find credentials", fg='red', err=True)
 
+#
+# @dataset.command("trajectory")
+# @click.option("--format", help="Trajectory format", default='tar.gz')
+# @click.option("--stgn", help="MD Stage number", default="all")
+# @click.option("--fixname", help="Edit the trajectory file name", default=None)
+# @click.pass_context
+# def trajectory_extraction(ctx, format, stgn, fixname):
+#     stagen = stgn
+#
+#     new_record_list = []
+#
+#     for record in ctx.obj['records']:
+#
+#         if not record.has_value(Fields.md_stages):
+#             print("No MD stages have been found in the selected record")
+#             continue
+#
+#         stages = record.get_value(Fields.md_stages)
+#         nstages = len(stages)
+#         title = record.get_value(Fields.title)
+#         id = record.get_value(Fields.id)
+#         fn = title + "_" + str(id)
+#
+#         if stagen == 'last':
+#             stages_work_on = [stages[-1]]
+#         elif stagen == 'all':
+#             stages_work_on = stages
+#         else:
+#             if int(stagen) > nstages:
+#                 print("Wrong stage number selection: {} > max = {}".format(stagen, nstages))
+#                 return
+#             else:
+#                 stages_work_on = [stages[int(stagen)]]
+#
+#         for idx in range(0, len(stages_work_on)):
+#
+#             stage = stages_work_on[idx]
+#
+#             if stage.has_value(Fields.trajectory):
+#                 fnt = stage.get_value(Fields.trajectory)
+#                 trj_field = stage.get_field(Fields.trajectory.get_name())
+#                 trj_meta = trj_field.get_meta()
+#
+#             elif stage.has_value(Fields.orion_local_trj_field):
+#                 trj_id = stage.get_value(Fields.orion_local_trj_field)
+#                 trj_field = stage.get_field(Fields.orion_local_trj_field.get_name())
+#                 trj_meta = trj_field.get_meta()
+#
+#                 suffix = ''
+#                 if stage.has_value(Fields.log_data):
+#                     log = stage.get_value(Fields.log_data)
+#                     log_split = log.split()
+#                     for i in range(0, len(log_split)):
+#                         if log_split[i] == 'suffix':
+#                             suffix = log_split[i+2]
+#                             break
+#                 fnt = fn + '-' + suffix + '.' + format
+#
+#                 resource = ctx.obj['session'].get_resource(File, trj_id)
+#
+#                 resource.download_to_file(fnt)
+#
+#             else:
+#                 print("No MD trajectory found in the selected stage record {}".format(stage.get_value(Fields.stage_name)))
+#                 continue
+#
+#             if fixname is not None:
+#                 trj_field = OEField(Fields.trajectory.get_name(),
+#                                     Fields.trajectory.get_type(),
+#                                     meta=trj_meta)
+#
+#                 stage.set_value(trj_field, fnt)
+#
+#                 stages_work_on[idx] = stage
+#
+#             record.set_value(Fields.md_stages, stages_work_on)
+#             new_record_list.append(record)
+#
+#     if fixname is not None:
+#
+#         ofs = oechem.oeofstream(fixname)
+#
+#         for record in new_record_list:
+#             OEWriteRecord(ofs, record, fmt='binary')
+#
 
-@dataset.command("trajectory")
-@click.option("--format", help="Trajectory format", default='tar.gz')
-@click.option("--stgn", help="MD Stage number", default="all")
-@click.option("--fixname", help="Edit the trajectory file name", default=None)
+
+@dataset.command("makelocal")
+@click.option("--name", help="Edit the trajectory file name", default="local.oedb")
 @click.pass_context
-def trajectory_extraction(ctx, format, stgn, fixname):
-    stagen = stgn
+def data_trajectory_extraction(ctx, name):
 
-    new_record_list = []
+    new_records = []
 
     for record in ctx.obj['records']:
 
-        if not record.has_value(Fields.md_stages):
-            print("No MD stages have been found in the selected record")
-            continue
+        mdrecord = MDDataRecord(record)
 
-        stages = record.get_value(Fields.md_stages)
-        nstages = len(stages)
-        title = record.get_value(Fields.title)
-        id = record.get_value(Fields.id)
-        fn = title + "_" + str(id)
+        new_record = OERecord(record)
 
-        if stagen == 'last':
-            stages_work_on = [stages[-1]]
-        elif stagen == 'all':
-            stages_work_on = stages
-        else:
-            if int(stagen) > nstages:
-                print("Wrong stage number selection: {} > max = {}".format(stagen, nstages))
-                return
-            else:
-                stages_work_on = [stages[int(stagen)]]
+        if not record.has_field(Fields.collection):
+            raise ValueError("No Collection field has been found in the record")
 
-        for idx in range(0, len(stages_work_on)):
+        session = APISession
 
-            stage = stages_work_on[idx]
+        collection_id = record.get_value(Fields.collection)
 
-            if stage.has_value(Fields.trajectory):
-                fnt = stage.get_value(Fields.trajectory)
-                trj_field = stage.get_field(Fields.trajectory.get_name())
-                trj_meta = trj_field.get_meta()
+        collection = session.get_resource(ShardCollection, collection_id)
 
-            elif stage.has_value(Fields.orion_local_trj_field):
-                trj_id = stage.get_value(Fields.orion_local_trj_field)
-                trj_field = stage.get_field(Fields.orion_local_trj_field.get_name())
-                trj_meta = trj_field.get_meta()
+        stages = mdrecord.get_stages
 
-                suffix = ''
-                if stage.has_value(Fields.log_data):
-                    log = stage.get_value(Fields.log_data)
-                    log_split = log.split()
-                    for i in range(0, len(log_split)):
-                        if log_split[i] == 'suffix':
-                            suffix = log_split[i+2]
-                            break
-                fnt = fn + '-' + suffix + '.' + format
+        system_title = mdrecord.get_title
+        sys_id = mdrecord.get_id
 
-                resource = ctx.obj['session'].get_resource(File, trj_id)
+        new_stages = []
 
-                resource.download_to_file(fnt)
+        for stage in stages:
 
-            else:
-                print("No MD trajectory found in the selected stage record {}".format(stage.get_value(Fields.stage_name)))
-                continue
+            stg_type = stage.get_value(Fields.stage_type)
+            new_stage = OERecord(stage)
 
-            if fixname is not None:
-                trj_field = OEField(Fields.trajectory.get_name(),
-                                    Fields.trajectory.get_type(),
-                                    meta=trj_meta)
+            with TemporaryDirectory() as output_directory:
+                data_fn = os.path.basename(output_directory) + '_' + system_title + '_' + str(sys_id) + '-' + stg_type + '.tar.gz'
+                shard_id = stage.get_value(OEField("MDData_OPLMD", Types.Int))
+                shard = session.get_resource(Shard(collection=collection), shard_id)
+                shard.download_to_file(data_fn)
+                new_stage.set_value(Fields.mddata, data_fn)
 
-                stage.set_value(trj_field, fnt)
+                if stage.has_field(OEField("Trajectory_OPLMD", Types.Int)):
+                    trj_id = stage.get_value(OEField("Trajectory_OPLMD", Types.Int))
+                    trj_fn = os.path.basename(output_directory) + '_' + system_title + '_' + str(sys_id) + '-' + stg_type + '_traj' + '.tar.gz'
+                    resource = session.get_resource(File, trj_id)
+                    resource.download_to_file(trj_fn)
+                    new_stage.set_value(Fields.trajectory, trj_fn)
 
-                stages_work_on[idx] = stage
+            new_stages.append(new_stage)
 
-            record.set_value(Fields.md_stages, stages_work_on)
-            new_record_list.append(record)
+        new_record.set_value(Fields.md_stages, new_stages)
 
-    if fixname is not None:
+        if record.has_field(OEField('Structure_Parmed_OPLMD', Types.Int)):
+            pmd_id = record.get_value(OEField('Structure_Parmed_OPLMD', Types.Int))
+            shard = session.get_resource(Shard(collection=collection), pmd_id)
 
-        ofs = oechem.oeofstream(fixname)
+            with TemporaryDirectory() as output_directory:
+                parmed_fn = os.path.join(output_directory, "parmed.pickle")
 
-        for record in new_record_list:
-            OEWriteRecord(ofs, record, fmt='binary')
+                shard.download_to_file(parmed_fn)
+
+                with open(parmed_fn, 'rb') as f:
+                    parm_dic = pickle.load(f)
+
+                pmd_structure = parmed.structure.Structure()
+                pmd_structure.__setstate__(parm_dic)
+
+            new_record.set_value(Fields.pmd_structure, pmd_structure)
+
+        if record.has_field(OEField('OETraj', Types.Record)):
+
+            oetrajrec = record.get_value(OEField('OETraj', Types.Record))
+
+            prot_conf_id = oetrajrec.get_value(OEField("ProtTraj_OPLMD", Types.Int))
+
+            shard = session.get_resource(Shard(collection=collection),  prot_conf_id)
+
+            with TemporaryDirectory() as output_directory:
+                protein_fn = os.path.join(output_directory, "prot_traj_confs.oeb")
+
+                shard.download_to_file(protein_fn)
+
+                protein_conf = oechem.OEMol()
+
+                with oechem.oemolistream(protein_fn) as ifs:
+                    oechem.OEReadMolecule(ifs, protein_conf)
+
+            oetrajrec.set_value(Fields.protein_traj_confs, protein_conf)
+
+            new_record.set_value(OEField('OETraj', Types.Record), oetrajrec)
+
+        new_record.delete_field(Fields.collection)
+
+        new_records.append(new_record)
+
+    ofs = oechem.oeofstream(name)
+
+    for rec in new_records:
+        OEWriteRecord(ofs, rec, fmt='binary')
 
 
 @dataset.command("logs")
-@click.option("--stgn", help="MD Stage number", default="last")
+@click.option("--stgn", help="MD Stage name", default="last")
 @click.pass_context
 def logs_extraction(ctx, stgn):
 
-    stagen = stgn
-
     for record in ctx.obj['records']:
 
-        if not record.has_value(Fields.md_stages):
-            print("No MD stages have been found in the selected record")
-            return
+        mdrecord = MDDataRecord(record)
 
-        stages = record.get_value(Fields.md_stages)
-        nstages = len(stages)
-        title = record.get_value(Fields.title)
-        id = record.get_value(Fields.id)
-        fn = title + "_" + str(id)
+        info = mdrecord.get_stage_info(stg_name=stgn)
 
-        if stagen == 'last':
-            stages_work_on = [stages[-1]]
-        elif stagen == 'all':
-            stages_work_on = stages
-        else:
-            if int(stagen) > nstages:
-                print("Wrong stage number selection: {} > max = {}".format(stagen, nstages))
-                return
-            else:
-                stages_work_on = [stages[int(stagen)]]
-
-        for stage in stages_work_on:
-
-            print("SYSTEM NAME = {}".format(fn))
-            print("Stage name = {}".format(stage.get_value(Fields.stage_name)))
-            print("Stage type = {}".format(stage.get_value(Fields.stage_type)))
-            if stage.has_value(Fields.log_data):
-                print(stage.get_value(Fields.log_data))
-            else:
-                print("No logs have been found")
+        print(info)
 
 
 @dataset.command("protein")
@@ -209,15 +293,17 @@ def protein_extraction(ctx):
 
     for record in ctx.obj['records']:
 
+        mdrecord = MDDataRecord(record)
+
         if not record.has_value(Fields.protein):
             print("No protein have been found in the selected record")
             return
         else:
-            title = record.get_value(Fields.title).split("_")[0]
-            id = record.get_value(Fields.id)
-            fn = title + "_" + str(id)+".oeb"
+            title = mdrecord.get_title
+            fn = title.split('_')[0] + ".oeb"
             with oechem.oemolostream(fn) as ofs:
                 oechem.OEWriteConstMolecule(ofs, record.get_value(Fields.protein))
+        print("Protein file generated: {}".format(fn))
 
 
 @dataset.command("ligand")
@@ -226,16 +312,19 @@ def ligand_extraction(ctx):
 
     for record in ctx.obj['records']:
 
+        mdrecord = MDDataRecord(record)
+
         if not record.has_value(Fields.ligand):
             print("No ligand have been found in the selected record")
             return
         else:
-            title = record.get_value(Fields.title).split("_")[1:]
+            title = mdrecord.get_title.split("_")[1:]
             title = "_".join(title)
-            id = record.get_value(Fields.id)
+            id = mdrecord.get_id
             fn = title + "_" + str(id)+".oeb"
             with oechem.oemolostream(fn) as ofs:
                 oechem.OEWriteConstMolecule(ofs, record.get_value(Fields.ligand))
+        print("Ligand file generated: {}".format(fn))
 
 
 @dataset.command("info")
