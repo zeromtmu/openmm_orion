@@ -152,7 +152,7 @@ def delete_file(file_id):
     return True
 
 
-def upload_data(filename, collection_id=None):
+def upload_data(filename, collection_id=None, shard_name=""):
 
     if in_orion():
 
@@ -163,7 +163,7 @@ def upload_data(filename, collection_id=None):
 
         collection = session.get_resource(ShardCollection, collection_id)
 
-        shard = Shard.create(collection)
+        shard = Shard.create(collection, name=shard_name)
 
         shard.upload_file(filename)
 

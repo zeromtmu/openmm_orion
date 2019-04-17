@@ -131,9 +131,9 @@ job.add_cube(solvateComplex)
 
 # Complex Force Field Application
 ffComplex = ForceFieldCube("ForceFieldComplex", title="Complex Parametrization")
-ffComplex.promote_parameter('protein_forcefield', promoted_name='protein_ff', default='amber99sbildn.xml')
-ffComplex.promote_parameter('ligand_forcefield', promoted_name='ligand_forcefield', default='GAFF2')
-ffComplex.promote_parameter('other_forcefield', promoted_name='other_forcefield', default='GAFF2')
+ffComplex.promote_parameter('protein_forcefield', promoted_name='protein_ff', default='Amber99SBildn')
+ffComplex.promote_parameter('ligand_forcefield', promoted_name='ligand_forcefield', default='Gaff2')
+ffComplex.promote_parameter('other_forcefield', promoted_name='other_forcefield', default='Gaff2')
 ffComplex.set_parameters(lig_res_name='LIG')
 job.add_cube(ffComplex)
 

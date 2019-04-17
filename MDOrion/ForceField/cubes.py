@@ -89,19 +89,19 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
 
     protein_forcefield = parameter.StringParameter(
         'protein_forcefield',
-        default='amber99sbildn.xml',
-        choices=['amber99sbildn.xml', 'amberfb15.xml'],
+        default=sorted(ffutils.proteinff)[0],
+        choices=sorted(ffutils.proteinff),
         help_text='Force field parameters to be applied to the protein')
 
     solvent_forcefield = parameter.StringParameter(
         'solvent_forcefield',
-        default='tip3p.xml',
+        default=sorted(ffutils.solventff)[0],
         help_text='Force field parameters to be applied to the water')
 
     ligand_forcefield = parameter.StringParameter(
         'ligand_forcefield',
-        default='GAFF',
-        choices=['GAFF', 'GAFF2', 'SMIRNOFF'],
+        default=sorted(ffutils.ligandff)[0],
+        choices=sorted(ffutils.ligandff),
         help_text='Force field to be applied to the ligand')
 
     lig_res_name = parameter.StringParameter(
@@ -116,8 +116,8 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
 
     other_forcefield = parameter.StringParameter(
         'other_forcefield',
-        default='GAFF',
-        choices=['GAFF', 'GAFF2', 'SMIRNOFF'],
+        default=sorted(ffutils.otherff)[0],
+        choices=sorted(ffutils.otherff),
         help_text='Force field used to parametrize other molecules not recognized by the '
                   'protein force field like excipients')
 
@@ -257,11 +257,7 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
             mdrecord.set_title(system_title)
             mdrecord.set_primary(system_reassembled)
 
-            mdrecord.set_parmed(system_structure)
-
-            # Create a collection per record. This works just in Orion
-            if mdrecord.create_collection(system_title+'_' + str(sys_id)):
-                self.log.info("A collection has been added to the record: {}".format(system_title+'_' + str(sys_id)))
+            mdrecord.set_parmed(system_structure, shard_name="Parmed_" + system_title + '_' + str(sys_id))
 
             data_fn = os.path.basename(mdrecord.cwd) + '_' + system_title+'_' + str(sys_id) + '-' + opt['suffix']+'.tar.gz'
 
@@ -276,9 +272,11 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
 
             del mdrecord
 
-        except:
+        except Exception as e:
+
+            print("Failed to complete", str(e), flush=True)
+            self.opt['Logger'].info('Exception {} {}'.format(str(e), self.title))
             self.log.error(traceback.format_exc())
-            # Return failed record
             self.failure.emit(record)
 
         return

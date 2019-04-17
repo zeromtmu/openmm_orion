@@ -28,7 +28,16 @@ from floe.api import (ParallelMixin,
 
 from oeommtools import packmol
 
+
+from orionclient.types import ShardCollection
+
 from MDOrion.Standards.mdrecord import MDDataRecord
+
+from orionclient.session import (in_orion,
+                                 APISession)
+
+from os import environ
+
 
 class IDSettingCube(OERecordComputeCube):
     title = "System ID Setting"
@@ -107,11 +116,196 @@ class IDSettingCube(OERecordComputeCube):
 
             self.system_count += 1
 
-        except:
+        except Exception as e:
+
+            print("Failed to complete", str(e), flush=True)
+            self.opt['Logger'].info('Exception {} {}'.format(str(e), self.title))
             self.log.error(traceback.format_exc())
-            # Return failed record
             self.failure.emit(record)
 
+        return
+
+
+# class CollectionSetting(OERecordComputeCube):
+#     title = "Collection Setting"
+#     version = "0.1.0"
+#     classification = [["System Preparation"]]
+#     tags = ['System', 'Complex', 'Protein', 'Ligand']
+#     description = """
+#     This cube set a record collection state in open or closed for safety by
+#     using the cube bool parameter open. A True value will open the record
+#     collection enabling the shard writing and deleting. If on the record
+#     the collection field is not present one will be created.
+#
+#     Input:
+#     -------
+#     Data record Stream - Streamed-in of systems such as ligands
+#
+#     Output:
+#     -------
+#     Data Record Stream - Streamed-out of records each one with associated IDs
+#     """
+#
+#     # Override defaults for some parameters
+#     parameter_overrides = {
+#         "memory_mb": {"default": 2000},
+#         "spot_policy": {"default": "Prohibited"},
+#         "prefetch_count": {"default": 1},  # 1 molecule at a time
+#         "item_count": {"default": 1}  # 1 molecule at a time
+#     }
+#
+#     open = parameter.BooleanParameter(
+#         'open',
+#         default=True,
+#         help_text='Open or Close a Collection')
+#
+#     def begin(self):
+#         self.opt = vars(self.args)
+#         self.opt['Logger'] = self.log
+#
+#     def process(self, record, port):
+#         try:
+#
+#             if in_orion():
+#
+#                 mdrecord = MDDataRecord(record)
+#
+#                 system = mdrecord.get_primary
+#
+#                 session = APISession
+#
+#                 if not mdrecord.has_title:
+#                     self.opt['Logger'].warn("Missing record Title field")
+#                     system_title = system.GetTitle()[0:12]
+#                 else:
+#                     system_title = mdrecord.get_title
+#
+#                 system_id = mdrecord.get_id
+#
+#                 if record.has_value(Fields.collection):
+#
+#                     collection_id = record.get_value(Fields.collection)
+#
+#                     collection = session.get_resource(ShardCollection, collection_id)
+#
+#                     if self.opt['open']:
+#
+#                         collection.open()
+#
+#                     else:
+#                         collection.close()
+#
+#                 else:
+#                     collection = ShardCollection.create(session, system_title + '_' + str(system_id))
+#
+#                     job_id = environ.get('ORION_JOB_ID')
+#
+#                     if job_id:
+#                         session.tag_resource(collection, "Job {}".format(job_id))
+#
+#                     record.set_value(Fields.collection, collection.id)
+#
+#             self.success.emit(record)
+#
+#         except Exception as e:
+#
+#             print("Failed to complete", str(e), flush=True)
+#             self.opt['Logger'].info('Exception {} {}'.format(str(e), self.title))
+#             self.log.error(traceback.format_exc())
+#             self.failure.emit(record)
+#
+#         return
+
+
+class CollectionSetting(OERecordComputeCube):
+    title = "Collection Setting"
+    version = "0.1.0"
+    classification = [["System Preparation"]]
+    tags = ['System', 'Complex', 'Protein', 'Ligand']
+    description = """
+    This cube set a record collection state in open or closed for safety by 
+    using the cube bool parameter open. A True value will open the record
+    collection enabling the shard writing and deleting. If on the record
+    the collection field is not present one will be created.
+
+    Input:
+    -------
+    Data record Stream - Streamed-in of systems such as ligands
+
+    Output:
+    -------
+    Data Record Stream - Streamed-out of records each one with associated IDs
+    """
+
+    # Override defaults for some parameters
+    parameter_overrides = {
+        "memory_mb": {"default": 2000},
+        "spot_policy": {"default": "Prohibited"},
+        "prefetch_count": {"default": 1},  # 1 molecule at a time
+        "item_count": {"default": 1}  # 1 molecule at a time
+    }
+
+    open = parameter.BooleanParameter(
+        'open',
+        default=True,
+        help_text='Open or Close a Collection')
+
+    def begin(self):
+        self.opt = vars(self.args)
+        self.opt['Logger'] = self.log
+        self.collection = None
+
+    def process(self, record, port):
+        try:
+
+            if in_orion():
+
+                session = APISession
+
+                if record.has_value(Fields.collection):
+
+                    if self.collection is None:
+
+                        collection_id = record.get_value(Fields.collection)
+
+                        collection = session.get_resource(ShardCollection, collection_id)
+
+                        self.collection = collection
+
+                        if self.opt['open']:
+
+                            self.collection.open()
+
+                else:
+                    if self.collection is None:
+
+                        job_id = environ.get('ORION_JOB_ID')
+
+                        self.collection = ShardCollection.create(session, job_id)
+
+                        job_id = environ.get('ORION_JOB_ID')
+
+                        if job_id:
+                            session.tag_resource(self.collection, "Job {}".format(job_id))
+
+                    record.set_value(Fields.collection, self.collection.id)
+
+            self.success.emit(record)
+
+        except Exception as e:
+
+            print("Failed to complete", str(e), flush=True)
+            self.opt['Logger'].info('Exception {} {}'.format(str(e), self.title))
+            self.log.error(traceback.format_exc())
+            self.failure.emit(record)
+
+        return
+
+    def end(self):
+        if in_orion():
+            if not self.opt['open']:
+                if self.collection is not None:
+                    self.collection.close()
 
 # class HydrationCube(ParallelMixin, OERecordComputeCube):
 #     title = "Hydration Cube"
@@ -327,104 +521,11 @@ class SolvationCube(ParallelMixin, OERecordComputeCube):
 
             self.success.emit(record)
 
-        except:
+        except Exception as e:
+
+            print("Failed to complete", str(e), flush=True)
+            self.opt['Logger'].info('Exception {} {}'.format(str(e), self.title))
             self.log.error(traceback.format_exc())
-            # Return failed record
             self.failure.emit(record)
 
         return
-
-
-class ParmTest1(OERecordComputeCube):
-    title = "TEST PARM1"
-    version = "0.1.0"
-    classification = [["System Preparation"]]
-    tags = ['System', 'Complex', 'Protein', 'Ligand']
-    description = """
-    TESTING
-    """
-
-    # Override defaults for some parameters
-    parameter_overrides = {
-        "memory_mb": {"default": 2000},
-        "spot_policy": {"default": "Prohibited"},
-        "prefetch_count": {"default": 1},  # 1 molecule at a time
-        "item_count": {"default": 1}  # 1 molecule at a time
-    }
-
-    def begin(self):
-        self.opt = vars(self.args)
-        self.opt['Logger'] = self.log
-
-    def process(self, record, port):
-        try:
-
-            # Create the MD record to use the MD Record API
-            mdrecord = MDDataRecord(record)
-
-            parmed = mdrecord.get_parmed
-
-            import pickle, base64
-
-            # pkl_obj = base64.b64encode(pickle.dumps(parmed.__getstate__()))
-            #
-            # with open('parmed.pickle', 'wb') as f:
-            #     f.write(pkl_obj)
-
-            with open('parmed.pickle', 'wb') as f:
-                pickle.dump(parmed.__getstate__(), f)
-
-            self.success.emit(record)
-
-        except:
-            self.log.error(traceback.format_exc())
-            # Return failed record
-            self.failure.emit(record)
-
-
-class ParmTest2(OERecordComputeCube):
-    title = "TEST PARM2"
-    version = "0.1.0"
-    classification = [["System Preparation"]]
-    tags = ['System', 'Complex', 'Protein', 'Ligand']
-    description = """
-    TESTING
-    """
-
-    # Override defaults for some parameters
-    parameter_overrides = {
-        "memory_mb": {"default": 2000},
-        "spot_policy": {"default": "Prohibited"},
-        "prefetch_count": {"default": 1},  # 1 molecule at a time
-        "item_count": {"default": 1}  # 1 molecule at a time
-    }
-
-    def begin(self):
-        self.opt = vars(self.args)
-        self.opt['Logger'] = self.log
-
-    def process(self, record, port):
-        try:
-            import pickle, base64, parmed
-
-            # with open('parmed.pickle', 'rb') as f:
-            #     data = f.read()
-            #
-            # decoded_obj = base64.b64decode(data)
-            #
-            # parm_dic = pickle.loads(decoded_obj)
-
-            with open('parmed.pickle', 'rb') as f:
-                parm_dic = pickle.load(f)
-
-            struct = parmed.structure.Structure()
-            struct.__setstate__(parm_dic)
-
-            struct.save("cazzo.pdb")
-
-            self.success.emit(record)
-
-        except:
-            self.log.error(traceback.format_exc())
-            # Return failed record
-            self.failure.emit(record)

@@ -107,9 +107,11 @@ class LigandChargeCube(ParallelMixin, OERecordComputeCube):
 
             self.success.emit(record)
 
-        except:
+        except Exception as e:
+
+            print("Failed to complete", str(e), flush=True)
+            self.opt['Logger'].info('Exception {} {}'.format(str(e), self.title))
             self.log.error(traceback.format_exc())
-            # Return failed record
             self.failure.emit(record)
 
 
@@ -178,7 +180,9 @@ class LigandSetting(OERecordComputeCube):
 
             self.success.emit(record)
 
-        except:
+        except Exception as e:
+
+            print("Failed to complete", str(e), flush=True)
+            self.opt['Logger'].info('Exception {} {}'.format(str(e), self.title))
             self.log.error(traceback.format_exc())
-            # Return failed record
             self.failure.emit(record)

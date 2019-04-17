@@ -23,7 +23,8 @@ from floe.api import WorkFloe
 from cuberecord import (DatasetWriterCube,
                         DatasetReaderCube)
 
-from MDOrion.System.cubes import SolvationCube
+from MDOrion.System.cubes import (SolvationCube,
+                                  CollectionSetting)
 
 from MDOrion.ForceField.cubes import ForceFieldCube
 
@@ -102,8 +103,13 @@ solvate.set_parameters(padding_distance=11.0)
 
 job.add_cube(solvate)
 
+# This cube is necessary for the correct work of collection and shard
+coll_open = CollectionSetting("OpenCollection")
+coll_open.set_parameters(open=True)
+job.add_cube(coll_open)
+
 ff = ForceFieldCube("ForceField", title="System Parametrization")
-ff.promote_parameter('ligand_forcefield', promoted_name='Ligand ForceField', default='GAFF2')
+ff.promote_parameter('ligand_forcefield', promoted_name='Ligand ForceField', default='Gaff2')
 ff.set_parameters(lig_res_name='LIG')
 job.add_cube(ff)
 
@@ -164,6 +170,11 @@ job.add_cube(equil)
 report = MDFloeReportCube("report", title="Floe Report")
 job.add_cube(report)
 
+# This cube is necessary dor the correct working of collection and shard
+coll_close = CollectionSetting("CloseCollection")
+coll_close.set_parameters(open=False)
+job.add_cube(coll_close)
+
 ofs = DatasetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")
 job.add_cube(ofs)
@@ -176,14 +187,16 @@ iligs.success.connect(chargelig.intake)
 chargelig.success.connect(ligset.intake)
 ligset.success.connect(ligid.intake)
 ligid.success.connect(solvate.intake)
-solvate.success.connect(ff.intake)
+solvate.success.connect(coll_open.intake)
+coll_open.success.connect(ff.intake)
 ff.success.connect(minimize.intake)
 minimize.success.connect(warmup.intake)
 warmup.success.connect(equil.intake)
 equil.success.connect(yank_proxy.intake)
 yank_proxy.success.connect(report.intake)
-report.success.connect(ofs.intake)
+report.success.connect(coll_close.intake)
 report.failure.connect(fail.intake)
+coll_close.success.connect(ofs.intake)
 yank_proxy.failure.connect(fail.intake)
 yank_proxy.cycle_out_port.connect(solvationfe.intake)
 solvationfe.success.connect(yank_proxy.cycle_in_port)

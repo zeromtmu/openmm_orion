@@ -248,15 +248,17 @@ class MDMinimizeCube(ParallelMixin, OERecordComputeCube):
                 raise ValueError("Problems adding the new Minimization Stage")
 
             # Synchronize the added Parmed structure with the last MD stage state
-            mdrecord.set_parmed(parmed_structure, sync_stage_name='last')
+            # mdrecord.set_parmed(parmed_structure, sync_stage_name='last')
 
             self.success.emit(mdrecord.get_record)
 
             del mdrecord
 
-        except:
+        except Exception as e:
+
+            print("Failed to complete", str(e), flush=True)
+            self.opt['Logger'].info('Exception {} {}'.format(str(e), self.title))
             self.log.error(traceback.format_exc())
-            # Return failed mol
             self.failure.emit(record)
 
         return
@@ -508,15 +510,17 @@ class MDNvtCube(ParallelMixin, OERecordComputeCube):
                 raise ValueError("Problems adding in the new NVT Stage")
 
             # Synchronize the added Parmed structure with the last MD stage state
-            mdrecord.set_parmed(parmed_structure, sync_stage_name='last')
+            # mdrecord.set_parmed(parmed_structure, sync_stage_name='last')
 
             self.success.emit(mdrecord.get_record)
 
             del mdrecord
 
-        except:
+        except Exception as e:
+
+            print("Failed to complete", str(e), flush=True)
+            self.opt['Logger'].info('Exception {} {}'.format(str(e), self.title))
             self.log.error(traceback.format_exc())
-            # Return failed mol
             self.failure.emit(record)
 
         return
@@ -769,15 +773,17 @@ class MDNptCube(ParallelMixin, OERecordComputeCube):
                 raise ValueError("Problems adding in the new NPT Stage")
 
             # Synchronize the added Parmed structure with the last MD stage state
-            mdrecord.set_parmed(parmed_structure, sync_stage_name='last')
+            # mdrecord.set_parmed(parmed_structure, sync_stage_name='last')
 
             self.success.emit(mdrecord.get_record)
 
             del mdrecord
 
-        except:
+        except Exception as e:
+
+            print("Failed to complete", str(e), flush=True)
+            self.opt['Logger'].info('Exception {} {}'.format(str(e), self.title))
             self.log.error(traceback.format_exc())
-            # Return failed mol
             self.failure.emit(record)
 
         return

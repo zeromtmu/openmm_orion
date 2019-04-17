@@ -34,7 +34,8 @@ from MDOrion.ForceField.cubes import ForceFieldCube
 from MDOrion.LigPrep.cubes import (LigandChargeCube,
                                    LigandSetting)
 
-from MDOrion.System.cubes import IDSettingCube
+from MDOrion.System.cubes import (IDSettingCube,
+                                  CollectionSetting)
 
 from MDOrion.Yank.cubes import (SyncBindingFECube,
                                 YankBindingFECube,
@@ -101,6 +102,13 @@ job.add_cube(ligset)
 ligid = IDSettingCube("Ligand Ids")
 job.add_cube(ligid)
 
+
+# This cube is necessary for the correct work of collection and shard
+coll_open = CollectionSetting("OpenCollection")
+coll_open.set_parameters(open=True)
+job.add_cube(coll_open)
+
+
 # Protein Reading cube. The protein prefix parameter is used to select a name for the
 # output system files
 iprot = DatasetReaderCube("ProteinReader", title="Protein Reader")
@@ -132,9 +140,9 @@ job.add_cube(solvateComplex)
 
 # Complex Force Field Application
 ffComplex = ForceFieldCube("ForceFieldComplex", title="Complex Parametrization")
-ffComplex.promote_parameter('protein_forcefield', promoted_name='protein_ff', default='amber99sbildn.xml')
-ffComplex.promote_parameter('ligand_forcefield', promoted_name='ligand_forcefield', default='GAFF2')
-ffComplex.promote_parameter('other_forcefield', promoted_name='other_forcefield', default='GAFF2')
+ffComplex.promote_parameter('protein_forcefield', promoted_name='protein_ff', default='Amber99SBildn')
+ffComplex.promote_parameter('ligand_forcefield', promoted_name='ligand_forcefield', default='Gaff2')
+ffComplex.promote_parameter('other_forcefield', promoted_name='other_forcefield', default='Gaff2')
 ffComplex.set_parameters(lig_res_name='LIG')
 job.add_cube(ffComplex)
 
@@ -285,6 +293,11 @@ job.add_cube(sync)
 report = MDFloeReportCube("report", title="Floe Report")
 job.add_cube(report)
 
+# This cube is necessary dor the correct working of collection and shard
+coll_close = CollectionSetting("CloseCollection")
+coll_close.set_parameters(open=False)
+job.add_cube(coll_close)
+
 ofs = DatasetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")
 job.add_cube(ofs)
@@ -310,8 +323,9 @@ equil3Complex.success.connect(sync.intake)
 iligs.success.connect(chargelig.intake)
 chargelig.success.connect(ligset.intake)
 ligset.success.connect(ligid.intake)
-ligid.success.connect(complx.intake)
-ligid.success.connect(solvateLigand.intake)
+ligid.success.connect(coll_open.intake)
+coll_open.success.connect(complx.intake)
+coll_open.success.connect(solvateLigand.intake)
 solvateLigand.success.connect(ffLigand.intake)
 ffLigand.success.connect(minimizeLigand.intake)
 minimizeLigand.success.connect(warmupLigand.intake)
@@ -323,8 +337,9 @@ sync.success.connect(yank_proxy.intake)
 yank_proxy.success.connect(report.intake)
 yank_proxy.failure.connect(fail.intake)
 yank_proxy.cycle_out_port.connect(abfe.intake)
-report.success.connect(ofs.intake)
+report.success.connect(coll_close.intake)
 report.failure.connect(fail.intake)
+coll_close.success.connect(ofs.intake)
 abfe.success.connect(yank_proxy.cycle_in_port)
 abfe.failure.connect(fail.intake)
 

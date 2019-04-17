@@ -66,7 +66,7 @@ def ExtractProtLigActsiteResNums(mol, fromLigCutoff=5.0):
     return protein, ligand, actSiteResNums
 
 
-def ExtractAlignedProtLigTraj(mol, output_directory, traj_format, fromLigCutoff=5.0, skip=0):
+def ExtractAlignedProtLigTraj(mol, traj_filename, fromLigCutoff=5.0, skip=0):
     '''Extracts the aligned protein trajectory and aligned ligand trajectory from
     a MD trajectory of a larger system that includes other components (eg water).
     The passed in OEMol must have the topology that matches the trajectory, and its xyz
@@ -77,7 +77,7 @@ def ExtractAlignedProtLigTraj(mol, output_directory, traj_format, fromLigCutoff=
     Inputs:
         mol: An OEMol giving the topology for the trajectory and the reference xyz
             coordinates for the alignment.
-        trajDCDFilename: The filename of the hdf5-format MD trajectory.
+        traj_filename: The filename of the hdf5-format MD trajectory or Gromacs .xtc file format
         fromLigCutoff: The cutoff distance in angstroms to include protein residues
             close to the ligand.
         skip: number of frames to skip at the beginning of the trajectory.
@@ -85,14 +85,19 @@ def ExtractAlignedProtLigTraj(mol, output_directory, traj_format, fromLigCutoff=
         protTraj: A multiconformer OEMol for the protein, one conformer per frame.
         ligTraj: A multiconformer OEMol for the ligand, one conformer per frame.'''
 
+    void, traj_ext = os.path.splitext(traj_filename)
+
+    traj_dir = os.path.dirname(traj_filename)
+
     # get the topology from 1st frame of the traj file
-    if traj_format == MDEngines.OpenMM:
-        traj_filename = glob.glob(os.path.join(output_directory, '*.h5'))[0]
+    if traj_ext == '.h5':
         topologyTraj = md.load_hdf5(traj_filename, frame=1)
-    elif traj_format == MDEngines.Gromacs:
-        pdb_fn = glob.glob(os.path.join(output_directory, '*.pdb'))[0]
-        xtc_fn = glob.glob(os.path.join(output_directory, '*.xtc'))[0]
-        topologyTraj = md.load_xtc(xtc_fn, top=pdb_fn, frame=1)
+
+    elif traj_ext == '.xtc':
+        pdb_fn = glob.glob(os.path.join(traj_dir, '*.pdb'))[0]
+        topologyTraj = md.load_xtc(traj_filename, top=pdb_fn, frame=1)
+    else:
+        raise ValueError("Trajectory file format {} not recognized in the trajecotry {}".format(traj_ext, traj_filename))
 
     # Put the reference mol xyz into the 1-frame topologyTraj to use as a reference in the fit
     molXyz = oechem.OEDoubleArray(3*mol.GetMaxAtomIdx())
@@ -125,10 +130,10 @@ def ExtractAlignedProtLigTraj(mol, output_directory, traj_format, fromLigCutoff=
     #protligIdx = topologyTraj.topology.select('protein or resname == MOL or resname == LIG')
 
     # Read the protein-ligand subsystem of the trajectory file
-    if traj_format == MDEngines.OpenMM:
+    if traj_ext == '.h5':  # OpenMM
         trj_initial = md.load_hdf5(traj_filename, atom_indices=protligIdx)
-    elif traj_format == MDEngines.Gromacs:
-        trj_initial = md.load_xtc(xtc_fn, top=pdb_fn, atom_indices=protligIdx)
+    elif traj_ext == '.xtc':  # Gromacs
+        trj_initial = md.load_xtc(traj_filename, top=pdb_fn, atom_indices=protligIdx)
 
     if skip > 0 and len(trj_initial) > skip:
         trj = trj_initial[skip:]

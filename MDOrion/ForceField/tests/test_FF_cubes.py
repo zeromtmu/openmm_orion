@@ -50,8 +50,8 @@ class ForceFieldPrepTester(unittest.TestCase):
             pass
 
         # Selecting ligand and excipient parametrization
-        self.cube.args.ligand_forcefield = 'GAFF2'
-        self.cube.args.other_forcefield = 'GAFF2'
+        self.cube.args.ligand_forcefield = 'Gaff2'
+        self.cube.args.other_forcefield = 'Gaff2'
 
         # Process the molecules
         self.cube.process(record, self.cube.intake.name)
@@ -72,8 +72,8 @@ class ForceFieldPrepTester(unittest.TestCase):
             pass
 
         # Selecting ligand and excipient parametrization
-        self.cube.args.ligand_forcefield = 'SMIRNOFF'
-        self.cube.args.other_forcefield = 'SMIRNOFF'
+        self.cube.args.ligand_forcefield = 'Smirnoff'
+        self.cube.args.other_forcefield = 'Smirnoff'
 
         # Process the molecules
         self.cube.process(record, self.cube.intake.name)
@@ -114,9 +114,9 @@ class ForceFieldPrepTester(unittest.TestCase):
             pass
 
         # Selecting ligand and excipient parametrization
-        self.cube.args.ligand_forcefield = 'GAFF2'
-        self.cube.args.other_forcefield = 'GAFF2'
-        self.cube.args.protein_forcefield = 'amber99sbildn.xml'
+        self.cube.args.ligand_forcefield = 'Gaff2'
+        self.cube.args.other_forcefield = 'Gaff2'
+        self.cube.args.protein_forcefield = 'Amber99SBildn'
 
         # Process the molecules
         self.cube.process(record, self.cube.intake.name)
@@ -137,9 +137,32 @@ class ForceFieldPrepTester(unittest.TestCase):
             pass
 
         # Selecting ligand and excipient parametrization
-        self.cube.args.ligand_forcefield = 'GAFF2'
-        self.cube.args.other_forcefield = 'GAFF2'
-        self.cube.args.protein_forcefield = 'amberfb15.xml'
+        self.cube.args.ligand_forcefield = 'Gaff2'
+        self.cube.args.other_forcefield = 'Gaff2'
+        self.cube.args.protein_forcefield = 'AmberFB15'
+
+        # Process the molecules
+        self.cube.process(record, self.cube.intake.name)
+
+        # Assert that one molecule was emitted on the success port
+        self.assertEqual(self.runner.outputs['success'].qsize(), 1)
+        # Assert that zero molecules were emitted on the failure port
+        self.assertEqual(self.runner.outputs['failure'].qsize(), 0)
+
+        # complex = self.runner.outputs["success"].get()
+
+    def test_protein_force_field_amber_14sb(self):
+        print('Testing cube:', self.cube.name)
+        # File name
+        ifs = OEMolRecordStream(os.path.join(FILE_DIR, "pbace_lcat13a_solvated_complex.oedb"))
+
+        for record in ifs:
+            pass
+
+        # Selecting ligand and excipient parametrization
+        self.cube.args.ligand_forcefield = 'Gaff2'
+        self.cube.args.other_forcefield = 'Gaff2'
+        self.cube.args.protein_forcefield = 'Amber14SB'
 
         # Process the molecules
         self.cube.process(record, self.cube.intake.name)

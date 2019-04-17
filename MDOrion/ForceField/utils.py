@@ -45,6 +45,21 @@ rnaResidues = ['A', 'G', 'C', 'U', 'I']
 dnaResidues = ['DA', 'DG', 'DC', 'DT', 'DI']
 
 
+proteinff = {'Amber99SBildn': 'amber99sbildn.xml',
+             'AmberFB15': 'amberfb15.xml',
+             'Amber14SB': 'amber14/protein.ff14SB.xml'}
+
+ligandff = {'Gaff': 'GAFF',
+            'Gaff2': 'GAFF2',
+            'Smirnoff': 'SMIRNOFF'}
+
+solventff = {'Tip3p': 'tip3p.xml'}
+
+otherff = {'Gaff': 'GAFF',
+           'Gaff2': 'GAFF2',
+           'Smirnoff': 'SMIRNOFF'}
+
+
 def applyffProtein(protein, opt):
     """
     This function applies the selected force field to the
@@ -63,9 +78,12 @@ def applyffProtein(protein, opt):
         The parametrized protein parmed structure
     """
 
+    opt['Logger'].info("[{}] Protein parametrized by using: {}".format(opt['CubeTitle'],
+                                                                       opt['protein_forcefield']))
+
     topology, positions = oeommutils.oemol_to_openmmTop(protein)
 
-    forcefield = app.ForceField(opt['protein_forcefield'])
+    forcefield = app.ForceField(proteinff[opt['protein_forcefield']])
 
     unmatched_residues = forcefield.getUnmatchedResidues(topology)
 
@@ -111,9 +129,12 @@ def applyffWater(water, opt):
         The parametrized water parmed structure
     """
 
+    opt['Logger'].info("[{}] Water parametrized by using: {}".format(opt['CubeTitle'],
+                                                                     opt['solvent_forcefield']))
+
     topology, positions = oeommutils.oemol_to_openmmTop(water)
 
-    forcefield = app.ForceField(opt['solvent_forcefield'])
+    forcefield = app.ForceField(solventff[opt['solvent_forcefield']])
 
     # if opt['solvent_forcefield'] == 'tip4pew.xml':
     #     modeller = app.Modeller(topology, positions)
@@ -150,6 +171,9 @@ def applyffExcipients(excipients, opt):
     excipient_structure: Parmed structure instance
         The parametrized excipient parmed structure
     """
+
+    opt['Logger'].info("[{}] Excipients parametrized by using: {} and Ions by using Amber 14".format(opt['CubeTitle'],
+                                                                                                     opt['other_forcefield']))
 
     # OpenMM topology and positions from OEMol
     topology, positions = oeommutils.oemol_to_openmmTop(excipients)
@@ -229,13 +253,13 @@ def applyffExcipients(excipients, opt):
 
                             # If GAFF or GAFF2 is selected as FF check for tleap command
                             if opt['other_forcefield'] in ['GAFF', 'GAFF2']:
-                                ff_utils.ParamLigStructure(oechem.OEMol(), opt['other_forcefield']).checkTleap
+                                ff_utils.ParamLigStructure(oechem.OEMol(), otherff[opt['other_forcefield']]).checkTleap
 
-                            if opt['other_forcefield'] == 'SMIRNOFF':
+                            if otherff[opt['other_forcefield']] == 'SMIRNOFF':
                                 unrc_excp = oeommutils.sanitizeOEMolecule(unrc_excp)
 
                             # Parametrize the unrecognized excipient by using the selected FF
-                            pmd = ff_utils.ParamLigStructure(unrc_excp, opt['other_forcefield'],
+                            pmd = ff_utils.ParamLigStructure(unrc_excp, otherff[opt['other_forcefield']],
                                                              prefix_name=opt['prefix_name']+'_'+r_name)
                             unrc_excp_struc = pmd.parameterize()
                             unrc_excp_struc.residues[0].name = r_name
@@ -321,10 +345,10 @@ def applyffLigand(ligand, opt):
 
     # Check TLeap
     if opt['ligand_forcefield'] in ['GAFF', 'GAFF2']:
-        ff_utils.ParamLigStructure(oechem.OEMol(), opt['ligand_forcefield']).checkTleap
+        ff_utils.ParamLigStructure(oechem.OEMol(), ligandff[opt['ligand_forcefield']]).checkTleap
 
     # Parametrize the Ligand
-    pmd = ff_utils.ParamLigStructure(ligand, opt['ligand_forcefield'], prefix_name=opt['prefix_name'])
+    pmd = ff_utils.ParamLigStructure(ligand, ligandff[opt['ligand_forcefield']], prefix_name=opt['prefix_name'])
     ligand_structure = pmd.parameterize()
     ligand_structure.residues[0].name = opt['lig_res_name']
     opt['Logger'].info("[{}] Ligand parametrized by using: {}".format(opt['CubeTitle'],

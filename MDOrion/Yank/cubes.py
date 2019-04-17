@@ -43,7 +43,6 @@ from MDOrion.Yank import utils as yankutils
 
 from MDOrion.Standards import (MDStageTypes,
                                Fields,
-                               MDFileNames,
                                MDEngines)
 
 import copy
@@ -423,10 +422,11 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
 
             del mdrecord
 
-        except:
-            # Attach an error message to the molecule that failed
+        except Exception as e:
+
+            print("Failed to complete", str(e), flush=True)
+            self.opt['Logger'].info('Exception {} {}'.format(str(e), self.title))
             self.log.error(traceback.format_exc())
-            # Return failed mol
             self.failure.emit(record)
 
         return
@@ -468,9 +468,11 @@ class SyncBindingFECube(OERecordComputeCube):
             else:
                 self.solvated_complex_list.append(record)
 
-        except:
+        except Exception as e:
+
+            print("Failed to complete", str(e), flush=True)
+            self.opt['Logger'].info('Exception {} {}'.format(str(e), self.title))
             self.log.error(traceback.format_exc())
-            # Return failed mol
             self.failure.emit(record)
 
         return
@@ -527,7 +529,8 @@ class SyncBindingFECube(OERecordComputeCube):
                 del complex_mdrecord
                 del ligand_mdrecord
 
-        except:
+        except Exception as e:
+            print("Failed to complete", str(e), flush=True)
             self.log.error(traceback.format_exc())
 
         return
@@ -796,7 +799,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
             else:
                 mdstate = mdrecord.get_stage_state()
-                solvated_complex_parmed_structure = mdrecord.get_parmed(sync_stage_name='last')
+                # solvated_complex_parmed_structure = mdrecord.get_parmed(sync_stage_name='last')
 
             mdrecord.get_stage_trajectory()
 
@@ -886,6 +889,7 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
                 self.log.info("{} iterations per cube saved on the record: {}".format(self.title,
                                                                                       iterations_per_cube_opt))
+                mdrecord.set_parmed(solvated_complex_parmed_structure)
 
             opt['out_fn'] = os.path.basename(mdrecord.cwd) + '_' + \
                             opt['system_title'] + '_' + \
@@ -896,8 +900,6 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
             trj_fn = opt['trj_fn']
 
             # Tar the Yank temp dir with its content:
-            # trj_fn = os.path.join(opt['out_directory'], MDFileNames.trajectory)
-
             yank_exp_dir = os.path.join(output_directory, "experiments")
             yank_setup_dir = os.path.join(output_directory, "setup")
 
@@ -955,16 +957,17 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
             record.set_value(current_iteration_field, opt['new_iterations'])
             mdrecord.set_primary(complex)
-            mdrecord.set_parmed(solvated_complex_parmed_structure, sync_stage_name='last')
+            # mdrecord.set_parmed(solvated_complex_parmed_structure, sync_stage_name='last')
 
             self.success.emit(mdrecord.get_record)
 
             del mdrecord
 
-        except:
-            # Attach an error message to the molecule that failed
+        except Exception as e:
+
+            print("Failed to complete", str(e), flush=True)
+            self.opt['Logger'].info('Exception {} {}'.format(str(e), self.title))
             self.log.error(traceback.format_exc())
-            # Return failed mol
             self.failure.emit(record)
 
         return
@@ -1046,10 +1049,11 @@ class YankProxyCube(OERecordComputeCube):
                 else:
                     self.opt['Logger'].warn("{} Forwarding to Cycle...".format(self.title))
                     self.cycle_out_port.emit(record)
-        except:
-            # Attach an error message to the molecule that failed
+        except Exception as e:
+
+            print("Failed to complete", str(e), flush=True)
+            self.opt['Logger'].info('Exception {} {}'.format(str(e), self.title))
             self.log.error(traceback.format_exc())
-            # Return failed mol
             self.failure.emit(record)
 
         return

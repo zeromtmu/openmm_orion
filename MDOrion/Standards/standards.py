@@ -52,7 +52,7 @@ class MDFileNames:
     topology = 'topology.oeb'
     state = 'state.pickle'
     trajectory = "trajectory.tar.gz"
-    trajectory_conformers = "trajectory.oeb"
+    trajectory_conformers = "trajectory_confs.oeb"
     mddata = "data.tar.gz"
 
 # ---------------- Field Standards -------------- #
@@ -84,16 +84,17 @@ class Fields:
     # Primary Molecule
     primary_molecule = OEPrimaryMolField()
 
-    # Parmed Structure, Trajectory and MDData Fields
+    # Parmed Structure, Trajectory, MDData and Protein trajectory conformers Fields
     if in_orion():
         pmd_structure = OEField('Structure_Parmed_OPLMD', Types.Int)
         trajectory = OEField("Trajectory_OPLMD", Types.Int)
         mddata = OEField("MDData_OPLMD", Types.Int)
-
+        protein_traj_confs = OEField("ProtTraj_OPLMD", Types.Int)
     else:
         pmd_structure = OEField('Structure_Parmed_OPLMD', ParmedData)
         trajectory = OEField("Trajectory_OPLMD", Types.String)
         mddata = OEField("MDData_OPLMD", Types.String)
+        protein_traj_confs = OEField("ProtTraj_OPLMD", Types.Chem.Mol)
 
     # The Stage Name
     stage_name = OEField('Stage_name_OPLMD', Types.String)

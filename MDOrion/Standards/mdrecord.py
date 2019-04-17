@@ -1,5 +1,7 @@
 from MDOrion.Standards import (Fields,
-                               MDFileNames)
+                               MDFileNames,
+                               MDEngines,
+                               MDStageTypes)
 
 from MDOrion.Standards import utils
 
@@ -26,10 +28,13 @@ import pickle
 
 import shutil
 
-from orionclient.types import ShardCollection, Shard
+from orionclient.types import (ShardCollection,
+                               Shard)
 
 from orionclient.session import (in_orion,
                                  APISession)
+
+import glob
 
 
 def mdstages(f):
@@ -97,12 +102,6 @@ class MDDataRecord(object):
             if self.rec.has_field(Fields.collection):
                 self.collection_id = self.rec.get_value(Fields.collection)
 
-                session = APISession
-
-                collection = session.get_resource(ShardCollection, self.collection_id)
-
-                collection.open()
-
         else:
             self.collection_id = None
 
@@ -113,16 +112,6 @@ class MDDataRecord(object):
             shutil.rmtree(self.cwd, ignore_errors=True)
         except OSError as e:
             print("Error: {} - {}".format(e.filename, e.strerror))
-
-        if in_orion():
-
-            if self.collection_id is not None:
-
-                session = APISession
-
-                collection = session.get_resource(ShardCollection, self.collection_id)
-
-                collection.close()
 
     @property
     def get_record(self):
@@ -618,20 +607,34 @@ class MDDataRecord(object):
 
         stg_name = stage.get_value(Fields.stage_name)
 
-        dir = self.processed[stg_name]
+        stg_type = stage.get_value(Fields.stage_type)
+
+        traj_dir = self.processed[stg_name]
 
         if not stage.has_field(Fields.trajectory):
             return None
 
-        trj_fn = utils.download_file(stage.get_value(Fields.trajectory), os.path.join(dir, MDFileNames.trajectory))
+        trj_tar = utils.download_file(stage.get_value(Fields.trajectory), os.path.join(traj_dir, MDFileNames.trajectory))
 
-        with tarfile.open(trj_fn) as tar:
-            tar.extractall(path=dir)
+        with tarfile.open(trj_tar) as tar:
+            tar.extractall(path=traj_dir)
 
-        exists = os.path.isfile(trj_fn)
+        trj_field = stage.get_field(Fields.trajectory.get_name())
+        trj_meta = trj_field.get_meta()
+        md_engine = trj_meta.get_attribute(Meta.Annotation.Description)
+
+        # TODO I do not like this a lot
+        if md_engine == MDEngines.OpenMM and not stg_type == MDStageTypes.FEC:
+            traj_fn = glob.glob(os.path.join(traj_dir, '*.h5'))[0]
+        elif md_engine == MDEngines.Gromacs:
+            traj_fn = glob.glob(os.path.join(traj_dir, '*.xtc'))[0]
+        else:  # Yank trajectory
+            traj_fn = os.path.join(traj_dir, "experiments/solvent1.nc")
+
+        exists = os.path.isfile(traj_fn)
 
         if exists:
-            return trj_fn
+            return traj_fn
         else:
             raise ValueError("Something went wrong recovering the trajectory")
 
@@ -710,7 +713,7 @@ class MDDataRecord(object):
 
             trj_meta = OEFieldMeta()
             trj_meta.set_attribute(Meta.Annotation.Description, trajectory_engine)
-            trj_field = OEField(Fields.trajectory.get_name(), Fields.trajectory.get_type())
+            trj_field = OEField(Fields.trajectory.get_name(), Fields.trajectory.get_type(), meta=trj_meta)
 
         if self.rec.has_field(Fields.md_stages):
 
@@ -726,7 +729,7 @@ class MDDataRecord(object):
                     raise ValueError(
                         "The selected stage name is already present in the MD stages: {}".format(stage_names))
 
-            lf = utils.upload_data(data_fn, collection_id=self.collection_id)
+            lf = utils.upload_data(data_fn, collection_id=self.collection_id, shard_name=data_fn)
 
             record.set_value(Fields.mddata, lf)
 
@@ -746,7 +749,7 @@ class MDDataRecord(object):
 
         else:
 
-            lf = utils.upload_data(data_fn, collection_id=self.collection_id)
+            lf = utils.upload_data(data_fn, collection_id=self.collection_id, shard_name=data_fn)
 
             record.set_value(Fields.mddata, lf)
 
@@ -876,7 +879,7 @@ class MDDataRecord(object):
 
         return pmd_structure
 
-    def set_parmed(self, pmdobj, sync_stage_name=None):
+    def set_parmed(self, pmdobj, sync_stage_name=None, shard_name=""):
         """
         This method sets the Parmed object. Return True if the setting was successful.
         If sync_stage_name is not None the parmed structure positions, velocities and
@@ -887,6 +890,11 @@ class MDDataRecord(object):
         -----------
         pmjobj: Parmed Structure object
             The Parmed Structure object to be set on the record
+        sync_stage_name: String or None
+            The stage name that is used to synchronize the Parmed structure
+        shard_name: String
+            In Orion tha shard will be named by using the shard_name
+
 
 
         Return:
@@ -918,11 +926,15 @@ class MDDataRecord(object):
                 if self.collection_id is None:
                     raise ValueError("The Collection ID is None")
 
+                if self.rec.has_field(Fields.pmd_structure):
+                    fid = self.rec.get_value(Fields.pmd_structure)
+                    utils.delete_data(fid, collection_id=self.collection_id)
+
                 session = APISession
 
                 collection = session.get_resource(ShardCollection, self.collection_id)
 
-                shard = Shard.create(collection)
+                shard = Shard.create(collection, name=shard_name)
 
                 shard.upload_file(parmed_fn)
 
@@ -979,6 +991,100 @@ class MDDataRecord(object):
             session.delete_resource(Shard(collection=collection, id=file_id))
 
         self.rec.delete_field(Fields.pmd_structure)
+
+        return True
+
+    @property
+    def get_protein_traj(self):
+        """
+        This method returns the protein molecule where conformers have been set as trajectory frames
+
+
+        Return:
+        -------
+            : OEMol
+            The Protein molecule with trajectory conformers
+        """
+
+        if not self.rec.has_field(Fields.protein_traj_confs):
+            raise ValueError("The protein conformer trajectory is not present on the record")
+
+        protein_conf = self.rec.get_value(Fields.protein_traj_confs)
+
+        if in_orion():
+
+            session = APISession
+
+            if self.collection_id is None:
+                raise ValueError("The Collection ID is None")
+
+            collection = session.get_resource(ShardCollection, self.collection_id)
+
+            shard = session.get_resource(Shard(collection=collection), protein_conf)
+
+            with TemporaryDirectory() as output_directory:
+
+                protein_fn = os.path.join(output_directory, MDFileNames.trajectory_conformers)
+
+                shard.download_to_file(protein_fn)
+
+                protein_conf = oechem.OEMol()
+
+                with oechem.oemolistream(protein_fn) as ifs:
+                    oechem.OEReadMolecule(ifs, protein_conf)
+
+        return protein_conf
+
+    def set_protein_traj(self, protein_conf, shard_name=""):
+        """
+        This method sets the protein trajectory conformers on the record
+
+        Parameters:
+        -----------
+        protein_conf: OEChem
+            The Protein molecule with trajectory conformers
+         shard_name: String
+            In Orion tha shard will be named by using the shard_name
+
+
+        Return:
+        -------
+            : Bool
+            True if the setting was successful
+        """
+
+        if not isinstance(protein_conf, oechem.OEMol):
+            raise ValueError("The passed Parmed object is not a valid Parmed Structure: {}".format(type(protein_conf)))
+
+        if in_orion():
+
+            with TemporaryDirectory() as output_directory:
+
+                protein_fn = os.path.join(output_directory, MDFileNames.trajectory_conformers)
+
+                with oechem.oemolostream(protein_fn) as ofs:
+                    oechem.OEWriteConstMolecule(ofs, protein_conf)
+
+                if self.collection_id is None:
+                    raise ValueError("The Collection ID is None")
+
+                if self.rec.has_field(Fields.protein_traj_confs):
+                    fid = self.rec.get_value(Fields.protein_traj_confs)
+                    utils.delete_data(fid, collection_id=self.collection_id)
+
+                session = APISession
+
+                collection = session.get_resource(ShardCollection, self.collection_id)
+
+                shard = Shard.create(collection, name=shard_name)
+
+                shard.upload_file(protein_fn)
+
+                shard.close()
+
+                self.rec.set_value(Fields.protein_traj_confs, shard.id)
+        else:
+            self.rec.set_value(Fields.protein_traj_confs, protein_conf)
 
         return True
 
