@@ -40,6 +40,9 @@ from MDOrion.LigPrep.cubes import (LigandChargeCube,
 
 from MDOrion.System.cubes import IDSettingCube
 
+from MDOrion.System.cubes import CollectionSetting
+
+
 job = WorkFloe('Short Trajectory MD',
                title='Short Trajectory MD')
 
@@ -118,11 +121,14 @@ solvate.promote_parameter('salt_concentration', promoted_name='salt_concentratio
                           description='Salt concentration (Na+, Cl-) in millimolar')
 solvate.set_parameters(close_solvent=True)
 
+coll_open = CollectionSetting("OpenCollection")
+coll_open.set_parameters(open=True)
+
 # Force Field Application
 ff = ForceFieldCube("ForceField", title="System Parametrization")
-ff.promote_parameter('protein_forcefield', promoted_name='protein_ff', default='amber99sbildn.xml')
-ff.promote_parameter('ligand_forcefield', promoted_name='ligand_ff', default='GAFF2')
-ff.promote_parameter('other_forcefield', promoted_name='other_ff', default='GAFF2')
+ff.promote_parameter('protein_forcefield', promoted_name='protein_ff', default='Amber99SBildn')
+ff.promote_parameter('ligand_forcefield', promoted_name='ligand_ff', default='Gaff2')
+ff.promote_parameter('other_forcefield', promoted_name='other_ff', default='Gaff2')
 ff.set_parameters(lig_res_name='LIG')
 
 
@@ -209,14 +215,17 @@ equil3.set_parameters(reporter_interval=0.001)
 equil3.set_parameters(suffix='equil3')
 equil3.promote_parameter("md_engine", promoted_name="md_engine")
 
+coll_close = CollectionSetting("CloseCollection")
+coll_close.set_parameters(open=False)
+
 ofs = DatasetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")
 
 fail = DatasetWriterCube('fail', title='Failures')
 fail.promote_parameter("data_out", promoted_name="fail")
 
-job.add_cubes(iligs, ligset, iprot, protset, chargelig, complx, solvate, ff,
-              minComplex, warmup, equil1, equil2, equil3, prod, ofs, fail)
+job.add_cubes(iligs, ligset, iprot, protset, chargelig, complx, solvate, coll_open, ff,
+              minComplex, warmup, equil1, equil2, equil3, prod, coll_close, ofs, fail)
 
 
 iligs.success.connect(chargelig.intake)
@@ -226,15 +235,24 @@ ligid.success.connect(complx.intake)
 iprot.success.connect(protset.intake)
 protset.success.connect(complx.protein_port)
 complx.success.connect(solvate.intake)
-solvate.success.connect(ff.intake)
+solvate.success.connect(coll_open.intake)
+coll_open.success.connect(ff.intake)
 ff.success.connect(minComplex.intake)
+ff.failure.connect(fail.intake)
 minComplex.success.connect(warmup.intake)
+minComplex.failure.connect(fail.intake)
 warmup.success.connect(equil1.intake)
+warmup.failure.connect(fail.intake)
 equil1.success.connect(equil2.intake)
+equil1.failure.connect(fail.intake)
 equil2.success.connect(equil3.intake)
+equil2.failure.connect(fail.intake)
 equil3.success.connect(prod.intake)
-prod.success.connect(ofs.intake)
+equil3.failure.connect(fail.intake)
+prod.success.connect(coll_close.intake)
 prod.failure.connect(fail.intake)
+coll_close.success.connect(ofs.intake)
+coll_close.failure.connect(fail.intake)
 
 if __name__ == "__main__":
     job.run()

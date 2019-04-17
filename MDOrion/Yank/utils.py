@@ -58,7 +58,7 @@ def yank_solvation_initialize(sim):
         yank_template = yank_solvation_template.format(
             verbose='yes' if opt['verbose'] else 'no',
             minimize='yes' if opt['minimize'] else 'no',
-            output_directory=opt['output_directory'],
+            output_directory=opt['out_directory'],
             timestep=4.0 if opt['hmr'] else 2.0,
             nsteps_per_iteration=opt['nsteps_per_iteration'],
             number_iterations=opt['new_iterations'],
@@ -144,7 +144,7 @@ def yank_binding_initialize(sim):
         yank_template = yank_binding_template.format(
             verbose='yes' if opt['verbose'] else 'no',
             minimize='yes' if opt['minimize'] else 'no',
-            output_directory=opt['output_directory'],
+            output_directory=opt['out_directory'],
             timestep=opt['timestep'],
             nsteps_per_iteration=opt['nsteps_per_iteration'],
             number_iterations=opt['new_iterations'],
@@ -330,7 +330,7 @@ def run_yank_binding(opt):
 
 def run_yank_analysis(opt):
 
-    exp_dir = os.path.join(opt['output_directory'], "experiments")
+    exp_dir = os.path.join(opt['out_directory'], "experiments")
 
     experiment_to_analyze = ExperimentAnalyzer(exp_dir)
     analysis = experiment_to_analyze.auto_analyze()
@@ -343,7 +343,7 @@ def run_yank_analysis(opt):
 
     opt_1 = '--store={}'.format(exp_dir)
 
-    result_fn = os.path.join(opt['output_directory'], 'results.html')
+    result_fn = os.path.join(opt['out_directory'], 'results.html')
     opt_2 = '--output={}'.format(result_fn)
 
     opt_3 = '--format=html'
@@ -355,26 +355,10 @@ def run_yank_analysis(opt):
 
         subprocess.check_call(['yank', 'analyze', 'report', opt_1, opt_2, opt_3])
 
-        result_fn = os.path.join(opt['output_directory'], "results.html")
+        result_fn = os.path.join(opt['out_directory'], "results.html")
 
         with open(result_fn, 'r') as f:
             report_html_str = f.read()
-
-
-        # Upload Floe Report
-        # if in_orion():
-        #     session = OrionSession()
-        #
-        #     file_upload = File.upload(session,
-        #                               "{}.html".format(opt['system_title']),
-        #                               result_fn)
-        #
-        #     session.tag_resource(file_upload, "floe_report")
-        #
-        #     job_id = environ.get('ORION_JOB_ID')
-        #
-        #     if job_id:
-        #         session.tag_resource(file_upload, "Job {}".format(job_id))
 
     except subprocess.SubprocessError:
         opt['Logger'].warn("The result html file has not been generated")

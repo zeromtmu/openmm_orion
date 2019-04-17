@@ -1,4 +1,7 @@
-from MDOrion.Standards import Fields, MDRecords, MDEngines
+from MDOrion.Standards import (Fields,
+                               MDFileNames,
+                               MDEngines,
+                               MDStageTypes)
 
 from MDOrion.Standards import utils
 
@@ -10,18 +13,36 @@ import os
 
 import tarfile
 
+import tempfile
+
+from tempfile import TemporaryDirectory
+
 from datarecord import (Meta,
                         OEFieldMeta,
-                        OEField)
-import datarecord
+                        OEField,
+                        OERecord)
 
 from openeye import oechem
 
+import pickle
+
+import shutil
+
+from orionclient.types import (ShardCollection,
+                               Shard)
+
+from orionclient.session import (in_orion,
+                                 APISession)
+
+import glob
+
 
 def mdstages(f):
+
     def wrapper(*pos, **named):
-        rec = pos[0]
-        if not rec.has_field(Fields.md_stages):
+        mdrec = pos[0]
+
+        if not mdrec.rec.has_field(Fields.md_stages):
             raise ValueError("The MD record does not have MD stages")
 
         return f(*pos, **named)
@@ -29,12 +50,68 @@ def mdstages(f):
     return wrapper
 
 
+def stage_system(f):
+    def wrapper(*pos, **named):
+
+        mdrec = pos[0]
+
+        if 'stg_name' not in named.keys():
+            named['stg_name'] = 'last'
+
+        stg_name = named['stg_name']
+
+        stage = mdrec.get_stage_by_name(stg_name)
+
+        stage_name = stage.get_value(Fields.stage_name)
+
+        dir_stage = mdrec.processed[stage_name]
+
+        if not dir_stage:
+
+            dir_stage = tempfile.mkdtemp(prefix=stage_name + '_', dir=mdrec.cwd)
+
+            file_id = stage.get_value(Fields.mddata)
+
+            fn = utils.download_data(file_id, dir_stage, collection_id=mdrec.collection_id)
+
+            with tarfile.open(fn) as tar:
+                tar.extractall(path=dir_stage)
+
+            mdrec.processed[stage_name] = dir_stage
+
+        return f(*pos, **named)
+
+    return wrapper
+
+
 class MDDataRecord(object):
+
     def __init__(self, record, inplace=True):
         if inplace:
             self.rec = record
         else:
             self.rec = copy.deepcopy(record)
+
+        if not self.rec.has_field(Fields.md_stages):
+            self.processed = {}
+        else:
+            stages = self.rec.get_value(Fields.md_stages)
+            self.processed = {stg.get_value(Fields.stage_name): False for stg in stages}
+
+        if in_orion():
+            if self.rec.has_field(Fields.collection):
+                self.collection_id = self.rec.get_value(Fields.collection)
+
+        else:
+            self.collection_id = None
+
+        self.cwd = tempfile.mkdtemp()
+
+    def __del__(self):
+        try:
+            shutil.rmtree(self.cwd, ignore_errors=True)
+        except OSError as e:
+            print("Error: {} - {}".format(e.filename, e.strerror))
 
     @property
     def get_record(self):
@@ -68,6 +145,11 @@ class MDDataRecord(object):
         """
         This method sets the primary molecule on the record
 
+        Parameters:
+        -----------
+        primary_mol: OEMol
+            The primary molecule to set on the record
+
         Return:
         -------
         record: Bool
@@ -84,7 +166,7 @@ class MDDataRecord(object):
     @property
     def get_id(self):
         """
-        This method returns ID field present on the record
+        This method returns the identification field ID present on the record
 
         Return:
         -------
@@ -100,7 +182,7 @@ class MDDataRecord(object):
     @property
     def has_id(self):
         """
-        This method checks if the ID field is present on the record
+        This method checks if the identification field ID is present on the record
 
         Return:
         -------
@@ -115,7 +197,12 @@ class MDDataRecord(object):
 
     def set_id(self, id):
         """
-        This method sets the ID field on the record
+        This method sets the identification field ID on the record
+
+        Parameters:
+        -----------
+        id: Int
+            An identification integer for the record
 
         Return:
         -------
@@ -166,6 +253,11 @@ class MDDataRecord(object):
         """
         This method sets the system Title field on the record
 
+        Parameters:
+        -----------
+        title: String
+            A string used to identify the  molecular system
+
         Return:
         -------
             : Bool
@@ -176,6 +268,39 @@ class MDDataRecord(object):
             raise ValueError(" The title must be a sting: {}".format(title))
 
         self.rec.set_value(Fields.title, title)
+
+        return True
+
+    def create_collection(self, name):
+        """
+        This method sets a collection field on the record to be used in Orion
+
+        Parameters:
+        -----------
+        name: String
+            A string used to identify in the Orion UI the record collection
+
+        Return:
+        -------
+            : Bool
+                True if the collection creation was successful
+        """
+
+        if in_orion():
+
+            if self.rec.has_field(Fields.collection):
+                raise ValueError("Collection field already present on the record")
+
+            session = APISession
+
+            collection = ShardCollection.create(session, name)
+
+            self.rec.set_value(Fields.collection, collection.id)
+
+            self.collection_id = collection.id
+
+        else:
+            return False
 
         return True
 
@@ -194,15 +319,16 @@ class MDDataRecord(object):
         return self.rec.get_value(Fields.md_stages)[-1]
 
     @mdstages
-    def get_stage_by_name(self, name='last'):
+    def get_stage_by_name(self, stg_name='last'):
         """
         This method returns a MD stage selected by passing the string stage name. If the
-        string "last" is passed (default) the last MD stage is returned. If no stage name
-        has been found an exception is raised.
+        string "last" is passed (default) the last MD stage is returned. If multiple stages
+        have the same name the first occurrence is returned. If no stage name has been found
+        an exception is raised.
 
         Parameters:
         -----------
-        name: String
+        stg_name: String
             The MD stage name
 
         Return:
@@ -214,20 +340,43 @@ class MDDataRecord(object):
 
         stg_names = []
 
-        if name == 'last':
+        if stg_name == 'last':
             return stages[-1]
 
         for stage in stages:
-            stg_name = stage.get_value(Fields.stage_name)
-            if stg_name == name:
+            name = stage.get_value(Fields.stage_name)
+            if name == stg_name:
                 return stage
             else:
-                stg_names.append(stg_name)
+                stg_names.append(name)
 
-        raise ValueError("The Stage name has not been found: {} available names: {}".format(name, stg_names))
+        raise ValueError("The Stage name has not been found: {} available names: {}".format(stg_name, stg_names))
 
     @mdstages
-    def delete_stage_by_name(self, name='last'):
+    def get_stage_by_idx(self, idx):
+        """
+        This method returns a MD stage selected by passing the an index. If the index is not present
+        an exception is raised.
+
+        Parameters:
+        -----------
+        idx: Int
+            The stage index to retrieve
+
+        Return:
+        -------
+        record: OERecord
+            The MD stage selected by its index
+        """
+
+        if idx > len(self.processed):
+            raise ValueError("The selected stage index is greater than the md stages size {} > {}".
+                             format(idx, len(self.processed)))
+
+        return self.rec.get_value(Fields.md_stages)[idx]
+
+    @mdstages
+    def delete_stage_by_name(self, stg_name='last'):
         """
         This method deletes an MD stage selected by passing the string name. If the
         string "last" is passed (default) the last MD stage is deleted. If no stage name
@@ -235,7 +384,7 @@ class MDDataRecord(object):
 
         Parameters:
         -----------
-        name: String
+        stg_name: String
             The MD stage name
 
         Return:
@@ -247,25 +396,83 @@ class MDDataRecord(object):
 
         stg_names = []
 
-        if name == 'last':
+        if len(self.get_stages) == 1:
+
+            stage = self.get_stage_by_idx(0)
+
+            fid = stage.get_value(Fields.mddata)
+            utils.delete_data(fid, collection_id=self.collection_id)
+
+            if stage.get_value(Fields.trajectory) is not None:
+                tid = stage.get_value(Fields.trajectory)
+                utils.delete_file(tid)
+
+            self.rec.delete_field(Fields.md_stages)
+            self.processed = {}
+
+            return True
+
+        if stg_name == 'last':
+            last_stage = stages[-1]
+            name = last_stage.get_value(Fields.stage_name)
+            fid = last_stage.get_value(Fields.mddata)
+            utils.delete_data(fid, collection_id=self.collection_id)
+
+            if last_stage.get_value(Fields.trajectory) is not None:
+                tid = last_stage.get_value(Fields.trajectory)
+                utils.delete_file(tid)
+
+            del self.processed[name]
             del stages[-1]
+            self.rec.set_value(Fields.md_stages, stages)
 
+            return True
         else:
-            for idx in range(0, len(stages)):
+            for stage in stages:
 
-                stg_name = stages[idx].get_value(Fields.stage_name)
+                name = stage.get_value(Fields.stage_name)
 
-                if stg_name == name:
-                    del stages[idx]
+                if name == stg_name:
+                    fid = stage.get_value(Fields.mddata)
+                    utils.delete_data(fid, collection_id=self.collection_id)
+
+                    if stage.get_value(Fields.trajectory) is not None:
+                        tid = stage.get_value(Fields.trajectory)
+                        utils.delete_file(tid)
+
+                    del self.processed[name]
+                    stages.remove(stage)
                     self.rec.set_value(Fields.md_stages, stages)
                     return True
                 else:
-                    stg_names.append(stg_name)
+                    stg_names.append(name)
 
-        raise ValueError("The Stage name has not been found: {} available names: {}".format(name, stg_names))
+        raise ValueError("The Stage name has not been found: {} available names: {}".format(stg_name, stg_names))
 
     @mdstages
-    def has_stage_name(self, name):
+    def delete_stage_by_idx(self, idx):
+        """
+        This method deletes an MD stage selected by passing its index. If the stage index
+        cannot be found an exception is raised.
+
+        Parameters:
+        -----------
+        idx: Int
+            The MD stage index
+
+        Return:
+        -------
+        record: Bool
+            True if the deletion was successful
+        """
+
+        stage = self.get_stage_by_idx(idx)
+        name = stage.get_value(Fields.stage_name)
+
+        return self.delete_stage_by_name(stg_name=name)
+
+    @mdstages
+    def has_stage_name(self, stg_name):
         """
         This method returns True if MD stage selected by passing the string name is present
         on the MD stage record otherwise False.
@@ -284,142 +491,22 @@ class MDDataRecord(object):
         stages = self.rec.get_value(Fields.md_stages)
 
         for stage in stages:
-            stg_name = stage.get_value(Fields.stage_name)
-            if stg_name == name:
+            name = stage.get_value(Fields.stage_name)
+            if name == stg_name:
                 return True
 
         return False
 
     @mdstages
-    def set_last_stage(self, mdstage):
+    def get_stage_info(self, stg_name='last'):
         """
-        This method overwrites the last MD stage presents in the MD stage record with the
-        new passed md stage. If the setting was successful True is returned. If the passed MD
-        stage is not valid an exception is raised.
+        This method returns the info related to the selected stage name. If no stage name is passed
+        the last stage is selected.
 
         Parameters:
         -----------
-        mdstage: OERecord
-            The MD stage to be written on the MD stage record
-
-        Return:
-        -------
-            : Bool
-            True if the setting was successful
-        """
-        if not isinstance(mdstage, datarecord.datarecord.OERecord):
-            raise ValueError("The passed md stage object is not a valid MD Stage: {}".format(type(mdstage)))
-
-        stages = self.rec.get_value(Fields.md_stages)
-
-        stages[-1] = mdstage
-
-        self.rec.set_value(Fields.md_stages, stages)
-
-        return True
-
-    @mdstages
-    def append_stage(self, mdstage):
-        """
-        This method appends a new MD stage on the MD stage record. If the appending
-        was successful True is returned. If the passed MD stage is not valid an exception
-        is raised.
-
-        Parameters:
-        -----------
-        mdstage: OERecord
-            The MD stage to be written on the MD stage record
-
-        Return:
-        -------
-            : Bool
-            True if the appending was successful
-        """
-
-        if not isinstance(mdstage, datarecord.datarecord.OERecord):
-            raise ValueError("The passed md stage object is not a valid MD Stage: {}".format(type(mdstage)))
-
-        stages = self.rec.get_value(Fields.md_stages)
-
-        stages.append(mdstage)
-
-        self.rec.set_value(Fields.md_stages, stages)
-
-        return True
-
-    @mdstages
-    def get_stage_state(self, name='last', stage=None):
-        """
-        This method returns the MD State of the selected MD stage. If no stage name is passed
-        the last stage is selected. If a MD stage is passed the MD state of the passed MD stage is returned.
-        If a name and a MD stage is specified the MD stage name is ignored
-
-        Parameters:
-        -----------
-        name: String
+        stg_name: String
             The MD stage name
-        stage: OERecord
-            The MD stage record
-
-        Return:
-        -------
-            : OERecord
-            The MD state of the selected MD stage
-        """
-
-        if stage is not None:
-            if not isinstance(stage, datarecord.datarecord.OERecord):
-                raise ValueError("The passed md stage object is not a valid MD Stage: {}".format(type(stage)))
-        else:
-            stage = self.get_stage_by_name(name)
-
-        md_system = stage.get_value(Fields.md_system)
-
-        return md_system.get_value(Fields.md_state)
-
-    @mdstages
-    def get_stage_topology(self, name='last', stage=None):
-        """
-        This method returns the MD topology of the selected MD stage. If no stage name is passed
-        the last stage is selected. If a MD stage is passed the MD topology of the passed MD stage is returned.
-        If a name and a MD stage is specified the MD stage name is ignored
-
-        Parameters:
-        -----------
-        name: String
-            The MD stage name
-        stage: OERecord
-            The MD stage record
-
-        Return:
-        -------
-            : OEMol
-            The topology of the selected MD stage
-        """
-
-        if stage is not None:
-            if not isinstance(stage, datarecord.datarecord.OERecord):
-                raise ValueError("The passed md stage object is not a valid MD Stage: {}".format(type(stage)))
-        else:
-            stage = self.get_stage_by_name(name)
-
-        md_system = stage.get_value(Fields.md_system)
-
-        return md_system.get_value(Fields.topology)
-
-    @mdstages
-    def get_stage_info(self, name='last', stage=None):
-        """
-        This method returns the info of the selected MD stage. If no stage name is passed
-        the last stage is selected. If a MD stage is passed the info of the passed MD stage are returned.
-        If a name and a MD stage is specified the MD stage name is ignored
-
-        Parameters:
-        -----------
-        name: String
-            The MD stage name
-        stage: OERecord
-            The MD stage record
 
         Return:
         -------
@@ -427,26 +514,143 @@ class MDDataRecord(object):
             The info associated with the selected MD stage
         """
 
-        if stage is not None:
-            if not isinstance(stage, datarecord.datarecord.OERecord):
-                raise ValueError("The passed md stage object is not a valid MD Stage: {}".format(type(stage)))
-        else:
-            stage = self.get_stage_by_name(name)
+        stage = self.get_stage_by_name(stg_name)
 
         return stage.get_value(Fields.log_data)
 
-    @staticmethod
-    def create_stage(stage_name,
-                     stage_type,
-                     topology,
-                     mdstate,
-                     log=None,
-                     trajectory=None,
-                     trajectory_engine=None,
-                     orion_name="OrionFile"):
+    @stage_system
+    @mdstages
+    def unpack_stage_system(self, stg_name='last'):
+        pass
+
+    @stage_system
+    @mdstages
+    def get_stage_state(self, stg_name='last'):
         """
-        This method creates a new MD stage to be added to a MD stage record. If a trajectory file name
-        is passed, the trajectory will be uploaded in AWS S3 in Orion
+        This method returns the MD State of the selected stage name. If no stage name is passed
+        the last stage is selected
+
+        Parameters:
+        -----------
+        stg_name: String
+            The MD stage name
+        Return:
+        -------
+            : OERecord
+            The MD state of the selected MD stage
+        """
+        stage = self.get_stage_by_name(stg_name)
+
+        stage_name = stage.get_value(Fields.stage_name)
+
+        dir_stage = self.processed[stage_name]
+
+        state_fn = os.path.join(dir_stage, MDFileNames.state)
+
+        with open(state_fn, 'rb') as f:
+            state = pickle.load(f)
+
+        return state
+
+    @stage_system
+    @mdstages
+    def get_stage_topology(self, stg_name='last'):
+        """
+        This method returns the MD topology of the selected stage name. If no stage name is passed
+        the last stage is selected.
+
+        Parameters:
+        -----------
+        stg_name: String
+            The MD stage name
+
+        Return:
+        -------
+            : OEMol
+            The topology of the selected MD stage
+        """
+
+        stage = self.get_stage_by_name(stg_name)
+
+        stage_name = stage.get_value(Fields.stage_name)
+
+        dir_stage = self.processed[stage_name]
+
+        topology_fn = os.path.join(dir_stage, MDFileNames.topology)
+
+        topology = oechem.OEMol()
+
+        with oechem.oemolistream(topology_fn) as ifs:
+            oechem.OEReadMolecule(ifs, topology)
+
+        return topology
+
+    @stage_system
+    @mdstages
+    def get_stage_trajectory(self, stg_name='last'):
+        """
+        This method returns the trajectory file name associated with the md data. If the trajectory is
+        not found None is return
+
+        Parameters:
+        -----------
+        stg_name: String
+            The MD stage name
+
+        Return:
+        -------
+            : String or None
+            Trajectory file name if the process was successful otherwise None
+        """
+
+        stage = self.get_stage_by_name(stg_name)
+
+        stg_name = stage.get_value(Fields.stage_name)
+
+        stg_type = stage.get_value(Fields.stage_type)
+
+        traj_dir = self.processed[stg_name]
+
+        if not stage.has_field(Fields.trajectory):
+            return None
+
+        trj_tar = utils.download_file(stage.get_value(Fields.trajectory), os.path.join(traj_dir, MDFileNames.trajectory))
+
+        with tarfile.open(trj_tar) as tar:
+            tar.extractall(path=traj_dir)
+
+        trj_field = stage.get_field(Fields.trajectory.get_name())
+        trj_meta = trj_field.get_meta()
+        md_engine = trj_meta.get_attribute(Meta.Annotation.Description)
+
+        # TODO I do not like this a lot
+        if md_engine == MDEngines.OpenMM and not stg_type == MDStageTypes.FEC:
+            traj_fn = glob.glob(os.path.join(traj_dir, '*.h5'))[0]
+        elif md_engine == MDEngines.Gromacs:
+            traj_fn = glob.glob(os.path.join(traj_dir, '*.xtc'))[0]
+        else:  # Yank trajectory
+            traj_fn = os.path.join(traj_dir, "experiments/solvent1.nc")
+
+        exists = os.path.isfile(traj_fn)
+
+        if exists:
+            return traj_fn
+        else:
+            raise ValueError("Something went wrong recovering the trajectory")
+
+    def add_new_stage(self,
+                      stage_name,
+                      stage_type,
+                      topology,
+                      mdstate,
+                      data_fn,
+                      append=True,
+                      log=None,
+                      trajectory_fn=None,
+                      trajectory_engine=None,
+                      trajectory_orion_ui='OrionFile'):
+        """
+        This method append a new MD stage to the MD stage record.
 
         Parameters:
         -----------
@@ -458,173 +662,104 @@ class MDDataRecord(object):
             The topology
         mdstate: OERecord
             The new mdstate made of state positions, velocities and box vectors
+        data_fn: String
+            The data file name is used only locally and is linked to the MD data associated
+            with the stage. In Orion the data file name is not used
+        append: Bool
+            If the flag is set to true the stage will be appended to the MD stages otherwise
+            the last stage will be overwritten but the new created MD stage
         log: String or None
             Log info
         trajectory: String, Int or None
             The trajectory name or id associated with the new MD stage
         trajectory_engine: String or None
             The MD engine used to generate the new MD stage. Possible names: OpenMM or Gromacs
-        orion_name: String
-            The Orion name to be visualize in the Orion UI
-
-        Return:
-        -------
-            : OERecord
-            The new created MD stage
-        """
-
-        md_system = MDRecords.MDSystemRecord(topology, mdstate)
-
-        md_stage = MDRecords.MDStageRecord(stage_name,
-                                           stage_type,
-                                           md_system,
-                                           log=log,
-                                           trajectory=trajectory,
-                                           trajectory_engine=trajectory_engine,
-                                           orion_name=orion_name)
-        return md_stage
-
-    @mdstages
-    def get_stage_trajectory(self, trajectory_name="trajectory.tar.gz", out_directory='.', name='last', stage=None):
-        """
-        This method returns the trajectory ID if the recovery of a trajectory linked to a MD stage is successful.
-        If the MD record was locally generated the method returns the local trajectory file name if exists,
-        otherwise an exception is raised. In this case trajectory_name and out_directory are ignored. If the
-        MD record is generated in Orion and used in Orion or locally the method returns the trajectory ID if
-        the trajectory can be downloaded from AWS S3 and the trajectory file is named as the passed parameter
-        trajectory_name and downloaded in the passed out_directory. The stage to get the trajectory can be selected
-        by its name by using the name parameter. If no name is specified the "last" stage is selected. If a MD stage
-        is passed the trajectory associated with this stage is processed. If a name and a MD stage is specified
-        the MD stage name is ignored. None is returned if No trajectory has been found on the MD stage
-
-        Parameters:
-        -----------
-        trajectory_name: String
-            The trajectory file name to be used in Orion or locally if the MD record was generated in Orion
-        out_directory: String
-            The output directory where saving the trajectory file in Orion or locally if the MD record was
-            generated in Orion
-        name: String
-            The MD stage name
-        stage: OERecord
-            The MD stage record
-
-        Return:
-        -------
-            : String or int
-            Trajectory ID if the process was successful
-        """
-
-        if stage is not None:
-            if not isinstance(stage, datarecord.datarecord.OERecord):
-                raise ValueError("The passed md stage object is not a valid MD Stage: {}".format(type(stage)))
-        else:
-            stage = self.get_stage_by_name(name)
-
-        if stage.has_value(Fields.trajectory):
-            trj_id = stage.get_value(Fields.trajectory)
-
-        elif stage.has_value(Fields.orion_local_trj_field):
-
-            trj_id = stage.get_value(Fields.orion_local_trj_field)
-
-        else:
-            print("WARNING: No trajectory has been found")
-            return None
-
-        trj_fn = os.path.join(out_directory, trajectory_name)
-
-        fn_local = utils.download_file(trj_id, trj_fn, orion_delete=False)
-
-        # with tarfile.open(fn_local) as tar:
-        #     tar.extractall(path=out_directory)
-
-        return fn_local
-
-    @mdstages
-    def set_stage_trajectory(self, trajectory_file_name, orion_name, trajectory_engine, name='last', stage=None):
-
-        """
-        This method returns True if a trajectory can be linked to a MD stage. If the trajectory file name
-        linked to a trajectory file does not exist an exception is raised. If the MD record was locally generated
-        the orion_name is ignored. If the trajectory is set in Orion the trajectory file is uploaded to S3 and an
-        unique id related to the stack is set on the MD stage. The trajectory engine can be set as OpenMM or Gromacs.
-        The stage to link the trajectory can be selected by its name by using the name parameter. If no name
-        is specified the "last" stage is selected. If a MD stage is passed the trajectory associated with
-        this stage is processed. If a name and a MD stage is specified the MD stage name is ignored.
-
-        Parameters:
-        -----------
-        trajectory_file_name: String
-            The trajectory file name to be used
-        orion_name: String
-            The Orion name to be visualize in the Orion UI
-        name: String
-            The MD stage name to link the trajectory
-        stage: OERecord
-            The MD stage record to link the trajectory
-
-        Return:
+        trajectory_ui_orion: String
+            The trajectory string name to be displayed in the Orion UI
+         Return:
         -------
             : Bool
-            True if the trajectory was successful processed
+            True if the MD stage creation was successful
         """
 
-        if not os.path.isfile(trajectory_file_name):
-            raise IOError("The trajectory file has not been found: {}".format(trajectory_file_name))
+        record = OERecord()
 
-        lf = utils.upload_file(trajectory_file_name, orion_name=orion_name)
+        record.set_value(Fields.stage_name, stage_name)
+        record.set_value(Fields.stage_type, stage_type)
 
-        if trajectory_engine not in MDEngines.all:
-            raise ValueError("The selected MD engine is not supported")
+        if log is not None:
+            record.set_value(Fields.log_data, log)
 
-        if trajectory_engine not in MDEngines.all:
-            raise ValueError("The selected MD Engine {} is not supported. Valid are: {}".format(trajectory_engine,
-                                                                                                MDEngines.all))
-        trj_meta = OEFieldMeta()
-        trj_meta.set_attribute(Meta.Annotation.Description, trajectory_engine)
-        trj_field = OEField(Fields.trajectory.get_name(), Fields.trajectory.get_type(),
-                            meta=trj_meta)
+        with TemporaryDirectory() as output_directory:
 
-        if stage is not None:
-            if not isinstance(stage, datarecord.datarecord.OERecord):
-                raise ValueError("The passed md stage object is not a valid MD Stage: {}".format(type(stage)))
+            top_fn = os.path.join(output_directory, MDFileNames.topology)
 
-            stage.set_value(trj_field, lf)
-            return True
+            with oechem.oemolostream(top_fn) as ofs:
+                oechem.OEWriteConstMolecule(ofs, topology)
+
+            state_fn = os.path.join(output_directory, MDFileNames.state)
+
+            with open(state_fn, 'wb') as f:
+                pickle.dump(mdstate, f)
+
+            with tarfile.open(data_fn, mode='w:gz') as archive:
+                archive.add(top_fn, arcname=os.path.basename(top_fn))
+                archive.add(state_fn, arcname=os.path.basename(state_fn))
+
+        if trajectory_fn is not None:
+
+            if not os.path.isfile(trajectory_fn):
+                raise IOError("The trajectory file has not been found: {}".format(trajectory_fn))
+
+            trj_meta = OEFieldMeta()
+            trj_meta.set_attribute(Meta.Annotation.Description, trajectory_engine)
+            trj_field = OEField(Fields.trajectory.get_name(), Fields.trajectory.get_type(), meta=trj_meta)
+
+        if self.rec.has_field(Fields.md_stages):
+
+            stage_names = self.get_stages_names
+
+            if append:
+                if stage_name in stage_names:
+                    raise ValueError(
+                        "The selected stage name is already present in the MD stages: {}".format(stage_names))
+
+            else:
+                if stage_name in stage_names and not stage_name == stage_names[-1]:
+                    raise ValueError(
+                        "The selected stage name is already present in the MD stages: {}".format(stage_names))
+
+            lf = utils.upload_data(data_fn, collection_id=self.collection_id, shard_name=data_fn)
+
+            record.set_value(Fields.mddata, lf)
+
+            if trajectory_fn is not None:
+                lft = utils.upload_file(trajectory_fn, orion_ui_name=trajectory_orion_ui)
+                record.set_value(trj_field, lft)
+
+            stages = self.get_stages
+
+            if append:
+                stages.append(record)
+            else:
+                self.delete_stage_by_name('last')
+                stages[-1] = record
+
+            self.rec.set_value(Fields.md_stages, stages)
 
         else:
-            stage = self.get_stage_by_name(name)
-            stage.set_value(trj_field, lf)
 
-        stages = self.get_stages
+            lf = utils.upload_data(data_fn, collection_id=self.collection_id, shard_name=data_fn)
 
-        if name == 'last':
-            stages[-1] = stage
-        else:
-            for idx in range(0, len(stages)):
-                if stages[idx].get_value(Fields.stage_name) == name:
-                    stages[idx] = stage
-                    break
+            record.set_value(Fields.mddata, lf)
 
-        self.rec.set_value(Fields.md_stages, stages)
+            if trajectory_fn is not None:
+                lft = utils.upload_file(trajectory_fn, orion_ui_name=trajectory_orion_ui)
+                record.set_value(trj_field, lft)
 
-        return True
+            self.rec.set_value(Fields.md_stages, [record])
 
-    def init_stages(self, stage):
-        """
-        This method is used to initialize the record with a stage.
-
-        Return:
-        -------
-            : Bool
-            If the initialization succeeded True is returned
-        """
-
-        if not isinstance(stage, datarecord.datarecord.OERecord):
-            raise ValueError("The passed md stage object is not a valid MD Stage: {}".format(type(stage)))
-
-        self.rec.set_value(Fields.md_stages, [stage])
+        self.processed[stage_name] = False
 
         return True
 
@@ -674,10 +809,33 @@ class MDDataRecord(object):
             return True
 
     @property
-    def get_parmed(self):
+    def delete_stages(self):
+
+        stages = self.get_stages
+
+        for stage in stages:
+            fid = stage.get_value(Fields.mddata)
+            utils.delete_data(fid, collection_id=self.collection_id)
+
+            if stage.get_value(Fields.trajectory) is not None:
+                tid = stage.get_value(Fields.trajectory)
+                utils.delete_file(tid)
+
+        self.processed = {}
+        self.rec.delete_field(Fields.md_stages)
+
+        return True
+
+    def get_parmed(self, sync_stage_name=None):
         """
-        This method returns the Parmed object present on the record. An exception is raised if
-        the Parmed object cannot be found.
+        This method returns the Parmed object. An exception is raised if the Parmed object cannot
+        be found. If sync_stage_name is not None the parmed structure positions, velocities and
+        box vectors will be synchronized with the MD State selected by passing the MD stage name
+
+        Parameters:
+        -----------
+        sync_stage_name: String or None
+            The stage name that is used to synchronize the Parmed structure
 
         Return:
         -------
@@ -686,18 +844,57 @@ class MDDataRecord(object):
         """
 
         if not self.rec.has_field(Fields.pmd_structure):
-            raise ValueError("The Parmed Structure is not present on the record")
+            raise ValueError("The Parmed reference is not present on the record")
 
-        return self.rec.get_value(Fields.pmd_structure)
+        pmd_structure = self.rec.get_value(Fields.pmd_structure)
 
-    def set_parmed(self, pmdobj):
+        if in_orion():
+            session = APISession
+
+            if self.collection_id is None:
+                raise ValueError("The Collection ID is None")
+
+            collection = session.get_resource(ShardCollection, self.collection_id)
+
+            shard = session.get_resource(Shard(collection=collection), pmd_structure)
+
+            with TemporaryDirectory() as output_directory:
+
+                parmed_fn = os.path.join(output_directory, "parmed.pickle")
+
+                shard.download_to_file(parmed_fn)
+
+                with open(parmed_fn, 'rb') as f:
+                    parm_dic = pickle.load(f)
+
+                pmd_structure = parmed.structure.Structure()
+                pmd_structure.__setstate__(parm_dic)
+
+        if sync_stage_name is not None:
+            mdstate = self.get_stage_state(stg_name=sync_stage_name)
+
+            pmd_structure.positions = mdstate.get_positions()
+            pmd_structure.velocities = mdstate.get_velocities()
+            pmd_structure.box_vectors = mdstate.get_box_vectors()
+
+        return pmd_structure
+
+    def set_parmed(self, pmdobj, sync_stage_name=None, shard_name=""):
         """
-        This method sets the Parmed object on the record. Return True if the setting was successful.
+        This method sets the Parmed object. Return True if the setting was successful.
+        If sync_stage_name is not None the parmed structure positions, velocities and
+        box vectors will be synchronized with the MD State selected by passing the MD
+        stage name
 
         Parameters:
         -----------
         pmjobj: Parmed Structure object
             The Parmed Structure object to be set on the record
+        sync_stage_name: String or None
+            The stage name that is used to synchronize the Parmed structure
+        shard_name: String
+            In Orion tha shard will be named by using the shard_name
+
 
 
         Return:
@@ -709,7 +906,43 @@ class MDDataRecord(object):
         if not isinstance(pmdobj, parmed.Structure):
             raise ValueError("The passed Parmed object is not a valid Parmed Structure: {}".format(type(pmdobj)))
 
-        self.rec.set_value(Fields.pmd_structure, pmdobj)
+        if sync_stage_name is not None:
+
+            mdstate = self.get_stage_state(stg_name=sync_stage_name)
+
+            pmdobj.positions = mdstate.get_positions()
+            pmdobj.velocities = mdstate.get_velocities()
+            pmdobj.box_vectors = mdstate.get_box_vectors()
+
+        if in_orion():
+
+            with TemporaryDirectory() as output_directory:
+
+                parmed_fn = os.path.join(output_directory, 'parmed.pickle')
+
+                with open(parmed_fn, 'wb') as f:
+                    pickle.dump(pmdobj.__getstate__(), f)
+
+                if self.collection_id is None:
+                    raise ValueError("The Collection ID is None")
+
+                if self.rec.has_field(Fields.pmd_structure):
+                    fid = self.rec.get_value(Fields.pmd_structure)
+                    utils.delete_data(fid, collection_id=self.collection_id)
+
+                session = APISession
+
+                collection = session.get_resource(ShardCollection, self.collection_id)
+
+                shard = Shard.create(collection, name=shard_name)
+
+                shard.upload_file(parmed_fn)
+
+                shard.close()
+
+                self.rec.set_value(Fields.pmd_structure, shard.id)
+        else:
+            self.rec.set_value(Fields.pmd_structure, pmdobj)
 
         return True
 
@@ -744,7 +977,114 @@ class MDDataRecord(object):
         if not self.has_parmed:
             raise ValueError("The Parmed structure is not present on the record")
 
+        if in_orion():
+
+            if self.collection_id is None:
+                raise ValueError("The Collection ID is None")
+
+            session = APISession
+
+            collection = session.get_resource(ShardCollection, self.collection_id)
+
+            file_id = self.rec.get_value(Fields.pmd_structure)
+
+            session.delete_resource(Shard(collection=collection, id=file_id))
+
         self.rec.delete_field(Fields.pmd_structure)
+
+        return True
+
+    @property
+    def get_protein_traj(self):
+        """
+        This method returns the protein molecule where conformers have been set as trajectory frames
+
+
+        Return:
+        -------
+            : OEMol
+            The Protein molecule with trajectory conformers
+        """
+
+        if not self.rec.has_field(Fields.protein_traj_confs):
+            raise ValueError("The protein conformer trajectory is not present on the record")
+
+        protein_conf = self.rec.get_value(Fields.protein_traj_confs)
+
+        if in_orion():
+
+            session = APISession
+
+            if self.collection_id is None:
+                raise ValueError("The Collection ID is None")
+
+            collection = session.get_resource(ShardCollection, self.collection_id)
+
+            shard = session.get_resource(Shard(collection=collection), protein_conf)
+
+            with TemporaryDirectory() as output_directory:
+
+                protein_fn = os.path.join(output_directory, MDFileNames.trajectory_conformers)
+
+                shard.download_to_file(protein_fn)
+
+                protein_conf = oechem.OEMol()
+
+                with oechem.oemolistream(protein_fn) as ifs:
+                    oechem.OEReadMolecule(ifs, protein_conf)
+
+        return protein_conf
+
+    def set_protein_traj(self, protein_conf, shard_name=""):
+        """
+        This method sets the protein trajectory conformers on the record
+
+        Parameters:
+        -----------
+        protein_conf: OEChem
+            The Protein molecule with trajectory conformers
+         shard_name: String
+            In Orion tha shard will be named by using the shard_name
+
+
+        Return:
+        -------
+            : Bool
+            True if the setting was successful
+        """
+
+        if not isinstance(protein_conf, oechem.OEMol):
+            raise ValueError("The passed Parmed object is not a valid Parmed Structure: {}".format(type(protein_conf)))
+
+        if in_orion():
+
+            with TemporaryDirectory() as output_directory:
+
+                protein_fn = os.path.join(output_directory, MDFileNames.trajectory_conformers)
+
+                with oechem.oemolostream(protein_fn) as ofs:
+                    oechem.OEWriteConstMolecule(ofs, protein_conf)
+
+                if self.collection_id is None:
+                    raise ValueError("The Collection ID is None")
+
+                if self.rec.has_field(Fields.protein_traj_confs):
+                    fid = self.rec.get_value(Fields.protein_traj_confs)
+                    utils.delete_data(fid, collection_id=self.collection_id)
+
+                session = APISession
+
+                collection = session.get_resource(ShardCollection, self.collection_id)
+
+                shard = Shard.create(collection, name=shard_name)
+
+                shard.upload_file(protein_fn)
+
+                shard.close()
+
+                self.rec.set_value(Fields.protein_traj_confs, shard.id)
+        else:
+            self.rec.set_value(Fields.protein_traj_confs, protein_conf)
 
         return True
 

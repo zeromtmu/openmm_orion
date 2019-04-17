@@ -38,7 +38,10 @@ from MDOrion.Standards.mdrecord import MDDataRecord
 from MDOrion.MDEngines.utils import MDState
 
 from simtk.openmm import app
+
 from simtk import unit
+
+import os
 
 
 class ForceFieldCube(ParallelMixin, OERecordComputeCube):
@@ -86,19 +89,19 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
 
     protein_forcefield = parameter.StringParameter(
         'protein_forcefield',
-        default='amber99sbildn.xml',
-        choices=['amber99sbildn.xml', 'amberfb15.xml'],
+        default=sorted(ffutils.proteinff)[0],
+        choices=sorted(ffutils.proteinff),
         help_text='Force field parameters to be applied to the protein')
 
     solvent_forcefield = parameter.StringParameter(
         'solvent_forcefield',
-        default='tip3p.xml',
+        default=sorted(ffutils.solventff)[0],
         help_text='Force field parameters to be applied to the water')
 
     ligand_forcefield = parameter.StringParameter(
         'ligand_forcefield',
-        default='GAFF',
-        choices=['GAFF', 'GAFF2', 'SMIRNOFF'],
+        default=sorted(ffutils.ligandff)[0],
+        choices=sorted(ffutils.ligandff),
         help_text='Force field to be applied to the ligand')
 
     lig_res_name = parameter.StringParameter(
@@ -106,10 +109,15 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
         default='LIG',
         help_text='Ligand residue name. This is used during the spitting to identify the ligand')
 
+    suffix = parameter.StringParameter(
+        'suffix',
+        default='prep',
+        help_text='Filename suffix for output simulation files')
+
     other_forcefield = parameter.StringParameter(
         'other_forcefield',
-        default='GAFF',
-        choices=['GAFF', 'GAFF2', 'SMIRNOFF'],
+        default=sorted(ffutils.otherff)[0],
+        choices=sorted(ffutils.otherff),
         help_text='Force field used to parametrize other molecules not recognized by the '
                   'protein force field like excipients')
 
@@ -248,18 +256,27 @@ class ForceFieldCube(ParallelMixin, OERecordComputeCube):
                                                            rigidWater=False)
             mdrecord.set_title(system_title)
             mdrecord.set_primary(system_reassembled)
-            mdrecord.set_parmed(system_structure)
-            setup_stage = mdrecord.create_stage(self.title,
-                                                MDStageTypes.SETUP,
-                                                system_reassembled,
-                                                MDState(system_structure))
-            mdrecord.init_stages(setup_stage)
+
+            mdrecord.set_parmed(system_structure, shard_name="Parmed_" + system_title + '_' + str(sys_id))
+
+            data_fn = os.path.basename(mdrecord.cwd) + '_' + system_title+'_' + str(sys_id) + '-' + opt['suffix']+'.tar.gz'
+
+            if not mdrecord.add_new_stage(self.title,
+                                          MDStageTypes.SETUP,
+                                          system_reassembled,
+                                          MDState(system_structure),
+                                          data_fn):
+                raise ValueError("Problems adding the new Parametrization Stage")
 
             self.success.emit(mdrecord.get_record)
 
-        except:
+            del mdrecord
+
+        except Exception as e:
+
+            print("Failed to complete", str(e), flush=True)
+            self.opt['Logger'].info('Exception {} {}'.format(str(e), self.title))
             self.log.error(traceback.format_exc())
-            # Return failed record
             self.failure.emit(record)
 
         return

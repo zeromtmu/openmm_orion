@@ -26,13 +26,16 @@ from MDOrion.MDEngines.utils import MDState
 
 import copy
 
-from orionclient.session import in_orion, OrionSession
+from orionclient.session import in_orion, APISession
 
 from orionclient.types import File
 
 from os import environ
 
 import os
+
+from orionclient.types import (Shard,
+                               ShardCollection)
 
 
 class ParmedData(CustomHandler):
@@ -87,14 +90,14 @@ class MDStateData(CustomHandler):
         return new_state
 
 
-def upload_file(filename, orion_name='OrionFile'):
+def upload_file(filename, orion_ui_name='OrionFile'):
 
     if in_orion():
 
-        session = OrionSession()
+        session = APISession
 
         file_upload = File.upload(session,
-                                  orion_name,
+                                  orion_ui_name,
                                   filename)
 
         session.tag_resource(file_upload, "Trajectory")
@@ -112,11 +115,11 @@ def upload_file(filename, orion_name='OrionFile'):
     return file_id
 
 
-def download_file(file_id, filename, orion_delete=False):
+def download_file(file_id, filename):
 
-    if in_orion() or isinstance(file_id, int):
+    if in_orion():
 
-        session = OrionSession()
+        session = APISession
 
         resource = session.get_resource(File, file_id)
 
@@ -124,8 +127,6 @@ def download_file(file_id, filename, orion_delete=False):
 
         fn_local = filename
 
-        if orion_delete:
-            session.delete_resource(resource)
     else:
         fn_local = file_id
 
@@ -133,3 +134,91 @@ def download_file(file_id, filename, orion_delete=False):
         raise IOError("The trajectory file has not been found: {}".format(fn_local))
 
     return fn_local
+
+
+def delete_file(file_id):
+
+    if in_orion():
+
+        session = APISession
+
+        resource = session.get_resource(File, file_id)
+
+        session.delete_resource(resource)
+
+    else:
+        os.remove(file_id)
+
+    return True
+
+
+def upload_data(filename, collection_id=None, shard_name=""):
+
+    if in_orion():
+
+        if collection_id is None:
+            raise ValueError("The Collection ID is None")
+
+        session = APISession
+
+        collection = session.get_resource(ShardCollection, collection_id)
+
+        shard = Shard.create(collection, name=shard_name)
+
+        shard.upload_file(filename)
+
+        shard.close()
+
+        file_id = shard.id
+
+    else:
+        file_id = filename
+
+    return file_id
+
+
+def download_data(file_id, path, collection_id=None):
+
+    if in_orion():
+
+        if collection_id is None:
+            raise ValueError("The Collection ID is None")
+
+        session = APISession
+
+        collection = session.get_resource(ShardCollection, collection_id)
+
+        shard = session.get_resource(Shard(collection=collection), file_id)
+
+        from MDOrion.Standards import MDFileNames
+
+        fn_local = os.path.join(path, MDFileNames.mddata)
+
+        shard.download_to_file(fn_local)
+
+    else:
+        fn_local = file_id
+
+    if not os.path.isfile(fn_local):
+        raise IOError("The MD data file has not been found: {}".format(fn_local))
+
+    return fn_local
+
+
+def delete_data(file_id, collection_id=None):
+
+    if in_orion():
+
+        if collection_id is None:
+            raise ValueError("The Collection ID is None")
+
+        session = APISession
+
+        collection = session.get_resource(ShardCollection, collection_id)
+
+        session.delete_resource(Shard(collection=collection, id=file_id))
+
+    else:
+        os.remove(file_id)
+
+    return True

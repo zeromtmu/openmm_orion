@@ -27,15 +27,11 @@ from datarecord import (Types,
                         OEField,
                         OERecord)
 
-import MDOrion.MDEngines.utils as omm_utils
-
 from openeye import oechem
 
 from simtk.openmm import (app,
                           unit,
                           XmlSerializer)
-
-from tempfile import TemporaryDirectory
 
 import tarfile
 
@@ -47,7 +43,6 @@ from MDOrion.Yank import utils as yankutils
 
 from MDOrion.Standards import (MDStageTypes,
                                Fields,
-                               MDRecords,
                                MDEngines)
 
 import copy
@@ -60,9 +55,7 @@ from MDOrion.Standards.utils import ParmedData
 
 from MDOrion.MDEngines.utils import MDState
 
-from orionclient.session import in_orion, OrionSession
-
-from orionclient.types import File
+from orionclient.session import in_orion
 
 from floereport import FloeReport, LocalFloeReport
 
@@ -141,6 +134,11 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
         'hmr',
         default=False,
         description='On enables Hydrogen Mass Repartitioning')
+
+    suffix = parameter.StringParameter(
+        'suffix',
+        default='yank',
+        help_text='Filename suffix for output simulation files')
 
     def begin(self):
         self.opt = vars(self.args)
@@ -260,13 +258,8 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
                 self.log.info("Updating parameters for molecule: {}\n{}".format(system.GetTitle(), new_args))
                 opt.update(new_args)
 
-            solvated_structure = mdrecord.get_parmed
             mdstate = mdrecord.get_stage_state()
-
-            # Update the Parmed structure with the MD State
-            solvated_structure.positions = mdstate.get_positions()
-            solvated_structure.velocities = mdstate.get_velocities()
-            solvated_structure.box_vectors = mdstate.get_box_vectors()
+            solvated_structure = mdrecord.get_parmed(sync_stage_name='last')
 
             # Extract the ligand Parmed structure
             solute_structure = solvated_structure.split()[0][0]
@@ -288,146 +281,162 @@ class YankSolvationFECube(ParallelMixin, OERecordComputeCube):
             opt['solvent_str_names'] = ' '.join(solvent_res_names)
             
             # Write out all the required files and set-run the Yank experiment
-            with TemporaryDirectory() as output_directory:
 
-                opt['Logger'].info("Output Directory {}".format(output_directory))
+            stg_name = mdrecord.get_stages_names[-1]
+            output_directory = mdrecord.processed[stg_name]
 
-                opt['output_directory'] = output_directory
-                opt['solvated_structure_fn'] = os.path.join(output_directory, "solvated.pdb")
-                opt['solute_structure_fn'] = os.path.join(output_directory, "solute.pdb")
+            opt['Logger'].info("Output Directory {}".format(output_directory))
 
-                opt['solvated_omm_sys_serialized_fn'] = os.path.join(output_directory, "solvated.xml")
-                opt['solute_omm_sys_serialized_fn'] = os.path.join(output_directory, "solute.xml")
+            opt['out_directory'] = output_directory
+            opt['solvated_structure_fn'] = os.path.join(output_directory, "solvated.pdb")
+            opt['solute_structure_fn'] = os.path.join(output_directory, "solute.pdb")
 
-                # Restarting
-                if current_iterations != 0:
+            opt['solvated_omm_sys_serialized_fn'] = os.path.join(output_directory, "solvated.xml")
+            opt['solute_omm_sys_serialized_fn'] = os.path.join(output_directory, "solute.xml")
 
-                    yank_files = mdrecord.get_stage_trajectory(trajectory_name="yank_files.tar",
-                                                               out_directory=output_directory)
-                    with tarfile.open(yank_files) as tar:
-                        tar.extractall(path=output_directory)
+            # Restarting
+            if current_iterations != 0:
+                mdrecord.get_stage_trajectory(stg_name='last')
 
-                    # remove the file
-                    os.remove(yank_files)
+                # Disable minimization if restarting is enabled
+                opt['minimize'] = False
+                # Enable Yank Restarting
+                opt['resume_sim'] = True
+                opt['resume_setup'] = True
+            else:
 
-                    # Disable minimization if restart is enabled
-                    opt['minimize'] = False
-                    # Enable Yank Restarting
-                    opt['resume_sim'] = True
-                    opt['resume_setup'] = True
-                else:
-                    with open(opt['solvated_structure_fn'], 'w') as f:
-                        app.PDBFile.writeFile(solvated_structure.topology, solvated_structure.positions, file=f)
+                with open(opt['solvated_structure_fn'], 'w') as f:
+                    app.PDBFile.writeFile(solvated_structure.topology, solvated_structure.positions, file=f)
 
-                    with open(opt['solute_structure_fn'], 'w') as f:
-                        app.PDBFile.writeFile(solute_structure.topology, solute_structure.positions, file=f)
+                with open(opt['solute_structure_fn'], 'w') as f:
+                    app.PDBFile.writeFile(solute_structure.topology, solute_structure.positions, file=f)
 
-                    # Create the solvated and vacuum system
-                    solvated_omm_sys = solvated_structure.createSystem(nonbondedMethod=app.PME,
-                                                                       nonbondedCutoff=opt['nonbondedCutoff'] * unit.angstroms,
-                                                                       constraints=app.HBonds,
-                                                                       removeCMMotion=False)
-
-                    solute_omm_sys = solute_structure.createSystem(nonbondedMethod=app.NoCutoff,
+                # Create the solvated and vacuum system
+                solvated_omm_sys = solvated_structure.createSystem(nonbondedMethod=app.PME,
+                                                                   nonbondedCutoff=opt['nonbondedCutoff'] * unit.angstroms,
                                                                    constraints=app.HBonds,
                                                                    removeCMMotion=False)
 
-                    solvated_omm_sys_serialized = XmlSerializer.serialize(solvated_omm_sys)
-                    with open(opt['solvated_omm_sys_serialized_fn'], 'w') as solvated_f:
-                        solvated_f.write(solvated_omm_sys_serialized)
+                solute_omm_sys = solute_structure.createSystem(nonbondedMethod=app.NoCutoff,
+                                                               constraints=app.HBonds,
+                                                               removeCMMotion=False)
 
-                    solute_omm_sys_serialized = XmlSerializer.serialize(solute_omm_sys)
-                    with open(opt['solute_omm_sys_serialized_fn'], 'w') as solute_f:
-                        solute_f.write(solute_omm_sys_serialized)
+                solvated_omm_sys_serialized = XmlSerializer.serialize(solvated_omm_sys)
+                with open(opt['solvated_omm_sys_serialized_fn'], 'w') as solvated_f:
+                    solvated_f.write(solvated_omm_sys_serialized)
 
-                # Run Yank
-                yankutils.run_yank_solvation(opt)
+                solute_omm_sys_serialized = XmlSerializer.serialize(solute_omm_sys)
+                with open(opt['solute_omm_sys_serialized_fn'], 'w') as solute_f:
+                    solute_f.write(solute_omm_sys_serialized)
 
-                if current_iterations == 0:
+            # Run Yank
+            yankutils.run_yank_solvation(opt)
 
-                    iterations_per_cube = yankutils.calculate_iteration_time(output_directory, opt['new_iterations'])
+            if current_iterations == 0:
 
-                    if iterations_per_cube == 0:
-                        raise ValueError("Total running time per cube > max Orion running time per cube")
+                mdrecord.delete_stage_by_idx(0)
 
-                    # Optimize the number of iterations per cube to be a multiple of the set checkpoint interval
-                    iterations_per_cube_opt = int(iterations_per_cube / opt['checkpoint_interval']) * opt['checkpoint_interval']
+                iterations_per_cube = yankutils.calculate_iteration_time(output_directory, opt['new_iterations'])
 
-                    if iterations_per_cube_opt < opt['checkpoint_interval']:
-                        raise ValueError("Total running time per cube < checkpoint interval")
+                if iterations_per_cube == 0:
+                    raise ValueError("Total running time per cube > max Orion running time per cube")
 
-                    iterations_per_cube_field = OEField("iterations_per_cube", Types.Int)
+                # Optimize the number of iterations per cube to be a multiple of the set checkpoint interval
+                iterations_per_cube_opt = int(iterations_per_cube / opt['checkpoint_interval']) * opt['checkpoint_interval']
 
-                    record.set_value(iterations_per_cube_field, iterations_per_cube_opt)
+                if iterations_per_cube_opt < opt['checkpoint_interval']:
+                    raise ValueError("Total running time per cube < checkpoint interval")
 
-                    self.log.info("{} iterations per cube saved on the record: {}".format(self.title,
-                                                                                          iterations_per_cube_opt))
+                iterations_per_cube_field = OEField("iterations_per_cube", Types.Int)
 
-                # Tar the Yank temp dir with its content:
-                tar_fn = os.path.basename(output_directory+"_" + opt['system_title']) + '.tar.gz'
-                with tarfile.open(tar_fn, mode='w:gz') as archive:
-                    archive.add(output_directory, arcname='.', recursive=True)
+                record.set_value(iterations_per_cube_field, iterations_per_cube_opt)
 
-                str_logger += '\n' + '-' * 32 + ' SIMULATION ' + '-' * 32
+                self.log.info("{} iterations per cube saved on the record: {}".format(self.title,
+                                                                                      iterations_per_cube_opt))
+            opt['out_fn'] = os.path.basename(mdrecord.cwd) + '_' + \
+                            opt['system_title'] + '_' + \
+                            str(opt['system_id']) + '-' + \
+                            opt['suffix']
 
-                with open(os.path.join(output_directory, "experiments/experiments.log"), 'r') as flog:
-                    str_logger += '\n'+flog.read()
+            opt['trj_fn'] = opt['out_fn'] + '_' + 'traj.tar.gz'
+            trj_fn = opt['trj_fn']
 
-                md_stage_record = mdrecord.create_stage(self.title,
-                                                        MDStageTypes.FEC,
-                                                        system,
-                                                        mdstate,
-                                                        log=str_logger,
-                                                        trajectory=tar_fn,
-                                                        trajectory_engine=MDEngines.OpenMM,
-                                                        orion_name=opt['system_title'] + '.tar.gz')
+            yank_exp_dir = os.path.join(output_directory, "experiments")
+            yank_setup_dir = os.path.join(output_directory, "setup")
 
-                trj_id = md_stage_record.get_value(Fields.trajectory)
+            # Tar the Yank temp dir with its content:
+            with tarfile.open(trj_fn, mode='w:gz') as archive:
+                archive.add(opt['solvated_structure_fn'], arcname=os.path.basename(opt['solvated_structure_fn']))
+                archive.add(opt['solute_structure_fn'], arcname=os.path.basename(opt['solute_structure_fn']))
 
-                if current_iterations == 0:
-                    record.set_value(Fields.trj_garbage_field, [trj_id])
-                else:
-                    trj_garbage_list = record.get_value(Fields.trj_garbage_field)
-                    trj_garbage_list.append(trj_id)
-                    record.set_value(Fields.trj_garbage_field, trj_garbage_list)
+                archive.add(opt['solvated_omm_sys_serialized_fn'],
+                            arcname=os.path.basename(opt['solvated_omm_sys_serialized_fn']))
 
-                # Run Yank analysis
-                if opt['new_iterations'] == opt['iterations']:
-                    DeltaG_solvation, dDeltaG_solvation, report_str = yankutils.run_yank_analysis(opt)
+                archive.add(opt['solute_omm_sys_serialized_fn'],
+                            arcname=os.path.basename(opt['solute_omm_sys_serialized_fn']))
+                archive.add(yank_exp_dir, arcname=os.path.basename(yank_exp_dir), recursive=True)
+                archive.add(yank_setup_dir, arcname=os.path.basename(yank_exp_dir), recursive=True)
 
-                    record.set_value(Fields.free_energy, DeltaG_solvation)
-                    record.set_value(Fields.free_energy_err, dDeltaG_solvation)
+            str_logger += '\n' + '-' * 32 + ' SIMULATION ' + '-' * 32
 
-                    if report_str is not None:
-                        record.set_value(Fields.floe_report, report_str)
+            with open(os.path.join(output_directory, "experiments/experiments.log"), 'r') as flog:
+                str_logger += '\n'+flog.read()
 
-                    svg_lig = yankutils.ligand_to_svg(lig_split, lig_name)
+            data_fn = opt['out_fn'] + '.tar.gz'
 
-                    record.set_value(Fields.floe_report_svg_lig_depiction, svg_lig)
+            if not mdrecord.add_new_stage(self.title,
+                                          MDStageTypes.FEC,
+                                          system,
+                                          mdstate,
+                                          data_fn,
+                                          append=False,
+                                          log=str_logger,
+                                          trajectory_fn=trj_fn,
+                                          trajectory_engine=MDEngines.OpenMM,
+                                          trajectory_orion_ui=opt['system_title'] + '_' + str(opt['system_id']) + '-' + opt['suffix']
+                                          ):
 
-                    record.set_value(Fields.floe_report_label, "&Delta;Gs = {:.1f} &plusmn; {:.1f} kcal/mol".
-                                     format(DeltaG_solvation, dDeltaG_solvation))
+                raise ValueError("Problems adding in the new FEC Stage")
 
-                mdrecord.set_last_stage(md_stage_record)
-                mdrecord.set_primary(system)
-                record.set_value(current_iteration_field, opt['new_iterations'])
+            # Run Yank analysis
+            if opt['new_iterations'] == opt['iterations']:
+                DeltaG_solvation, dDeltaG_solvation, report_str = yankutils.run_yank_analysis(opt)
 
-                self.success.emit(record)
+                record.set_value(Fields.free_energy, DeltaG_solvation)
+                record.set_value(Fields.free_energy_err, dDeltaG_solvation)
 
-        except:
-            # Attach an error message to the molecule that failed
+                if report_str is not None:
+                    record.set_value(Fields.floe_report, report_str)
+
+                svg_lig = yankutils.ligand_to_svg(lig_split, lig_name)
+
+                record.set_value(Fields.floe_report_svg_lig_depiction, svg_lig)
+
+                record.set_value(Fields.floe_report_label, "&Delta;Gs = {:.1f} &plusmn; {:.1f} kcal/mol".
+                                 format(DeltaG_solvation, dDeltaG_solvation))
+
+            mdrecord.set_primary(system)
+            record.set_value(current_iteration_field, opt['new_iterations'])
+
+            self.success.emit(mdrecord.get_record)
+
+            del mdrecord
+
+        except Exception as e:
+
+            print("Failed to complete", str(e), flush=True)
+            self.opt['Logger'].info('Exception {} {}'.format(str(e), self.title))
             self.log.error(traceback.format_exc())
-            # Return failed mol
             self.failure.emit(record)
 
         return
 
 
 class SyncBindingFECube(OERecordComputeCube):
-    version = "0.0.0"
+    version = "0.1.0"
     title = "SyncSolvationFECube"
     description = """
-    This cube is used to sxynchronize the solvated ligands and the related
+    This cube is used to synchronize the solvated ligands and the related
     solvated complexes
     """
 
@@ -459,9 +468,11 @@ class SyncBindingFECube(OERecordComputeCube):
             else:
                 self.solvated_complex_list.append(record)
 
-        except:
+        except Exception as e:
+
+            print("Failed to complete", str(e), flush=True)
+            self.opt['Logger'].info('Exception {} {}'.format(str(e), self.title))
             self.log.error(traceback.format_exc())
-            # Return failed mol
             self.failure.emit(record)
 
         return
@@ -486,36 +497,40 @@ class SyncBindingFECube(OERecordComputeCube):
                 for field in pair[0].get_fields():
                     new_record.set_value(field, pair[0].get_value(field))
 
-                complex_solvated = pair[1].get_value(Fields.primary_molecule)
-                new_record.set_value(Fields.primary_molecule, complex_solvated)
-                new_record.set_value(Fields.id, pair[1].get_value(Fields.id))
-                new_record.set_value(Fields.title, pair[1].get_value(Fields.title))
+                mdrecord = MDDataRecord(new_record)
+
+                ligand_mdrecord = MDDataRecord(pair[0])
+                complex_mdrecord = MDDataRecord(pair[1])
+
+                mdrecord.set_primary(complex_mdrecord.get_primary)
+                mdrecord.set_id(complex_mdrecord.get_id)
+                mdrecord.set_title(complex_mdrecord.get_title)
+
+                # mdrecord.delete_parmed
+
+                # Extract and update ligand parmed structure
+                ligand_pmd_structure = ligand_mdrecord.get_parmed(sync_stage_name='last')
+
+                # Extract and update complex parmed structure
+                complex_pmd_structure = complex_mdrecord.get_parmed(sync_stage_name='last')
 
                 ligand_solvated_field = OEField("ligand_pmd_solvated", ParmedData)
                 complex_solvated_field = OEField("complex_pmd_solvated", ParmedData)
 
-                # Extract and update ligand parmed structure
-                ligand_md_state = pair[0].get_value(Fields.md_stages)[-1].get_value(Fields.md_system).get_value(Fields.md_state)
-                ligand_pmd_structure = pair[0].get_value(Fields.pmd_structure)
-
-                ligand_pmd_structure.positions = ligand_md_state.get_positions()
-                ligand_pmd_structure.velocities = ligand_md_state.get_velocities()
-                ligand_pmd_structure.box_vectors = ligand_md_state.get_box_vectors()
-
-                # Extract and update complex parmed structure
-                complex_md_state = pair[1].get_value(Fields.md_stages)[-1].get_value(Fields.md_system).get_value(Fields.md_state)
-                complex_pmd_structure = pair[1].get_value(Fields.pmd_structure)
-
-                complex_pmd_structure.positions = complex_md_state.get_positions()
-                complex_pmd_structure.velocities = complex_md_state.get_velocities()
-                complex_pmd_structure.box_vectors = complex_md_state.get_box_vectors()
-
                 new_record.set_value(ligand_solvated_field, ligand_pmd_structure)
                 new_record.set_value(complex_solvated_field, complex_pmd_structure)
 
+                # # Clean UP
+                complex_mdrecord.delete_stages
+                mdrecord.delete_stage_by_idx(0)
+
                 self.success.emit(new_record)
 
-        except:
+                del complex_mdrecord
+                del ligand_mdrecord
+
+        except Exception as e:
+            print("Failed to complete", str(e), flush=True)
             self.log.error(traceback.format_exc())
 
         return
@@ -596,6 +611,11 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
         'hmr',
         default=False,
         description='On enables Hydrogen Mass Repartitioning')
+
+    suffix = parameter.StringParameter(
+        'suffix',
+        default='yank',
+        help_text='Filename suffix for output simulation files')
 
     sampler = parameter.StringParameter(
         'sampler',
@@ -750,9 +770,9 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
             for i in range(0, len(solvent_res_names)):
                 if '+' in solvent_res_names[i]:
-                    solvent_res_names[i] = "'"+solvent_res_names[i]+"'"
+                    solvent_res_names[i] = "'" + solvent_res_names[i] + "'"
                 if '-' in solvent_res_names[i]:
-                    solvent_res_names[i] = "'"+solvent_res_names[i]+"'"
+                    solvent_res_names[i] = "'" + solvent_res_names[i] + "'"
 
             opt['solvent_str_names'] = ' '.join(solvent_res_names)
 
@@ -773,184 +793,181 @@ class YankBindingFECube(ParallelMixin, OERecordComputeCube):
 
                 mdstate = MDState(solvated_complex_parmed_structure)
 
+                # Remove From the record the ligand and complex field
+                record.delete_field(solvated_ligand_pmd_field)
+                record.delete_field(solvated_complex_pmd_field)
+
+            else:
+                mdstate = mdrecord.get_stage_state()
+                # solvated_complex_parmed_structure = mdrecord.get_parmed(sync_stage_name='last')
+
+            mdrecord.get_stage_trajectory()
+
+            stg_name = mdrecord.get_stages_names[-1]
+            output_directory = mdrecord.processed[stg_name]
+
+            opt['Logger'].info("Output Directory {}".format(output_directory))
+            opt['out_directory'] = output_directory
+
+            opt['solvated_complex_structure_fn'] = os.path.join(output_directory, "bonded_state.pdb")
+            opt['solvated_ligand_structure_fn'] = os.path.join(output_directory, "unbonded_state.pdb")
+            opt['solvated_complex_omm_serialized_fn'] = os.path.join(output_directory, "bonded_state.xml")
+            opt['solvated_ligand_omm_serialized_fn'] = os.path.join(output_directory, "unbonded_state.xml")
+
+            if current_iterations != 0:
+
+                mdrecord.get_stage_trajectory(stg_name='last')
+
+                # Disable minimization if restart is enabled
+                opt['minimize'] = False
+                # Enable Yank Restarting
+                opt['resume_sim'] = True
+                opt['resume_setup'] = True
             else:
 
-                mdstate = mdrecord.get_stage_state()
-                solvated_complex_parmed_structure = mdrecord.get_parmed
+                with open(opt['solvated_complex_structure_fn'], 'w') as f:
+                    app.PDBFile.writeFile(solvated_complex_parmed_structure.topology,
+                                          solvated_complex_parmed_structure.positions,
+                                          file=f)
 
-                solvated_complex_parmed_structure.positions = mdstate.get_positions()
-                solvated_complex_parmed_structure.velocities = mdstate.get_velocities()
-                solvated_complex_parmed_structure.box_vectors = mdstate.get_box_vectors()
+                with open(opt['solvated_ligand_structure_fn'], 'w') as f:
+                    app.PDBFile.writeFile(solvated_ligand_parmed_structure.topology,
+                                          solvated_ligand_parmed_structure.positions,
+                                          file=f)
 
-            # Write out all the required files and set-run the Yank experiment
-            with TemporaryDirectory() as output_directory:
+                # Create the solvated OpenMM systems
+                solvated_complex_omm_sys = solvated_complex_parmed_structure.createSystem(nonbondedMethod=app.PME,
+                                                                                          ewaldErrorTolerance=1.0e-4,
+                                                                                          nonbondedCutoff=opt['nonbondedCutoff'] * unit.angstroms,
+                                                                                          constraints=app.HBonds,
+                                                                                          removeCMMotion=False)
 
-                opt['Logger'].info("Output Directory {}".format(output_directory))
+                solvated_ligand_omm_sys = solvated_ligand_parmed_structure.createSystem(nonbondedMethod=app.PME,
+                                                                                        ewaldErrorTolerance=1.0e-4,
+                                                                                        nonbondedCutoff=opt['nonbondedCutoff'] * unit.angstroms,
+                                                                                        constraints=app.HBonds,
+                                                                                        removeCMMotion=False)
 
-                opt['output_directory'] = output_directory
+                solvated_complex_omm_serialized = XmlSerializer.serialize(solvated_complex_omm_sys)
 
-                opt['solvated_complex_structure_fn'] = os.path.join(output_directory, "bonded_state.pdb")
-                opt['solvated_ligand_structure_fn'] = os.path.join(output_directory, "unbonded_state.pdb")
-                opt['solvated_complex_omm_serialized_fn'] = os.path.join(output_directory, "bonded_state.xml")
-                opt['solvated_ligand_omm_serialized_fn'] = os.path.join(output_directory, "unbonded_state.xml")
+                with open(opt['solvated_complex_omm_serialized_fn'], 'w') as solvated_complex_f:
+                    solvated_complex_f.write(solvated_complex_omm_serialized)
 
-                if current_iterations != 0:
+                solvated_ligand_omm_serialized = XmlSerializer.serialize(solvated_ligand_omm_sys)
 
-                    yank_files = mdrecord.get_stage_trajectory(trajectory_name="yank_files.tar",
-                                                               out_directory=output_directory)
+                with open(opt['solvated_ligand_omm_serialized_fn'], 'w') as solvated_ligand_f:
+                    solvated_ligand_f.write(solvated_ligand_omm_serialized)
 
-                    with tarfile.open(yank_files) as tar:
-                        tar.extractall(path=output_directory)
+            if opt['sampler'] == 'repex':
+                opt['protocol'] = opt['protocol_repex']
+            elif opt['sampler'] == 'sams':
+                opt['protocol'] = opt['protocol_sams']
+            else:
+                raise ValueError("The selected sampler method is not currently supported: {}".format(opt['sampler']))
 
-                    # remove the file
-                    os.remove(yank_files)
+            # Run Yank
+            yankutils.run_yank_binding(opt)
 
-                    # Disable minimization if restart is enabled
-                    opt['minimize'] = False
+            if current_iterations == 0:
 
-                    # Enable Yank Restarting
-                    opt['resume_sim'] = True
-                    opt['resume_setup'] = True
-                else:
+                iterations_per_cube = yankutils.calculate_iteration_time(output_directory, opt['new_iterations'])
 
-                    with open(opt['solvated_complex_structure_fn'], 'w') as f:
-                        app.PDBFile.writeFile(solvated_complex_parmed_structure.topology,
-                                              solvated_complex_parmed_structure.positions,
-                                              file=f)
+                if iterations_per_cube == 0:
+                    raise ValueError("Total running time per cube > max Orion running time per cube")
 
-                    with open(opt['solvated_ligand_structure_fn'], 'w') as f:
-                        app.PDBFile.writeFile(solvated_ligand_parmed_structure.topology,
-                                              solvated_ligand_parmed_structure.positions,
-                                              file=f)
+                # Optimize the number of iterations per cube to be a multiple of the set checkpoint interval
+                iterations_per_cube_opt = int(iterations_per_cube / opt['checkpoint_interval']) * opt['checkpoint_interval']
 
-                    # Create the solvated OpenMM systems
-                    solvated_complex_omm_sys = solvated_complex_parmed_structure.createSystem(nonbondedMethod=app.PME,
-                                                                                              ewaldErrorTolerance=1.0e-4,
-                                                                                              nonbondedCutoff=opt['nonbondedCutoff'] * unit.angstroms,
-                                                                                              constraints=app.HBonds,
-                                                                                              removeCMMotion=False)
+                if iterations_per_cube_opt < opt['checkpoint_interval']:
+                    raise ValueError("Total running time per cube  "
+                                     "< checkpoint interval: {} < {}".format(iterations_per_cube_opt,
+                                                                             opt['checkpoint_interval']))
 
-                    solvated_ligand_omm_sys = solvated_ligand_parmed_structure.createSystem(nonbondedMethod=app.PME,
-                                                                                            ewaldErrorTolerance=1.0e-4,
-                                                                                            nonbondedCutoff=opt['nonbondedCutoff'] * unit.angstroms,
-                                                                                            constraints=app.HBonds,
-                                                                                            removeCMMotion=False)
+                iterations_per_cube_field = OEField("iterations_per_cube", Types.Int)
 
-                    solvated_complex_omm_serialized = XmlSerializer.serialize(solvated_complex_omm_sys)
+                record.set_value(iterations_per_cube_field, iterations_per_cube_opt)
 
-                    with open(opt['solvated_complex_omm_serialized_fn'], 'w') as solvated_complex_f:
-                        solvated_complex_f.write(solvated_complex_omm_serialized)
+                self.log.info("{} iterations per cube saved on the record: {}".format(self.title,
+                                                                                      iterations_per_cube_opt))
+                mdrecord.set_parmed(solvated_complex_parmed_structure)
 
-                    solvated_ligand_omm_serialized = XmlSerializer.serialize(solvated_ligand_omm_sys)
+            opt['out_fn'] = os.path.basename(mdrecord.cwd) + '_' + \
+                            opt['system_title'] + '_' + \
+                            str(opt['system_id']) + '-' + \
+                            opt['suffix']
 
-                    with open(opt['solvated_ligand_omm_serialized_fn'], 'w') as solvated_ligand_f:
-                        solvated_ligand_f.write(solvated_ligand_omm_serialized)
+            opt['trj_fn'] = opt['out_fn'] + '_' + 'traj.tar.gz'
+            trj_fn = opt['trj_fn']
 
-                if opt['sampler'] == 'repex':
-                    opt['protocol'] = opt['protocol_repex']
-                elif opt['sampler'] == 'sams':
-                    opt['protocol'] = opt['protocol_sams']
-                else:
-                    raise ValueError("The selected sampler method is not currently supported: {}".format(opt['sampler']))
+            # Tar the Yank temp dir with its content:
+            yank_exp_dir = os.path.join(output_directory, "experiments")
+            yank_setup_dir = os.path.join(output_directory, "setup")
 
-                yankutils.run_yank_binding(opt)
+            with tarfile.open(trj_fn, mode='w:gz') as archive:
+                archive.add(opt['solvated_complex_structure_fn'],
+                            arcname=os.path.basename(opt['solvated_complex_structure_fn']))
+                archive.add(opt['solvated_ligand_structure_fn'],
+                            arcname=os.path.basename(opt['solvated_ligand_structure_fn']))
 
-                if current_iterations == 0:
+                archive.add(opt['solvated_complex_omm_serialized_fn'],
+                            arcname=os.path.basename(opt['solvated_complex_omm_serialized_fn']))
+                archive.add(opt['solvated_ligand_omm_serialized_fn'],
+                            arcname=os.path.basename(opt['solvated_ligand_omm_serialized_fn']))
 
-                    iterations_per_cube = yankutils.calculate_iteration_time(output_directory, opt['new_iterations'])
+                archive.add(yank_exp_dir, arcname=os.path.basename(yank_exp_dir), recursive=True)
+                archive.add(yank_setup_dir, arcname=os.path.basename(yank_exp_dir), recursive=True)
 
-                    if iterations_per_cube == 0:
-                        raise ValueError("Total running time per cube > max Orion running time per cube")
+            str_logger += '\n' + '-' * 32 + ' SIMULATION ' + '-' * 32
 
-                    # Optimize the number of iterations per cube to be a multiple of the set checkpoint interval
-                    iterations_per_cube_opt = int(iterations_per_cube / opt['checkpoint_interval']) * opt['checkpoint_interval']
+            with open(os.path.join(output_directory, "experiments/experiments.log"), 'r') as flog:
+                str_logger += '\n' + flog.read()
 
-                    if iterations_per_cube_opt < opt['checkpoint_interval']:
-                        raise ValueError("Total running time per cube  "
-                                         "< checkpoint interval: {} < {}".format(iterations_per_cube_opt,
-                                                                                 opt['checkpoint_interval']))
+            # data_fn = os.path.basename(mdrecord.cwd + "_" + opt['system_title']) + '-' + opt['suffix'] + '.tar.gz'
+            data_fn = opt['out_fn'] + '.tar.gz'
 
-                # Tar the Yank temp dir with its content:
-                tar_fn = os.path.basename(output_directory+"_"+opt['system_title']) + '.tar.gz'
-                with tarfile.open(tar_fn, mode='w:gz') as archive:
-                    archive.add(output_directory, arcname='.', recursive=True)
+            if not mdrecord.add_new_stage(self.title,
+                                          MDStageTypes.FEC,
+                                          complex,
+                                          mdstate,
+                                          data_fn,
+                                          append=False,
+                                          log=str_logger,
+                                          trajectory_fn=trj_fn,
+                                          trajectory_engine=MDEngines.OpenMM,
+                                          trajectory_orion_ui=opt['system_title'] + '_' + str(opt['system_id']) + '-' + opt['suffix']
+                                          ):
+                raise ValueError("Problems adding in the new FEC Stage")
 
-                str_logger += '\n' + '-' * 32 + ' SIMULATION ' + '-' * 32
+            # Run the analysis
+            if opt['new_iterations'] == opt['iterations']:
+                DeltaG_binding, dDeltaG_binding, report_str = yankutils.run_yank_analysis(opt)
 
-                with open(os.path.join(output_directory, "experiments/experiments.log"), 'r') as flog:
-                    str_logger += '\n' + flog.read()
+                record.set_value(Fields.free_energy, DeltaG_binding)
+                record.set_value(Fields.free_energy_err, dDeltaG_binding)
 
-                md_stage_record = mdrecord.create_stage(self.title,
-                                                        MDStageTypes.FEC,
-                                                        complex,
-                                                        mdstate,
-                                                        log=str_logger,
-                                                        trajectory=tar_fn,
-                                                        trajectory_engine=MDEngines.OpenMM,
-                                                        orion_name=opt['system_title'] + '.tar.gz')
+                if report_str is not None:
+                    record.set_value(Fields.floe_report, report_str)
 
-                trj_id = md_stage_record.get_value(Fields.trajectory)
+                svg_lig = yankutils.ligand_to_svg(ligand_split, lig_name)
 
-                if current_iterations != 0:
+                record.set_value(Fields.floe_report_svg_lig_depiction, svg_lig)
 
-                    mdrecord.set_last_stage(md_stage_record)
-
-                    trj_garbage_list = record.get_value(Fields.trj_garbage_field)
-                    trj_garbage_list.append(trj_id)
-                    record.set_value(Fields.trj_garbage_field, trj_garbage_list)
-
-                else:
-                    old_record_copy = OERecord(record)
-
-                    # new record
-                    record = OERecord()
-
-                    # Copy all the ligand fields into the new record
-                    for field in old_record_copy.get_fields():
-                        # Skipping
-                        if field.get_name() == "ligand_pmd_solvated" or field.get_name() == "complex_pmd_solvated":
-                            continue
-                        record.set_value(field, old_record_copy.get_value(field))
-
-                    mdrecord = MDDataRecord(record)
-                    mdrecord.init_stages(md_stage_record)
-
-                    mdrecord.set_id(opt['system_id'])
-                    mdrecord.set_title(opt['system_title'])
-                    mdrecord.set_parmed(solvated_complex_parmed_structure)
-
-                    iterations_per_cube_field = OEField("iterations_per_cube", Types.Int)
-                    record.set_value(iterations_per_cube_field, iterations_per_cube_opt)
-                    self.log.info("[{}] iterations per cube saved on the record: {}".format(self.title,
-                                                                                            iterations_per_cube_opt))
-                    record.set_value(Fields.trj_garbage_field, [trj_id])
-
-                # Run the analysis
-                if opt['new_iterations'] == opt['iterations']:
-                    DeltaG_binding, dDeltaG_binding, report_str = yankutils.run_yank_analysis(opt)
-
-                    record.set_value(Fields.free_energy, DeltaG_binding)
-                    record.set_value(Fields.free_energy_err, dDeltaG_binding)
-
-                    if report_str is not None:
-                        record.set_value(Fields.floe_report, report_str)
-
-                    svg_lig = yankutils.ligand_to_svg(ligand_split, lig_name)
-
-                    record.set_value(Fields.floe_report_svg_lig_depiction, svg_lig)
-
-                    record.set_value(Fields.floe_report_label, "&Delta;Gs = {:.1f} &plusmn; {:.1f} kcal/mol".
-                                     format(DeltaG_binding, dDeltaG_binding))
+                record.set_value(Fields.floe_report_label, "&Delta;Gs = {:.1f} &plusmn; {:.1f} kcal/mol".
+                                 format(DeltaG_binding, dDeltaG_binding))
 
             record.set_value(current_iteration_field, opt['new_iterations'])
             mdrecord.set_primary(complex)
+            # mdrecord.set_parmed(solvated_complex_parmed_structure, sync_stage_name='last')
 
-            self.success.emit(record)
+            self.success.emit(mdrecord.get_record)
 
-        except:
-            # Attach an error message to the molecule that failed
+            del mdrecord
+
+        except Exception as e:
+
+            print("Failed to complete", str(e), flush=True)
+            self.opt['Logger'].info('Exception {} {}'.format(str(e), self.title))
             self.log.error(traceback.format_exc())
-            # Return failed mol
             self.failure.emit(record)
 
         return
@@ -1027,33 +1044,16 @@ class YankProxyCube(OERecordComputeCube):
 
                 if current_iteration == self.opt['iterations']:
                     self.opt['Logger'].info("{} Finishing...".format(self.title))
-
-                    # Clean up trajectories in Orion
-                    if not record.has_value(Fields.trj_garbage_field):
-                        raise ValueError("The trajectory garbage field is missing")
-
-                    trj_garbage_list = record.get_value(Fields.trj_garbage_field)
-
-                    if len(trj_garbage_list) > 1:
-                        if in_orion():
-                            session = OrionSession()
-
-                            for file_id in trj_garbage_list[:-1]:
-                                resource = session.get_resource(File, file_id)
-                                session.delete_resource(resource)
-
-                        trj_garbage_list = [trj_garbage_list[-1]]
-                        record.set_value(Fields.trj_garbage_field, trj_garbage_list)
-
                     self.success.emit(record)
 
                 else:
                     self.opt['Logger'].warn("{} Forwarding to Cycle...".format(self.title))
                     self.cycle_out_port.emit(record)
-        except:
-            # Attach an error message to the molecule that failed
+        except Exception as e:
+
+            print("Failed to complete", str(e), flush=True)
+            self.opt['Logger'].info('Exception {} {}'.format(str(e), self.title))
             self.log.error(traceback.format_exc())
-            # Return failed mol
             self.failure.emit(record)
 
         return

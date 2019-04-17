@@ -15,9 +15,6 @@
 # liable for any damages or liability in connection with the Sample Code
 # or its use.
 
-
-import tempfile
-
 from simtk import unit
 
 from simtk.openmm import app
@@ -45,11 +42,9 @@ import os
 
 import io
 
-import shutil
-
 from openeye import oechem
 
-from MDOrion.Standards import MDEngines
+from MDOrion.Standards import MDEngines, MDFileNames
 
 
 class GromacsSimulations(MDSimulations):
@@ -231,21 +226,20 @@ class GromacsSimulations(MDSimulations):
                 pbc=pbc
             )
 
-        # Create temp directory
-        opt['output_directory'] = tempfile.mkdtemp()
+        opt['Logger'].info("Output Directory {}".format(opt['out_directory']))
 
-        opt['Logger'].info("Output Directory {}".format(opt['output_directory']))
+        opt['outfname'] = opt['system_title'] + '_' + str(opt['system_id']) + '-' + opt['suffix']
 
         # Gromacs file names
-        opt['grm_top_fn'] = os.path.join(opt['output_directory'], opt['outfname']+".top")
-        opt['grm_gro_fn'] = os.path.join(opt['output_directory'], opt['outfname']+".gro")
-        opt['grm_pdb_fn'] = os.path.join(opt['output_directory'], opt['outfname'] + ".pdb")
-        opt['grm_tpr_fn'] = os.path.join(opt['output_directory'], opt['outfname']+".tpr")
-        opt['mdp_fn'] = os.path.join(opt['output_directory'], opt['outfname']+".mdp")
-        opt['grm_def_fn'] = os.path.join(opt['output_directory'], opt['outfname']+"_run")
+        opt['grm_top_fn'] = os.path.join(opt['out_directory'], opt['outfname']+".top")
+        opt['grm_gro_fn'] = os.path.join(opt['out_directory'], opt['outfname']+".gro")
+        opt['grm_pdb_fn'] = os.path.join(opt['out_directory'], opt['outfname'] + ".pdb")
+        opt['grm_tpr_fn'] = os.path.join(opt['out_directory'], opt['outfname']+".tpr")
+        opt['mdp_fn'] = os.path.join(opt['out_directory'], opt['outfname']+".mdp")
+        opt['grm_def_fn'] = os.path.join(opt['out_directory'], opt['outfname']+"_run")
         opt['grm_log_fn'] = opt['grm_def_fn'] + '.log'
-        opt['grm_trj_fn'] = os.path.join(opt['output_directory'], opt['outfname'] + ".trr")
-        opt['grm_trj_comp_fn'] = os.path.join(opt['output_directory'], opt['outfname'] + ".xtc")
+        opt['grm_trj_fn'] = os.path.join(opt['out_directory'], opt['outfname'] + ".trr")
+        opt['grm_trj_comp_fn'] = os.path.join(opt['out_directory'], opt['outfname'] + ".xtc")
 
         opt['mdp_template'] = mdp_template
 
@@ -329,7 +323,7 @@ class GromacsSimulations(MDSimulations):
             opt['Logger'].info("[{}] Number of restraint atoms: {}".format(opt['CubeTitle'], len(res_atom_list)))
 
             # Restrained atom index file to be appended to the index file
-            opt['grm_res_idx_fn'] = os.path.join(opt['output_directory'], opt['outfname'] + '_res.idx')
+            opt['grm_res_idx_fn'] = os.path.join(opt['out_directory'], opt['outfname'] + '_res.idx')
 
             digits = len(str(abs(res_atom_list[-1])))
 
@@ -364,7 +358,7 @@ class GromacsSimulations(MDSimulations):
                     f.write('\n')
 
             # Restrained System index file
-            opt['grm_system_fn'] = os.path.join(opt['output_directory'], opt['outfname']+'_sys')
+            opt['grm_system_fn'] = os.path.join(opt['out_directory'], opt['outfname']+'_sys')
 
             p = subprocess.Popen(['gmx',
                                   'make_ndx',
@@ -378,7 +372,7 @@ class GromacsSimulations(MDSimulations):
             append_fns = [opt['grm_system_fn']+'.ndx', opt['grm_res_idx_fn']]
 
             # Index file name
-            opt['grm_ndx_fn'] = os.path.join(opt['output_directory'], opt['outfname']+'.ndx')
+            opt['grm_ndx_fn'] = os.path.join(opt['out_directory'], opt['outfname']+'.ndx')
 
             with open(opt['grm_ndx_fn'], 'w') as outfile:
                 for fn in append_fns:
@@ -394,7 +388,7 @@ class GromacsSimulations(MDSimulations):
                     count_systems += 1
 
             # Restrains position file name
-            opt['grm_itp_fn'] = os.path.join(opt['output_directory'], opt['outfname'])
+            opt['grm_itp_fn'] = os.path.join(opt['out_directory'], opt['outfname'])
 
             indx_selection = count_systems
 
@@ -507,7 +501,7 @@ class GromacsSimulations(MDSimulations):
                 p.communicate(b'0')
 
                 # Tar the files dir with its content:
-                tar_fn = self.opt['outfname'] + '.tar.gz'
+                tar_fn = self.opt['trj_fn']
 
                 with tarfile.open(tar_fn, mode='w:gz') as archive:
                     archive.add(self.opt['grm_gro_fn'], arcname=os.path.basename(self.opt['grm_gro_fn']))
@@ -522,7 +516,7 @@ class GromacsSimulations(MDSimulations):
 
         # top_fn = self.opt['grm_top_fn']
 
-        gro_fn = os.path.join(self.opt['output_directory'], self.opt['grm_def_fn'] + '.gro')
+        gro_fn = os.path.join(self.opt['out_directory'], self.opt['grm_def_fn'] + '.gro')
 
         gro_structure = parmed.gromacs.GromacsGroFile().parse(gro_fn, skip_bonds=True)
 
@@ -539,7 +533,7 @@ class GromacsSimulations(MDSimulations):
         return new_mdstate
 
     def clean_up(self):
-
-        shutil.rmtree(self.opt['output_directory'], ignore_errors=True)
+        pass
+        # shutil.rmtree(self.opt['out_directory'], ignore_errors=True)
 
         return

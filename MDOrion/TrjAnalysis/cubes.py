@@ -22,7 +22,6 @@ import ensemble2img
 
 from tempfile import TemporaryDirectory
 
-import tarfile
 
 import numpy as np
 
@@ -150,10 +149,13 @@ class MDFloeReportCube(OERecordComputeCube):
 
             self.success.emit(record)
 
-        except:
-            # Attach an error message to the molecule that failed
+            del mdrecord
+
+        except Exception as e:
+
+            print("Failed to complete", str(e), flush=True)
+            self.opt['Logger'].info('Exception {} {}'.format(str(e), self.title))
             self.log.error(traceback.format_exc())
-            # Return failed mol
             self.failure.emit(record)
 
         return
@@ -234,15 +236,12 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
 
     description = """
     Converting MD Traj into multiconf OEMols for Ligand and Protein
-
     This cube will take in the MD traj file containing
     the solvated protein:ligand complex and extract
     multiconf OEMols for Ligand and Protein.
-
     Input parameters:
     -------
     oechem.OEDataRecord - Streamed-in MD results for input
-
     Output:
     -------
     oechem.OEDataRecord - Stream of output data with trajectory OEMols
@@ -278,51 +277,27 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
             # Logger string
             opt['Logger'].info(' ')
             system_title = mdrecord.get_title
+            sys_id = mdrecord.get_id
             opt['Logger'].info('{}: Attempting MD Traj conversion into OEMols'.format(system_title))
 
-            md_stageLast_record = mdrecord.get_last_stage
+            traj_fn = mdrecord.get_stage_trajectory()
 
-            with TemporaryDirectory() as output_directory:
+            opt['Logger'].info('{} Temp Directory: {}'.format(system_title, os.path.dirname(traj_fn)))
+            opt['Logger'].info('{} Trajectory filename: {}'.format(system_title, traj_fn))
 
-                opt['Logger'].info('{} Temp Directory: {}'.format(system_title, output_directory))
+            setupOEMol = mdrecord.get_stage_topology(stg_name="System Parametrization")
 
-                trj_field = md_stageLast_record.get_field(Fields.trajectory.get_name())
-                trj_meta = trj_field.get_meta()
-                md_engine = trj_meta.get_attribute(Meta.Annotation.Description)
+            opt['Logger'].info('{} Setup topology has {} atoms'.format(system_title, setupOEMol.NumAtoms()))
 
-                trj_local = mdrecord.get_stage_trajectory(trajectory_name="trajectory.tar.gz",
-                                                          out_directory=output_directory)
+            # Generate multi-conformer protein and ligand OEMols from the trajectory
+            opt['Logger'].info('{} Generating protein and ligand trajectory OEMols'.format(system_title))
 
-                if trj_local is None:
-                    raise ValueError("No Trajectory has been found on the MD stage record")
+            ptraj, ltraj = utl.ExtractAlignedProtLigTraj(setupOEMol, traj_fn)
 
-                # Un-tar the Trajectory files
-                with tarfile.open(trj_local) as tar:
-                    tar.extractall(path=output_directory)
-
-                opt['Logger'].info('{} Trajectory filename: {}'.format(system_title, trj_local))
-
-                # Extract the Setup Topology
-                md_stage0_record = mdrecord.get_stage_by_name("System Parametrization")
-
-                setupType = utl.RequestOEFieldType(md_stage0_record, Fields.stage_type)
-
-                if setupType != 'SETUP':
-                    raise ValueError('{} Cannot find the SETUP stage'.format(system_title))
-
-                setupOEMol = mdrecord.get_stage_topology(stage=md_stage0_record)
-
-                opt['Logger'].info('{} Setup topology has {} atoms'.format(system_title, setupOEMol.NumAtoms()))
-
-                # Generate multi-conformer protein and ligand OEMols from the trajectory
-                opt['Logger'].info('{} Generating protein and ligand trajectory OEMols'.format(system_title))
-
-                ptraj, ltraj = utl.ExtractAlignedProtLigTraj(setupOEMol, output_directory, md_engine)
-
-                opt['Logger'].info('{} #atoms, #confs in protein traj OEMol: {}, {}'.format(
-                    system_title, ptraj.NumAtoms(), ptraj.NumConfs()))
-                opt['Logger'].info('{} #atoms, #confs in ligand traj OEMol: {}, {}'.format(
-                    system_title, ltraj.NumAtoms(), ltraj.NumConfs()))
+            opt['Logger'].info('{} #atoms, #confs in protein traj OEMol: {}, {}'.format(
+                system_title, ptraj.NumAtoms(), ptraj.NumConfs()))
+            opt['Logger'].info('{} #atoms, #confs in ligand traj OEMol: {}, {}'.format(
+                system_title, ltraj.NumAtoms(), ltraj.NumConfs()))
 
             # Generate average and median protein and ligand OEMols from ptraj, ltraj
             opt['Logger'].info('{} Generating protein and ligand median and average OEMols'.format(system_title))
@@ -333,15 +308,14 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
             opt['Logger'].info('{} Generating interactive trajectory SVG'.format(system_title))
             trajSVG = ensemble2img.run_ensemble2img(ligMedian, protMedian, ltraj, ptraj)
 
-            # Overwrite MDStages with only first (setup) and last (production) stages
-            newMDStages = [md_stage0_record, md_stageLast_record]
 
-            record.set_value(Fields.md_stages, newMDStages)
+            # Overwrite MDStages with only first (setup) and last (production) stages
+            # newMDStages = [md_stage0_record, md_stageLast_record]
+            # record.set_value(Fields.md_stages, newMDStages)
+
 
             # Create new record with OETraj results
             oetrajRecord = OERecord()
-
-            oetrajRecord.set_value(OEField('ProtTraj', Types.Chem.Mol), ptraj)
 
             oetrajRecord.set_value(OEField('LigTraj', Types.Chem.Mol), ltraj)
 
@@ -353,6 +327,13 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
 
             oetrajRecord.set_value(OEField('ProtAverage', Types.Chem.Mol), protAverage)
 
+            if in_orion():
+                oetrajRecord.set_value(Fields.collection, mdrecord.collection_id)
+
+            mdrecord_traj = MDDataRecord(oetrajRecord)
+
+            mdrecord_traj.set_protein_traj(ptraj, shard_name="ProteinTrajConfs_" + system_title + '_' + str(sys_id))
+
             TrajSVG_field = OEField('TrajSVG', Types.String, meta=OEFieldMeta().set_option(Meta.Hints.Image_SVG))
 
             oetrajRecord.set_value(TrajSVG_field, trajSVG)
@@ -361,19 +342,23 @@ class TrajToOEMolCube(ParallelMixin, OERecordComputeCube):
 
             # update or initiate the list of analyses that have been done
             analysesDoneField = OEField('AnalysesDone', Types.StringVec)
-            if( record.has_value( analysesDoneField)):
-                analysesDone = utl.RequestOEFieldType( record, analysesDoneField)
+
+            if record.has_value(analysesDoneField):
+                analysesDone = utl.RequestOEFieldType(record, analysesDoneField)
                 analysesDone.append('OETraj')
             else:
                 analysesDone = ['OETraj']
+
             record.set_value( analysesDoneField, analysesDone)
             opt['Logger'].info('{}: saved protein and ligand traj OEMols'.format(system_title))
 
             self.success.emit(record)
 
+            del mdrecord
+            del mdrecord_traj
+
         except Exception as e:
             print("Failed to complete", str(e), flush=True)
-            self.log.info('Exception in TrajToOEMolCube on {}'.format(system_title))
             self.log.error(traceback.format_exc())
             # Return failed mol
             self.failure.emit(record)
@@ -436,7 +421,10 @@ class TrajPBSACube(ParallelMixin, OERecordComputeCube):
             ligTraj = utl.RequestOEField( oetrajRecord, 'LigTraj', Types.Chem.Mol)
             opt['Logger'].info('{} #atoms, #confs in ligand traj OEMol: {}, {}'
                                .format(system_title, ligTraj.NumAtoms(), ligTraj.NumConfs()))
-            protTraj = utl.RequestOEField( oetrajRecord, 'ProtTraj', Types.Chem.Mol)
+
+            mdtrajrecord = MDDataRecord(oetrajRecord)
+            protTraj = mdtrajrecord.get_protein_traj
+
             opt['Logger'].info('{} #atoms, #confs in protein traj OEMol: {}, {}'
                                .format(system_title, protTraj.NumAtoms(), protTraj.NumConfs()))
 
@@ -518,6 +506,8 @@ class TrajPBSACube(ParallelMixin, OERecordComputeCube):
 
             self.success.emit(record)
 
+            del mdtrajrecord
+
         except Exception as e:
             print("Failed to complete", str(e), flush=True)
             self.opt['Logger'].info('Exception {} in TrajPBSACube'.format(str(e)))
@@ -570,7 +560,11 @@ class TrajInteractionEnergyCube(ParallelMixin, OERecordComputeCube):
             opt = self.opt
             # Logger string
             opt['Logger'].info(' Beginning TrajInteractionEnergyCube')
-            system_title = utl.RequestOEFieldType( record, Fields.title)
+
+            mdrecord = MDDataRecord(record)
+
+            system_title = mdrecord.get_title
+
             opt['Logger'].info('{} Attempting to compute MD Traj protein-ligand Interaction energies'
                 .format(system_title) )
 
@@ -587,12 +581,14 @@ class TrajInteractionEnergyCube(ParallelMixin, OERecordComputeCube):
             ligTraj = utl.RequestOEField( oetrajRecord, 'LigTraj', Types.Chem.Mol)
             opt['Logger'].info('{} #atoms, #confs in ligand traj OEMol: {}, {}'
                 .format( system_title, ligTraj.NumAtoms(), ligTraj.NumConfs()) )
-            protTraj = utl.RequestOEField( oetrajRecord, 'ProtTraj', Types.Chem.Mol)
+
+            mdtrajrecord = MDDataRecord(oetrajRecord)
+            protTraj = mdtrajrecord.get_protein_traj
+
             opt['Logger'].info('{} #atoms, #confs in protein traj OEMol: {}, {}'
                 .format( system_title, protTraj.NumAtoms(), protTraj.NumConfs()) )
 
-            # Extract the parmed object from the parent record
-            prmed = utl.RequestOEFieldType( record, Fields.pmd_structure)
+            prmed = mdrecord.get_parmed(sync_stage_name='last')
 
             # Compute interaction energies for the protein, ligand, and complex subsystems
             intE, cplxE, protE, ligE = mmpbsa.ProtLigInteractionEFromParmedOETraj(
@@ -602,11 +598,11 @@ class TrajInteractionEnergyCube(ParallelMixin, OERecordComputeCube):
 
             # protein and ligand traj OEMols now have parmed charges on them; save these
             oetrajRecord.set_value(OEField('LigTraj', Types.Chem.Mol), ligTraj)
-            oetrajRecord.set_value(OEField('ProtTraj', Types.Chem.Mol), protTraj)
+
             record.set_value(OEField('OETraj', Types.Record), oetrajRecord)
 
             # Create new record with traj interaction energy results
-            opt['Logger'].info('{} writing trajIntE OERecord'.format(system_title) )
+            opt['Logger'].info('{} writing trajIntE OERecord'.format(system_title))
             trajIntE = OERecord()
             #
             intE_field = OEField("protein_ligand_interactionEnergy", Types.FloatVec,
@@ -631,6 +627,9 @@ class TrajInteractionEnergyCube(ParallelMixin, OERecordComputeCube):
             opt['Logger'].info('{} finished writing trajIntE OERecord'.format(system_title) )
 
             self.success.emit(record)
+
+            del mdrecord
+            del mdtrajrecord
 
         except Exception as e:
             print("Failed to complete", str(e), flush=True)
@@ -685,6 +684,7 @@ class ClusterOETrajCube(ParallelMixin, OERecordComputeCube):
             # the parallel cube processes
             opt = dict(self.opt)
 
+
             # Logger string
             opt['Logger'].info(' Beginning ClusterOETrajCube')
             system_title = utl.RequestOEFieldType( record, Fields.title)
@@ -704,7 +704,10 @@ class ClusterOETrajCube(ParallelMixin, OERecordComputeCube):
             ligTraj = utl.RequestOEField( oetrajRecord, 'LigTraj', Types.Chem.Mol)
             opt['Logger'].info('{} #atoms, #confs in ligand traj OEMol: {}, {}'
                 .format( system_title, ligTraj.NumAtoms(), ligTraj.NumConfs()) )
-            protTraj = utl.RequestOEField( oetrajRecord, 'ProtTraj', Types.Chem.Mol)
+
+            mdtrajrecord = MDDataRecord(oetrajRecord)
+            protTraj = mdtrajrecord.get_protein_traj
+
             opt['Logger'].info('{} #atoms, #confs in protein traj OEMol: {}, {}'
                 .format( system_title, protTraj.NumAtoms(), protTraj.NumConfs()) )
 
@@ -791,6 +794,8 @@ class ClusterOETrajCube(ParallelMixin, OERecordComputeCube):
             opt['Logger'].info('{} finished writing trajClus OERecord'.format(system_title) )
 
             self.success.emit(record)
+
+            del mdtrajrecord
 
         except Exception as e:
             print("Failed to complete", str(e), flush=True)

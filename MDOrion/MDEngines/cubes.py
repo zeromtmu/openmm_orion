@@ -34,8 +34,7 @@ import copy
 
 import textwrap
 
-
-from oeommtools import utils as oeommutils
+import os
 
 
 class MDMinimizeCube(ParallelMixin, OERecordComputeCube):
@@ -158,8 +157,8 @@ class MDMinimizeCube(ParallelMixin, OERecordComputeCube):
         'save_md_stage',
         default=True,
         help_text="""Save the MD simulation stage. If True the MD,
-        simulation data will be appended to the md simulation stages 
-        otherwise the last MD stage will be overwritten""")
+           simulation data will be appended to the md simulation stages 
+           otherwise the last MD stage will be overwritten""")
 
     md_engine = parameter.StringParameter(
         'md_engine',
@@ -218,58 +217,48 @@ class MDMinimizeCube(ParallelMixin, OERecordComputeCube):
             opt['system_title'] = system_title
             opt['system_id'] = mdrecord.get_id
 
-            parmed_structure = mdrecord.get_parmed
             system = mdrecord.get_stage_topology()
             mdstate = mdrecord.get_stage_state()
 
-            opt['outfname'] = '{}-{}'.format(system_title + '_' + str(opt['system_id']), opt['suffix'])
+            opt['out_directory'] = mdrecord.cwd
             opt['molecule'] = system
             opt['str_logger'] = str_logger
             opt['Logger'].info('[{}] MINIMIZING System: {}'.format(opt['CubeTitle'], system_title))
 
-            # Update the Parmed structure with the MD State data:
-            parmed_structure.positions = mdstate.get_positions()
-            parmed_structure.velocities = mdstate.get_velocities()
-            parmed_structure.box_vectors = mdstate.get_box_vectors()
+            # Extract the Parmed structure and synchronize it with the last MD stage state
+            parmed_structure = mdrecord.get_parmed(sync_stage_name='last')
 
             # Run the MD simulation
             new_mdstate = md_simulation(mdstate, parmed_structure, opt)
 
-            # Update the Parmed objects and the primary molecule after the MD run
-            parmed_structure.positions = new_mdstate.get_positions()
-            parmed_structure.box_vectors = new_mdstate.get_box_vectors()
-            # numpy array in units of angstrom/picoseconds
-            parmed_structure.velocities = new_mdstate.get_velocities()
-
-            # Update the OEMol complex positions to match the new
-            # Parmed structure after the simulation
-            new_temp_mol = oeommutils.openmmTop_to_oemol(parmed_structure.topology,
-                                                         parmed_structure.positions,
-                                                         verbose=False)
-            new_pos = new_temp_mol.GetCoords()
-            system.SetCoords(new_pos)
-
+            # Update the system coordinates
+            system.SetCoords(new_mdstate.get_oe_positions())
             mdrecord.set_primary(system)
 
-            mdrecord.set_parmed(parmed_structure)
+            data_fn = os.path.basename(mdrecord.cwd) + '_' + opt['system_title'] + '_' + str(opt['system_id']) + '-' + opt['suffix'] + '.tar.gz'
 
-            md_stage_record = mdrecord.create_stage(self.title,
-                                                    MDStageTypes.MINIMIZATION,
-                                                    system,
-                                                    new_mdstate,
-                                                    log=opt['str_logger'])
-            if opt['save_md_stage']:
-                opt['Logger'].info("[{}] Saving MD stage: {}".format(opt['CubeTitle'], opt['SimType']))
+            if not mdrecord.add_new_stage(self.title,
+                                          MDStageTypes.MINIMIZATION,
+                                          system,
+                                          new_mdstate,
+                                          data_fn,
+                                          append=opt['save_md_stage'],
+                                          log=opt['str_logger']):
 
-                mdrecord.append_stage(md_stage_record)
-            else:
-                mdrecord.set_last_stage(md_stage_record)
+                raise ValueError("Problems adding the new Minimization Stage")
+
+            # Synchronize the added Parmed structure with the last MD stage state
+            # mdrecord.set_parmed(parmed_structure, sync_stage_name='last')
 
             self.success.emit(mdrecord.get_record)
 
-        except:
+            del mdrecord
+
+        except Exception as e:
+
+            print("Failed to complete", str(e), flush=True)
+            self.opt['Logger'].info('Exception {} {}'.format(str(e), self.title))
             self.log.error(traceback.format_exc())
-            # Return failed mol
             self.failure.emit(record)
 
         return
@@ -406,8 +395,8 @@ class MDNvtCube(ParallelMixin, OERecordComputeCube):
         'save_md_stage',
         default=False,
         help_text="""Save the MD simulation stage. If True the MD,
-        simulation data will be appended to the md simulation stages 
-        otherwise the last MD stage will be overwritten""")
+           simulation data will be appended to the md simulation stages 
+           otherwise the last MD stage will be overwritten""")
 
     md_engine = parameter.StringParameter(
         'md_engine',
@@ -467,71 +456,71 @@ class MDNvtCube(ParallelMixin, OERecordComputeCube):
             opt['system_title'] = system_title
             opt['system_id'] = mdrecord.get_id
 
-            parmed_structure = mdrecord.get_parmed
             system = mdrecord.get_stage_topology()
             mdstate = mdrecord.get_stage_state()
 
-            opt['outfname'] = '{}-{}'.format(system_title + '_'+str(opt['system_id']), opt['suffix'])
+            opt['out_directory'] = mdrecord.cwd
             opt['molecule'] = system
             opt['str_logger'] = str_logger
             opt['Logger'].info('[{}] START NVT SIMULATION: {}'.format(opt['CubeTitle'], system_title))
 
-            # Update the Parmed structure with the MD State data:
-            parmed_structure.positions = mdstate.get_positions()
-            parmed_structure.velocities = mdstate.get_velocities()
-            parmed_structure.box_vectors = mdstate.get_box_vectors()
+            opt['out_fn'] = os.path.basename(opt['out_directory']) + '_' + \
+                            opt['system_title'] + '_' + \
+                            str(opt['system_id']) + '-' + \
+                            opt['suffix']
+
+            # Trajectory file name if any generated
+            opt['trj_fn'] = opt['out_fn'] + '_' + 'traj.tar.gz'
+
+            # Extract the Parmed structure and synchronize it with the last MD stage state
+            parmed_structure = mdrecord.get_parmed(sync_stage_name='last')
 
             # Run the MD simulation
             new_mdstate = md_simulation(mdstate, parmed_structure, opt)
 
-            # Update the Parmed objects and the primary molecule
-            parmed_structure.positions = new_mdstate.get_positions()
-            parmed_structure.box_vectors = new_mdstate.get_box_vectors()
-            # numpy array in units of angstrom/picoseconds
-            parmed_structure.velocities = new_mdstate.get_velocities()
-
-            # Update the OEMol complex positions to match the new
-            # Parmed structure after the simulation
-            new_temp_mol = oeommutils.openmmTop_to_oemol(parmed_structure.topology,
-                                                         parmed_structure.positions,
-                                                         verbose=False)
-            new_pos = new_temp_mol.GetCoords()
-            system.SetCoords(new_pos)
-
+            # Update the system coordinates
+            system.SetCoords(new_mdstate.get_oe_positions())
             mdrecord.set_primary(system)
-            mdrecord.set_parmed(parmed_structure)
 
             # Trajectory
             if opt['trajectory_interval']:
-                filename = opt['outfname'] + '.tar.gz'
+                trajectory_fn = opt['trj_fn']
                 if opt['md_engine'] == MDEngines.OpenMM:
                     trajectory_engine = MDEngines.OpenMM
                 else:
                     trajectory_engine = MDEngines.Gromacs
             else:  # Empty Trajectory
-                filename = None
+                trajectory_fn = None
                 trajectory_engine = None
 
-            md_stage_record = mdrecord.create_stage(self.title,
-                                                    MDStageTypes.NVT,
-                                                    system,
-                                                    new_mdstate,
-                                                    log=opt['str_logger'],
-                                                    trajectory=filename,
-                                                    trajectory_engine=trajectory_engine,
-                                                    orion_name=filename)
-            if opt['save_md_stage']:
-                opt['Logger'].info("[{}] Saving MD stage: {}".format(opt['CubeTitle'], opt['SimType']))
-                mdrecord.append_stage(md_stage_record)
+            data_fn = opt['out_fn']+'.tar.gz'
 
-            else:
-                mdrecord.set_last_stage(md_stage_record)
+            if not mdrecord.add_new_stage(self.title,
+                                          MDStageTypes.NVT,
+                                          system,
+                                          new_mdstate,
+                                          data_fn,
+                                          append=opt['save_md_stage'],
+                                          log=opt['str_logger'],
+                                          trajectory_fn=trajectory_fn,
+                                          trajectory_engine=trajectory_engine,
+                                          trajectory_orion_ui=opt['system_title'] + '_' + str(opt['system_id']) + '-' + opt['suffix']+'.tar.gz'
+                                          ):
+
+                raise ValueError("Problems adding in the new NVT Stage")
+
+            # Synchronize the added Parmed structure with the last MD stage state
+            # mdrecord.set_parmed(parmed_structure, sync_stage_name='last')
 
             self.success.emit(mdrecord.get_record)
 
-        except:
+            del mdrecord
+
+        except Exception as e:
+
+            print("Failed to complete", str(e), flush=True)
+            self.opt['Logger'].info('Exception {} {}'.format(str(e), self.title))
             self.log.error(traceback.format_exc())
-            # Return failed mol
             self.failure.emit(record)
 
         return
@@ -669,8 +658,8 @@ class MDNptCube(ParallelMixin, OERecordComputeCube):
         'save_md_stage',
         default=False,
         help_text="""Save the MD simulation stage. If True the MD,
-        simulation data will be appended to the md simulation stages 
-        otherwise the last MD stage will be overwritten""")
+           simulation data will be appended to the md simulation stages 
+           otherwise the last MD stage will be overwritten""")
 
     md_engine = parameter.StringParameter(
         'md_engine',
@@ -729,73 +718,72 @@ class MDNptCube(ParallelMixin, OERecordComputeCube):
             opt['system_title'] = system_title
             opt['system_id'] = mdrecord.get_id
 
-            parmed_structure = mdrecord.get_parmed
             system = mdrecord.get_stage_topology()
             mdstate = mdrecord.get_stage_state()
 
-            opt['outfname'] = '{}-{}'.format(system_title + '_' + str(opt['system_id']), opt['suffix'])
+            opt['out_directory'] = mdrecord.cwd
             opt['molecule'] = system
             opt['str_logger'] = str_logger
             opt['Logger'].info('[{}] START NPT SIMULATION: {}'.format(opt['CubeTitle'], system_title))
 
-            # Update the Parmed structure with the MD State data:
-            parmed_structure.positions = mdstate.get_positions()
-            parmed_structure.velocities = mdstate.get_velocities()
-            parmed_structure.box_vectors = mdstate.get_box_vectors()
+            opt['out_fn'] = os.path.basename(opt['out_directory']) + '_' + \
+                            opt['system_title'] + '_' + \
+                            str(opt['system_id']) + '-' + \
+                            opt['suffix']
+
+            # Trajectory file name if any generated
+            opt['trj_fn'] = opt['out_fn'] + '_' + 'traj.tar.gz'
+
+            # Extract the Parmed structure and synchronize it with the last MD stage state
+            parmed_structure = mdrecord.get_parmed(sync_stage_name='last')
 
             # Run the MD simulation
             new_mdstate = md_simulation(mdstate, parmed_structure, opt)
 
-            # Update the Parmed objects and the primary molecule
-            parmed_structure.positions = new_mdstate.get_positions()
-            parmed_structure.box_vectors = new_mdstate.get_box_vectors()
-            # numpy array in units of angstrom/picoseconds
-            parmed_structure.velocities = new_mdstate.get_velocities()
-
-            # Update the OEMol complex positions to match the new
-            # Parmed structure after the simulation
-            new_temp_mol = oeommutils.openmmTop_to_oemol(parmed_structure.topology,
-                                                         parmed_structure.positions,
-                                                         verbose=False)
-            new_pos = new_temp_mol.GetCoords()
-            system.SetCoords(new_pos)
-
+            # Update the system coordinates
+            system.SetCoords(new_mdstate.get_oe_positions())
             mdrecord.set_primary(system)
-            mdrecord.set_parmed(parmed_structure)
 
             # Trajectory
             if opt['trajectory_interval']:
-                filename = opt['outfname'] + '.tar.gz'
+                trajectory_fn = opt['trj_fn']
                 if opt['md_engine'] == MDEngines.OpenMM:
                     trajectory_engine = MDEngines.OpenMM
                 else:
                     trajectory_engine = MDEngines.Gromacs
 
             else:  # Empty Trajectory
-                filename = None
+                trajectory_fn = None
                 trajectory_engine = None
 
-            md_stage_record = mdrecord.create_stage(self.title,
-                                                    MDStageTypes.NPT,
-                                                    system,
-                                                    new_mdstate,
-                                                    log=opt['str_logger'],
-                                                    trajectory=filename,
-                                                    trajectory_engine=trajectory_engine,
-                                                    orion_name=filename)
+            data_fn = opt['out_fn'] + '.tar.gz'
 
-            if opt['save_md_stage']:
-                opt['Logger'].info("[{}] Saving MD stage: {}".format(opt['CubeTitle'], opt['SimType']))
+            if not mdrecord.add_new_stage(self.title,
+                                          MDStageTypes.NPT,
+                                          system,
+                                          new_mdstate,
+                                          data_fn,
+                                          append=opt['save_md_stage'],
+                                          log=opt['str_logger'],
+                                          trajectory_fn=trajectory_fn,
+                                          trajectory_engine=trajectory_engine,
+                                          trajectory_orion_ui=opt['system_title'] + '_' + str(opt['system_id']) + '-' + opt['suffix']+'.tar.gz'
+                                          ):
 
-                mdrecord.append_stage(md_stage_record)
-            else:
-                mdrecord.set_last_stage(md_stage_record)
+                raise ValueError("Problems adding in the new NPT Stage")
+
+            # Synchronize the added Parmed structure with the last MD stage state
+            # mdrecord.set_parmed(parmed_structure, sync_stage_name='last')
 
             self.success.emit(mdrecord.get_record)
 
-        except:
+            del mdrecord
+
+        except Exception as e:
+
+            print("Failed to complete", str(e), flush=True)
+            self.opt['Logger'].info('Exception {} {}'.format(str(e), self.title))
             self.log.error(traceback.format_exc())
-            # Return failed mol
             self.failure.emit(record)
 
         return

@@ -39,12 +39,14 @@ from MDOrion.LigPrep.cubes import (LigandChargeCube,
 
 from MDOrion.System.cubes import IDSettingCube
 
-from MDOrion.TrjAnalysis.cubes import TrajToOEMolCube
-from MDOrion.TrjAnalysis.cubes import TrajInteractionEnergyCube
-from MDOrion.TrjAnalysis.cubes import TrajPBSACube
-from MDOrion.TrjAnalysis.cubes import ClusterOETrajCube
-from MDOrion.TrjAnalysis.cubes import MDTrajAnalysisClusterReport
-from MDOrion.TrjAnalysis.cubes import MDFloeReportCube
+from MDOrion.System.cubes import CollectionSetting
+
+from MDOrion.TrjAnalysis.cubes import (TrajToOEMolCube,
+                                       TrajInteractionEnergyCube,
+                                       TrajPBSACube,
+                                       ClusterOETrajCube,
+                                       MDTrajAnalysisClusterReport,
+                                       MDFloeReportCube)
 
 job = WorkFloe('Short Trajectory MD with Analysis',
                title='Short Trajectory MD with Analysis')
@@ -125,11 +127,15 @@ solvate.set_parameters(density=1.03)
 solvate.set_parameters(salt_concentration=50.0)
 solvate.set_parameters(close_solvent=True)
 
+# This cube is necessary for the correct work of collection and shard
+coll_open = CollectionSetting("OpenCollection")
+coll_open.set_parameters(open=True)
+
 # Force Field Application
 ff = ForceFieldCube("ForceField", title="System Parametrization")
-ff.promote_parameter('protein_forcefield', promoted_name='protein_ff', default='amber99sbildn.xml')
-ff.promote_parameter('ligand_forcefield', promoted_name='ligand_ff', default='GAFF2')
-ff.promote_parameter('other_forcefield', promoted_name='other_ff', default='GAFF2')
+ff.promote_parameter('protein_forcefield', promoted_name='protein_ff', default='Amber99SBildn')
+ff.promote_parameter('ligand_forcefield', promoted_name='ligand_ff', default='Gaff2')
+ff.promote_parameter('other_forcefield', promoted_name='other_ff', default='Gaff2')
 ff.set_parameters(lig_res_name='LIG')
 
 prod = MDNptCube("Production", title="Production")
@@ -232,11 +238,13 @@ report_gen = MDTrajAnalysisClusterReport("MDTrajAnalysisClusterReport")
 
 report = MDFloeReportCube("report", title="Floe Report")
 
+# This cube is necessary dor the correct working of collection and shard
+coll_close = CollectionSetting("CloseCollection")
+coll_close.set_parameters(open=False)
 
-job.add_cubes(iligs, ligset, iprot, protset, chargelig, complx, solvate, ff,
+job.add_cubes(iligs, ligset, iprot, protset, chargelig, complx, solvate, coll_open, ff,
               minComplex, warmup, equil1, equil2, equil3, prod, ofs, fail,
-              trajCube, IntECube, PBSACube, clusCube, report_gen, report)
-
+              trajCube, IntECube, PBSACube, clusCube, report_gen, report, coll_close)
 
 iligs.success.connect(chargelig.intake)
 chargelig.success.connect(ligset.intake)
@@ -245,27 +253,31 @@ ligid.success.connect(complx.intake)
 iprot.success.connect(protset.intake)
 protset.success.connect(complx.protein_port)
 complx.success.connect(solvate.intake)
-solvate.success.connect(ff.intake)
+solvate.success.connect(coll_open.intake)
+coll_open.success.connect(ff.intake)
 ff.success.connect(minComplex.intake)
 minComplex.success.connect(warmup.intake)
 warmup.success.connect(equil1.intake)
 equil1.success.connect(equil2.intake)
 equil2.success.connect(equil3.intake)
 equil3.success.connect(prod.intake)
-prod.failure.connect(fail.intake)
-prod.success.connect(ofs.intake)
 prod.success.connect(trajCube.intake)
+prod.failure.connect(fail.intake)
+# prod.success.connect(ofs.intake)
 trajCube.success.connect(IntECube.intake)
-# trajCube.failure.connect(fail.intake)
+trajCube.failure.connect(fail.intake)
 IntECube.success.connect(PBSACube.intake)
-# IntECube.failure.connect(fail.intake)
+IntECube.failure.connect(fail.intake)
 PBSACube.success.connect(clusCube.intake)
-# PBSACube.failure.connect(fail.intake)
+PBSACube.failure.connect(fail.intake)
 clusCube.success.connect(report_gen.intake)
-# clusCube.failure.connect(fail.intake)
+clusCube.failure.connect(fail.intake)
 report_gen.success.connect(report.intake)
-# report_gen.failure.connect(fail.intake)
-# report.failure.connect(fail.intake)
+report_gen.failure.connect(fail.intake)
+report.failure.connect(fail.intake)
+report.success.connect(coll_close.intake)
+coll_close.success.connect(ofs.intake)
+coll_close.failure.connect(fail.intake)
 
 if __name__ == "__main__":
     job.run()

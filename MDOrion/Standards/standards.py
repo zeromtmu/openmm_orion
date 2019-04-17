@@ -24,14 +24,11 @@ from datarecord import OEPrimaryMolField
 from datarecord import (Types,
                         Meta,
                         OEFieldMeta,
-                        OEField,
-                        OERecord)
+                        OEField)
 
-import os
-
-from MDOrion.Standards import utils
 
 # ------------ Stage Standard Names ------------- #
+
 
 class MDStageTypes:
     SETUP = 'SETUP'
@@ -49,7 +46,17 @@ class MDEngines:
     all = [OpenMM, Gromacs]
 
 
+# ---------------- File  Name Standards -------------- #
+
+class MDFileNames:
+    topology = 'topology.oeb'
+    state = 'state.pickle'
+    trajectory = "trajectory.tar.gz"
+    trajectory_conformers = "trajectory_confs.oeb"
+    mddata = "data.tar.gz"
+
 # ---------------- Field Standards -------------- #
+
 
 class Fields:
 
@@ -77,8 +84,17 @@ class Fields:
     # Primary Molecule
     primary_molecule = OEPrimaryMolField()
 
-    # Parmed Structure Field
-    pmd_structure = OEField('Structure_Parmed_OPLMD', ParmedData)
+    # Parmed Structure, Trajectory, MDData and Protein trajectory conformers Fields
+    if in_orion():
+        pmd_structure = OEField('Structure_Parmed_OPLMD', Types.Int)
+        trajectory = OEField("Trajectory_OPLMD", Types.Int)
+        mddata = OEField("MDData_OPLMD", Types.Int)
+        protein_traj_confs = OEField("ProtTraj_OPLMD", Types.Int)
+    else:
+        pmd_structure = OEField('Structure_Parmed_OPLMD', ParmedData)
+        trajectory = OEField("Trajectory_OPLMD", Types.String)
+        mddata = OEField("MDData_OPLMD", Types.String)
+        protein_traj_confs = OEField("ProtTraj_OPLMD", Types.Chem.Mol)
 
     # The Stage Name
     stage_name = OEField('Stage_name_OPLMD', Types.String)
@@ -95,18 +111,8 @@ class Fields:
     # MD State
     md_state = OEField("MDState_OPLMD", MDStateData)
 
-    # MD System Field
-    md_system = OEField("MDSystem_OPLMD", Types.Record)
-
-    # Trajectory
-    if in_orion():
-        trajectory = OEField("Trajectory_OPLMD", Types.Int)
-    else:
-        trajectory = OEField("Trajectory_OPLMD", Types.String)
-
-    # This Field is introduced to deal with record trajectory field
-    # that are linked to Orion S3 storage but they are locally used
-    orion_local_trj_field = OEField("Trajectory_OPLMD", Types.Int)
+    # Collection is used to offload data from the record which mush be < 100Mb
+    collection = OEField("Collection_ID_OPLMD", Types.Int)
 
     # Stage list Field
     md_stages = OEField("MDStages_OPLMD", Types.RecordVec)
@@ -125,90 +131,3 @@ class Fields:
 
     floe_report_label = OEField('Floe_report_label_OPLMD', Types.String)
 
-    # Clean up trajectories
-    if in_orion():
-        trj_garbage_field = OEField("trj_garbage_OPLMD", Types.IntVec)
-    else:
-        trj_garbage_field = OEField("trj_garbage_OPLMD", Types.StringVec)
-
-
-# ---------------- Record Standards -------------- #
-
-class MDRecords:
-
-    # class MDSystemRecord(OERecord):
-    #
-    #     def __init__(self, molecule, state):
-    #         super().__init__()
-    #         self.set_value(Fields.topology, molecule)
-    #         self.set_value(Fields.md_state, state)
-
-    @staticmethod
-    def MDSystemRecord(molecule, state):
-        record = OERecord()
-        record.set_value(Fields.topology, molecule)
-        record.set_value(Fields.md_state, state)
-        return record
-
-    # class MDStageRecord(OERecord):
-    #
-    #     def __init__(self, stage_name, stage_type, system_record, log=None, trajectory=None, trajectory_engine=None):
-    #
-    #         super().__init__()
-    #
-    #         self.set_value(Fields.stage_name, stage_name)
-    #         self.set_value(Fields.stage_type, stage_type)
-    #         self.set_value(Fields.md_system, system_record)
-    #
-    #         if log is not None:
-    #             self.set_value(Fields.log_data, log)
-    #         if trajectory is not None:
-    #             if trajectory_engine not in MDEngines.all:
-    #                 raise ValueError("The selected MD engine is not supported")
-    #
-    #             trj_meta = OEFieldMeta()
-    #             trj_meta.set_attribute(Meta.Annotation.Description, trajectory_engine)
-    #
-    #             trj_field = OEField(Fields.trajectory.get_name(),
-    #                                 Fields.trajectory.get_type(),
-    #                                 meta=trj_meta)
-    #
-    #             self.set_value(trj_field, trajectory)
-
-    @staticmethod
-    def MDStageRecord(stage_name,
-                      stage_type,
-                      system_record,
-                      log=None,
-                      trajectory=None,
-                      trajectory_engine=None,
-                      orion_name="OrionFile"):
-
-        record = OERecord()
-
-        record.set_value(Fields.stage_name, stage_name)
-        record.set_value(Fields.stage_type, stage_type)
-        record.set_value(Fields.md_system, system_record)
-
-        if log is not None:
-            record.set_value(Fields.log_data, log)
-        if trajectory is not None:
-
-            if trajectory_engine not in MDEngines.all:
-                raise ValueError("The selected MD engine is not supported")
-
-            trj_meta = OEFieldMeta()
-            trj_meta.set_attribute(Meta.Annotation.Description, trajectory_engine)
-
-            trj_field = OEField(Fields.trajectory.get_name(),
-                                Fields.trajectory.get_type(),
-                                meta=trj_meta)
-
-            if not os.path.isfile(trajectory):
-                raise IOError("The trajectory file has not been found: {}".format(trajectory))
-
-            lf = utils.upload_file(trajectory, orion_name=orion_name)
-
-            record.set_value(trj_field, lf)
-
-        return record

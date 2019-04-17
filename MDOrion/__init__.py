@@ -15,7 +15,7 @@
 # liable for any damages or liability in connection with the Sample Code
 # or its use.
 
-__version__ = '0.8.3a2'
+__version__ = '0.8.4b1'
 
 from MDOrion import ComplexPrep
 

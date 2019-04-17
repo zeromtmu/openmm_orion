@@ -31,7 +31,8 @@ from MDOrion.System.cubes import SolvationCube
 
 from MDOrion.ForceField.cubes import ForceFieldCube
 
-from MDOrion.System.cubes import IDSettingCube
+from MDOrion.System.cubes import (IDSettingCube,
+                                  CollectionSetting)
 
 job = WorkFloe('Simple MD',
                title='Simple MD')
@@ -82,11 +83,15 @@ solvate.promote_parameter('salt_concentration', promoted_name='salt_concentratio
                           description='Salt concentration (Na+, Cl-) in millimolar')
 solvate.set_parameters(close_solvent=True)
 
+# This cube is necessary for the correct work of collection and shard
+coll_open = CollectionSetting("OpenCollection")
+coll_open.set_parameters(open=True)
+
 # Force Field Application
 ff = ForceFieldCube("ForceField", title="System Parametrization")
-ff.promote_parameter('protein_forcefield', promoted_name='protein_ff', default='amber99sbildn.xml')
-ff.promote_parameter('ligand_forcefield', promoted_name='ligand_ff', default='GAFF2')
-ff.promote_parameter('other_forcefield', promoted_name='other_ff', default='GAFF2')
+ff.promote_parameter('protein_forcefield', promoted_name='protein_ff', default='Amber99SBildn')
+ff.promote_parameter('ligand_forcefield', promoted_name='ligand_ff', default='Gaff2')
+ff.promote_parameter('other_forcefield', promoted_name='other_ff', default='Gaff2')
 ff.set_parameters(lig_res_name='LIG')
 
 prod = MDNptCube("Production", title="Production")
@@ -175,25 +180,32 @@ equil3.set_parameters(reporter_interval=0.001)
 equil3.set_parameters(suffix='equil3')
 equil3.promote_parameter("md_engine", promoted_name="md_engine")
 
+# This cube is necessary for the correct working of collection and shard
+coll_close = CollectionSetting("CloseCollection")
+coll_close.set_parameters(open=False)
+
 ofs = DatasetWriterCube('ofs', title='Out')
 ofs.promote_parameter("data_out", promoted_name="out")
 
 fail = DatasetWriterCube('fail', title='Failures')
 fail.promote_parameter("data_out", promoted_name="fail")
 
-job.add_cubes(ifs, solvate, ff, minComplex, warmup, equil1, equil2, equil3, prod, ofs, fail)
+job.add_cubes(ifs, solvate, coll_open, ff, minComplex,
+              warmup, equil1, equil2, equil3, prod,
+              coll_close, ofs, fail)
 
 ifs.success.connect(sysid.intake)
 sysid.success.connect(solvate.intake)
-solvate.success.connect(ff.intake)
+solvate.success.connect(coll_open.intake)
+coll_open.success.connect(ff.intake)
 ff.success.connect(minComplex.intake)
 minComplex.success.connect(warmup.intake)
 warmup.success.connect(equil1.intake)
 equil1.success.connect(equil2.intake)
 equil2.success.connect(equil3.intake)
 equil3.success.connect(prod.intake)
-prod.failure.connect(fail.intake)
-prod.success.connect(ofs.intake)
+prod.success.connect(coll_close.intake)
+coll_close.success.connect(ofs.intake)
 prod.failure.connect(fail.intake)
 
 if __name__ == "__main__":
